@@ -70,13 +70,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.9.0
-%define pkgrelease 36
+%define pkgrelease 37
 
 # This is needed to do merge window version magic
 %define patchlevel 9
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 36%{?buildid}%{?dist}
+%define specrelease 37%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -2643,7 +2643,7 @@ fi
 #
 #
 %changelog
-* Fri Oct 30, 2020 Don Zickus <dzickus@redhat.com> [5.9.0-37]
+* Fri Oct 30 2020 Don Zickus <dzickus@redhat.com> [5.9.0-37]
 - Enable kernel-tools. (Don Zickus)
 - Disable LTO on kernel and kernel-tools. (Don Zickus)
 - Enable CONFIG_DEBUG_INFO_BTF option. (Don Zickus)
