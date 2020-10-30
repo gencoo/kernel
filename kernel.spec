@@ -31,7 +31,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 36
+%global distro_build 37
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -2643,6 +2643,12 @@ fi
 #
 #
 %changelog
+* Fri Oct 30, 2020 Don Zickus <dzickus@redhat.com> [5.9.0-37]
+- Enable kernel-tools. (Don Zickus)
+- Disable LTO on kernel and kernel-tools. (Don Zickus)
+- Enable CONFIG_DEBUG_INFO_BTF option. (Don Zickus)
+- Add BuildRequires dwarves to support building BTF. (Don Zickus)
+
 * Mon Oct 12 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.9.0-35]
 - Filter out LTO build options from the perl ccopts ("Justin M. Forbes")
 - Temporarily remove cdomain from sphinx documentation ("Justin M. Forbes")
