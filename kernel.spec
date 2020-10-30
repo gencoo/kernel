@@ -1,3 +1,4 @@
+%global _lto_cflags %{nil}
 # We have to override the new %%install behavior because, well... the kernel is special.
 %global __spec_install_pre %{___build_pre}
 
@@ -182,10 +183,10 @@ Summary: The Linux kernel
 # no whitelist
 %define with_kernel_abi_whitelists 0
 # Fedora builds these separately
-%endif
 %define with_perf 0
 %define with_tools 0
 %define with_bpftool 0
+%endif
 
 %if %{with_verbose}
 %define make_opts V=1
@@ -476,9 +477,7 @@ BuildRequires: kmod, patch, bash, tar, git-core
 BuildRequires: bzip2, xz, findutils, gzip, m4, perl-interpreter, perl-Carp, perl-devel, perl-generators, make, diffutils, gawk
 BuildRequires: gcc, binutils, redhat-rpm-config, hmaccalc, bison, flex
 BuildRequires: net-tools, hostname, bc, elfutils-devel
-%if 0%{?fedora}
 BuildRequires: dwarves
-%endif
 BuildRequires: python3-devel
 %if %{with_headers}
 BuildRequires: rsync
@@ -518,9 +517,7 @@ BuildConflicts: rhbuildsys(DiskFree) < 500Mb
 %if %{with_debuginfo}
 BuildRequires: rpm-build, elfutils
 BuildConflicts: rpm < 4.13.0.1-19
-%if 0%{?fedora}
 BuildConflicts: dwarves < 1.13
-%endif
 # Most of these should be enabled after more investigation
 %undefine _include_minidebuginfo
 %undefine _find_debuginfo_dwz_opts
