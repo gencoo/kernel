@@ -31,7 +31,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 37
+%global distro_build 38
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -70,13 +70,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.9.0
-%define pkgrelease 37
+%define pkgrelease 38
 
 # This is needed to do merge window version magic
 %define patchlevel 9
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 37%{?buildid}%{?dist}
+%define specrelease 38%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -713,6 +713,7 @@ Source4000: README.rst
 %if !%{nopatches}
 
 Patch1: patch-%{rpmversion}-redhat.patch
+Patch2: 0002-x86-unwind-orc-Fix-inactive-tasks-with-stack-pointer.patch
 %endif
 
 # empty final patch to facilitate testing of kernel patches
@@ -1216,6 +1217,7 @@ cp -a %{SOURCE1} .
 %if !%{nopatches}
 
 ApplyOptionalPatch patch-%{rpmversion}-redhat.patch
+ApplyPatch 0002-x86-unwind-orc-Fix-inactive-tasks-with-stack-pointer.patch
 %endif
 
 ApplyOptionalPatch linux-kernel-test.patch
@@ -2643,6 +2645,10 @@ fi
 #
 #
 %changelog
+* Mon Nov 09 2020 Herton R. Krzesinski <herton@redhat.com> [5.9.0-38]
+- Apply upstream fix: commit f2ac57a4c49d - "x86/unwind/orc: Fix inactive tasks
+  with stack pointer in %sp on GCC 10 compiled kernels" ("Herton R. Krzesinski")
+
 * Fri Oct 30 2020 Don Zickus <dzickus@redhat.com> [5.9.0-37]
 - Enable kernel-tools. (Don Zickus)
 - Disable LTO on kernel and kernel-tools. (Don Zickus)
