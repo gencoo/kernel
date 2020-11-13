@@ -31,7 +31,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 38
+%global distro_build 39
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -70,13 +70,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.9.0
-%define pkgrelease 38
+%define pkgrelease 39
 
 # This is needed to do merge window version magic
 %define patchlevel 9
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 38%{?buildid}%{?dist}
+%define specrelease 39%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -708,12 +708,14 @@ Source3003: Patchlist.changelog
 
 Source4000: README.rst
 
+# For a stable release kernel
+Source5000: patch-5.9.8.xz
+
 ## Patches needed for building this package
 
 %if !%{nopatches}
 
 Patch1: patch-%{rpmversion}-redhat.patch
-Patch2: 0002-x86-unwind-orc-Fix-inactive-tasks-with-stack-pointer.patch
 %endif
 
 # empty final patch to facilitate testing of kernel patches
@@ -1213,11 +1215,11 @@ mv linux-5.9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
+xzcat %{SOURCE5000} | patch -p1 -F1 -s
 
 %if !%{nopatches}
 
 ApplyOptionalPatch patch-%{rpmversion}-redhat.patch
-ApplyPatch 0002-x86-unwind-orc-Fix-inactive-tasks-with-stack-pointer.patch
 %endif
 
 ApplyOptionalPatch linux-kernel-test.patch
@@ -2645,6 +2647,11 @@ fi
 #
 #
 %changelog
+* Fri Nov 13 2020 Herton R. Krzesinski <herton@redhat.com> [5.9.0-39]
+- Apply patches from 5.9.8 upstream stable update ("Herton R. Krzesinski")
+- Drop commit f2ac57a4c49d - "x86/unwind/orc:...", applied now through
+  5.9.8 update ("Herton R. Krzesinski")
+
 * Mon Nov 09 2020 Herton R. Krzesinski <herton@redhat.com> [5.9.0-38]
 - Apply upstream fix: commit f2ac57a4c49d - "x86/unwind/orc: Fix inactive tasks
   with stack pointer in %sp on GCC 10 compiled kernels" ("Herton R. Krzesinski")
