@@ -31,7 +31,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 39
+%global distro_build 40
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -70,13 +70,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.9.0
-%define pkgrelease 39
+%define pkgrelease 40
 
 # This is needed to do merge window version magic
 %define patchlevel 9
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 39%{?buildid}%{?dist}
+%define specrelease 40%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -1216,6 +1216,10 @@ mv linux-5.9 linux-%{KVERREL}
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
 xzcat %{SOURCE5000} | patch -p1 -F1 -s
+# The stable update application above changes the SUBLEVEL, however our rpm
+# versioning doesn't do it: revert the SUBLEVEL change to avoid modules not
+# loading due wrong version (BZ#1898144)
+sed -i 's/^SUBLEVEL = [0-9]\+/SUBLEVEL = 0/' Makefile
 
 %if !%{nopatches}
 
@@ -2647,6 +2651,12 @@ fi
 #
 #
 %changelog
+* Mon Nov 16 2020 Herton R. Krzesinski <herton@redhat.com> [5.9.0-40]
+- Fix boot issue/failure to load modules due mismatch between kernel SUBLEVEL
+  number and directory we install modules due the rpm version, after applying
+  the upstream stable update patch in previous release ("Herton R. Krzesinski")
+  [1898144]
+
 * Fri Nov 13 2020 Herton R. Krzesinski <herton@redhat.com> [5.9.0-39]
 - Apply patches from 5.9.8 upstream stable update ("Herton R. Krzesinski")
 - Drop commit f2ac57a4c49d - "x86/unwind/orc:...", applied now through
