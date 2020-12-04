@@ -1,5 +1,30 @@
+# All Global changes to build and install go here.
+# Per the below section about __spec_install_pre, any rpm
+# environment changes that affect %%install need to go
+# here before the %%install macro is pre-built.
+
+# Disable LTO in userspace packages.
 %global _lto_cflags %{nil}
-# We have to override the new %%install behavior because, well... the kernel is special.
+
+
+
+# The kernel's %%install section is special
+# Normally the %%install section starts by cleaning up the BUILD_ROOT
+# like so:
+#
+# %%__spec_install_pre %%{___build_pre}\
+#     [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf "${RPM_BUILD_ROOT}"\
+#     mkdir -p `dirname "$RPM_BUILD_ROOT"`\
+#     mkdir "$RPM_BUILD_ROOT"\
+# %%{nil}
+#
+# But because of kernel variants, the %%build section, specifically
+# BuildKernel(), moves each variant to its final destination as the
+# variant is built.  This violates the expectation of the %%install
+# section.  As a result we snapshot the current env variables and
+# purposely leave out the removal section.  All global wide changes
+# should be added above this line otherwise the %%install section
+# will not see them.
 %global __spec_install_pre %{___build_pre}
 
 # Short-term fix so the package builds with GCC 10.
@@ -31,7 +56,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 40
+%global distro_build 0.rc6.92
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -58,6 +83,8 @@ Summary: The Linux kernel
 
 %if %{zipmodules}
 %global zipsed -e 's/\.ko$/\.ko.xz/'
+# for parallel xz processes, replace with 1 to go back to single process
+%global zcpu `nproc --all`
 %endif
 
 # define buildid .local
@@ -69,21 +96,20 @@ Summary: The Linux kernel
 %define primary_target rhel
 %endif
 
-%define rpmversion 5.9.0
-%define pkgrelease 40
+%define rpmversion 5.10.0
+%define pkgrelease 0.rc6.92
 
 # This is needed to do merge window version magic
-%define patchlevel 9
+%define patchlevel 10
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 40%{?buildid}%{?dist}
+%define specrelease 0.rc6.92%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
-# What parts do we want to build?  We must build at least one kernel.
-# These are the kernels that are built IF the architecture allows it.
-# All should default to 1 (enabled) and be flipped to 0 (disabled)
-# by later arch-specific checks.
+# What parts do we want to build? These are the kernels that are built IF the
+# architecture allows it. All should default to 1 (enabled) and be flipped to
+# 0 (disabled) by later arch-specific checks.
 
 # The following build options are enabled by default.
 # Use either --without <opt> in your rpmbuild command or force values
@@ -170,7 +196,7 @@ Summary: The Linux kernel
 %define debugbuildsenabled 1
 
 # The kernel tarball/base version
-%define kversion 5.9
+%define kversion 5.10
 
 %if 0%{?fedora}
 # Kernel headers are being split out into a separate package
@@ -498,6 +524,7 @@ BuildRequires: numactl-devel
 %endif
 %if %{with_tools}
 BuildRequires: gettext ncurses-devel
+BuildRequires: libcap-devel libcap-ng-devel
 %ifnarch s390x
 BuildRequires: pciutils-devel
 %endif
@@ -563,7 +590,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.9.tar.xz
+Source0: linux-5.10.0-0.rc6.92.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -707,9 +734,6 @@ Source3001: kernel-local
 Source3003: Patchlist.changelog
 
 Source4000: README.rst
-
-# For a stable release kernel
-Source5000: patch-5.9.8.xz
 
 ## Patches needed for building this package
 
@@ -1210,16 +1234,11 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.9 -c
-mv linux-5.9 linux-%{KVERREL}
+%setup -q -n kernel-5.10.0-0.rc6.92 -c
+mv linux-5.10.0-0.rc6.92 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
-xzcat %{SOURCE5000} | patch -p1 -F1 -s
-# The stable update application above changes the SUBLEVEL, however our rpm
-# versioning doesn't do it: revert the SUBLEVEL change to avoid modules not
-# loading due wrong version (BZ#1898144)
-sed -i 's/^SUBLEVEL = [0-9]\+/SUBLEVEL = 0/' Makefile
 
 %if !%{nopatches}
 
@@ -1252,12 +1271,9 @@ pathfix.py -i "%{__python3} %{py3_shbang_opts}" -p -n \
 	scripts/diffconfig \
 	scripts/bloat-o-meter \
 	scripts/jobserver-exec \
-	tools/perf/tests/attr.py \
-	tools/perf/scripts/python/stat-cpi.py \
-	tools/perf/scripts/python/sched-migration.py \
-	tools/testing/selftests/drivers/net/mlxsw/sharedbuffer_configuration.py \
+	tools \
 	Documentation \
-	scripts/gen_compile_commands.py
+	scripts/clang-tools
 
 # only deal with configs if we are going to build for the arch
 %ifnarch %nobuildarches
@@ -1343,33 +1359,18 @@ cp_vmlinux()
 
 %define make %{__make} %{?cross_opts} %{?make_opts} HOSTCFLAGS="%{?build_hostcflags}" HOSTLDFLAGS="%{?build_hostldflags}"
 
-BuildKernel() {
-    MakeTarget=$1
-    KernelImage=$2
-    Flavour=$4
-    DoVDSO=$3
+InitBuildVars() {
+    # Initialize the kernel .config file and create some variables that are
+    # needed for the actual build process.
+
+    Flavour=$1
     Flav=${Flavour:++${Flavour}}
-    InstallName=${5:-vmlinuz}
 
-    DoModules=1
-    if [ "$Flavour" = "zfcpdump" ]; then
-	    DoModules=0
-    fi
-
-    # Pick the right config file for the kernel we're building
+    # Pick the right kernel config file
     Config=kernel-%{version}-%{_target_cpu}${Flavour:+-${Flavour}}.config
     DevelDir=/usr/src/kernels/%{KVERREL}${Flav}
 
-    # When the bootable image is just the ELF kernel, strip it.
-    # We already copy the unstripped file into the debuginfo package.
-    if [ "$KernelImage" = vmlinux ]; then
-      CopyKernel=cp_vmlinux
-    else
-      CopyKernel=cp
-    fi
-
     KernelVer=%{version}-%{release}.%{_target_cpu}${Flav}
-    echo BUILDING A KERNEL FOR ${Flavour} %{_target_cpu}...
 
     # make sure EXTRAVERSION says what we want it to say
     # Trim the release if this is a CI build, since KERNELVERSION is limited to 64 characters
@@ -1379,8 +1380,6 @@ BuildKernel() {
     # if pre-rc1 devel kernel, must fix up PATCHLEVEL for our versioning scheme
     # if we are post rc1 this should match anyway so this won't matter
     perl -p -i -e 's/^PATCHLEVEL.*/PATCHLEVEL = %{patchlevel}/' Makefile
-
-    # and now to start the build process
 
     %{make} %{?_smp_mflags} mrproper
     cp configs/$Config .config
@@ -1398,6 +1397,32 @@ BuildKernel() {
     if [ "$Flavour" == "" ]; then
         KCFLAGS="$KCFLAGS %{?kpatch_kcflags}"
     fi
+}
+
+BuildKernel() {
+    MakeTarget=$1
+    KernelImage=$2
+    Flavour=$4
+    DoVDSO=$3
+    Flav=${Flavour:++${Flavour}}
+    InstallName=${5:-vmlinuz}
+
+    DoModules=1
+    if [ "$Flavour" = "zfcpdump" ]; then
+	    DoModules=0
+    fi
+
+    # When the bootable image is just the ELF kernel, strip it.
+    # We already copy the unstripped file into the debuginfo package.
+    if [ "$KernelImage" = vmlinux ]; then
+      CopyKernel=cp_vmlinux
+    else
+      CopyKernel=cp
+    fi
+
+    InitBuildVars $Flavour
+
+    echo BUILDING A KERNEL FOR ${Flavour} %{_target_cpu}...
 
     %{make} ARCH=$Arch olddefconfig >/dev/null
 
@@ -1647,8 +1672,37 @@ BuildKernel() {
     cp -a --parents tools/include/tools/be_byteshift.h $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
     cp -a --parents tools/include/tools/le_byteshift.h $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
 
+    # Files for 'make prepare' to succeed with kernel-devel.
+    cp -a --parents tools/include/linux/compiler* $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/include/linux/types.h $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/build/Build.include $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp --parents tools/build/Build $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp --parents tools/build/fixdep.c $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp --parents tools/objtool/sync-check.sh $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/bpf/resolve_btfids $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+
+    cp --parents security/selinux/include/policycap_names.h $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp --parents security/selinux/include/policycap.h $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+
+    cp -a --parents tools/include/asm-generic $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/include/linux $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/include/uapi/asm $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/include/uapi/asm-generic $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/include/uapi/linux $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/include/vdso $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp --parents tools/scripts/utilities.mak $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/lib/subcmd $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp --parents tools/lib/*.c $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp --parents tools/objtool/*.[ch] $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp --parents tools/objtool/Build $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/lib/bpf $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp --parents tools/lib/bpf/Build $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+
     if [ -f tools/objtool/objtool ]; then
       cp -a tools/objtool/objtool $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/tools/objtool/ || :
+    fi
+    if [ -f tools/objtool/fixdep ]; then
+      cp -a tools/objtool/fixdep $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/tools/objtool/ || :
     fi
     if [ -d arch/$Arch/scripts ]; then
       cp -a arch/$Arch/scripts $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/arch/%{_arch} || :
@@ -1695,7 +1749,6 @@ BuildKernel() {
     cp -a --parents arch/x86/tools/relocs.c $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/
     cp -a --parents arch/x86/tools/relocs_common.c $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/
     cp -a --parents arch/x86/tools/relocs.h $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/
-    cp -a --parents tools/include/tools/le_byteshift.h $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/
     cp -a --parents arch/x86/purgatory/purgatory.c $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/
     cp -a --parents arch/x86/purgatory/stack.S $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/
     cp -a --parents arch/x86/purgatory/setup-x86_64.S $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/
@@ -1703,7 +1756,18 @@ BuildKernel() {
     cp -a --parents arch/x86/boot/string.h $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/
     cp -a --parents arch/x86/boot/string.c $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/
     cp -a --parents arch/x86/boot/ctype.h $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/
+
+    cp -a --parents tools/arch/x86/include/asm $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/arch/x86/include/uapi/asm $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/objtool/arch/x86/lib $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/arch/x86/lib/ $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/arch/x86/tools/gen-insn-attr-x86.awk $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    cp -a --parents tools/objtool/arch/x86/ $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+
 %endif
+    # Clean up intermediate tools files
+    find $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/tools \( -iname "*.o" -o -iname "*.cmd" \) -exec rm -f {} +
+
     # Make sure the Makefile and version.h have a matching timestamp so that
     # external modules can be built
     touch -r $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/Makefile $RPM_BUILD_ROOT/lib/modules/$KernelVer/build/include/generated/uapi/linux/version.h
@@ -1925,6 +1989,14 @@ BuildKernel %make_target %kernel_image %{use_vdso} lpae
 BuildKernel %make_target %kernel_image %{_use_vdso}
 %endif
 
+%ifnarch noarch i686
+%if !%{with_debug} && !%{with_zfcpdump} && !%{with_up}
+# If only building the user space tools, then initialize the build environment
+# and some variables so that the various userspace tools can be built.
+InitBuildVars
+%endif
+%endif
+
 %global perf_make \
   %{__make} -s EXTRA_CFLAGS="${RPM_OPT_FLAGS}" LDFLAGS="%{__global_ldflags}" %{?cross_opts} -C tools/perf V=1 NO_PERF_READ_VDSO32=1 NO_PERF_READ_VDSOX32=1 WERROR=0 NO_LIBUNWIND=1 HAVE_CPLUS_DEMANGLE=1 NO_GTK2=1 NO_STRLCPY=1 NO_BIONIC=1 prefix=%{_prefix} PYTHON=%{__python3}
 %if %{with_perf}
@@ -2025,7 +2097,7 @@ find Documentation -type d | xargs chmod u+w
     fi \
   fi \
   if [ "%{zipmodules}" -eq "1" ]; then \
-    find $RPM_BUILD_ROOT/lib/modules/ -type f -name '*.ko' | %{SOURCE79} %{?_smp_mflags}; \
+    find $RPM_BUILD_ROOT/lib/modules/ -type f -name '*.ko' | xargs -P%{zcpu} xz; \
   fi \
 %{nil}
 
@@ -2651,31 +2723,211 @@ fi
 #
 #
 %changelog
-* Mon Nov 16 2020 Herton R. Krzesinski <herton@redhat.com> [5.9.0-40]
-- Fix boot issue/failure to load modules due mismatch between kernel SUBLEVEL
-  number and directory we install modules due the rpm version, after applying
-  the upstream stable update patch in previous release ("Herton R. Krzesinski")
-  [1898144]
+* Fri Dec 04 2020 Herton R. Krzesinski <herton@redhat.com> [5.10.0-0.rc6.92]
+- v5.10-rc6 rebase
 
-* Fri Nov 13 2020 Herton R. Krzesinski <herton@redhat.com> [5.9.0-39]
-- Apply patches from 5.9.8 upstream stable update ("Herton R. Krzesinski")
-- Drop commit f2ac57a4c49d - "x86/unwind/orc:...", applied now through
-  5.9.8 update ("Herton R. Krzesinski")
+* Fri Dec 04 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc6.20201204git34816d20f173.92]
+- configs: Enable CONFIG_DEBUG_INFO_BTF (Don Zickus)
+- Temporarily backout parallel xz script ("Justin M. Forbes")
+- Remove cp instruction already handled in instruction below. ("Paulo E. Castro")
+- Add all the dependencies gleaned from running `make prepare` on a bloated devel kernel. ("Paulo E. Castro")
+- Add tools to path mangling script. ("Paulo E. Castro")
+- Remove duplicate cp statement which is also not specific to x86. ("Paulo E. Castro")
+- Correct orc_types failure whilst running `make prepare` https://bugzilla.redhat.com/show_bug.cgi?id=1882854 ("Paulo E. Castro")
+- build_configs.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- genspec.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- ark-rebase-patches.sh: Fix for shellcheck (Ben Crocker)
+- ark-create-release.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- merge-subtrees.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- rh-dist-git.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- update_scripts.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- x86_rngd.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- parallel_xz.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- expand_srpm.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- create-tarball.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- generate_bls_conf.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- clone_tree.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- new_release.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- download_cross.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- create_distgit_changelog.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- generate_cross_report.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- run_kabi-dw.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- mod-blacklist.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- scripts/configdiff.sh: Fix syntax flagged by shellcheck (Ben Crocker)
+- self-test/0001-shellcheck.bats: check for shellcheck (Ben Crocker)
+- self-test/1001-rpmlint.bats, 1003-rpminspect.bats (Ben Crocker)
+- Makefile, Makefile.common, egit.sh, 1005-dist-dump-variables.bats (Ben Crocker)
+- Add GIT macro to Makefile and Makefile.common: (Ben Crocker)
 
-* Mon Nov 09 2020 Herton R. Krzesinski <herton@redhat.com> [5.9.0-38]
-- Apply upstream fix: commit f2ac57a4c49d - "x86/unwind/orc: Fix inactive tasks
-  with stack pointer in %sp on GCC 10 compiled kernels" ("Herton R. Krzesinski")
+* Thu Dec 03 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc6.20201203git34816d20f173.91]
+- fedora: some minor arm audio config tweaks (Peter Robinson)
+- Ship xpad with default modules on Fedora and RHEL (Bastien Nocera)
 
-* Fri Oct 30 2020 Don Zickus <dzickus@redhat.com> [5.9.0-37]
-- Enable kernel-tools. (Don Zickus)
-- Disable LTO on kernel and kernel-tools. (Don Zickus)
-- Enable CONFIG_DEBUG_INFO_BTF option. (Don Zickus)
-- Add BuildRequires dwarves to support building BTF. (Don Zickus)
+* Wed Dec 02 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc6.20201202git509a15421674.90]
+- Fedora config update ("Justin M. Forbes")
+- Fedora config change because CONFIG_FSL_DPAA2_ETH now selects CONFIG_FSL_XGMAC_MDIO ("Justin M. Forbes")
+- Fedora: Only enable legacy serial/game port joysticks on x86 (Peter Robinson)
+- Fedora: Enable the options required for the Librem 5 Phone (Peter Robinson)
 
-* Mon Oct 12 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.9.0-35]
+* Fri Nov 20 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc4.20201120git4d02da974ea8.81]
+- Fedora config update ("Justin M. Forbes")
+- redhat: generic  enable CONFIG_INET_MPTCP_DIAG (Davide Caratti)
+
+* Thu Nov 19 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc4.20201119gitc2e7554e1b85.79.test]
+- c2e7554e1b85 rebase
+- Enable NANDSIM for Fedora ("Justin M. Forbes")
+- Re-enable CONFIG_ACPI_TABLE_UPGRADE for Fedora since upstream disables this if secureboot is active ("Justin M. Forbes")
+
+* Wed Nov 18 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc4.20201118git0fa8ee0d9ab9.78.test]
+- 0fa8ee0d9ab9 rebase
+
+* Tue Nov 17 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc4.20201117git9c87c9f41245.77.test]
+- 9c87c9f41245 rebase
+
+* Mon Nov 16 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc4.76.test]
+- v5.10-rc4 rebase
+- Ath11k related config updates ("Justin M. Forbes")
+- Fedora config updates for ath11k ("Justin M. Forbes")
+
+* Sun Nov 15 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc3.20201115gite28c0d7c92c8.74.test]
+- e28c0d7c92c8 rebase
+
+* Sat Nov 14 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc3.20201114gitf01c30de86f1.73.test]
+- f01c30de86f1 rebase
+- Turn on ATH11K for Fedora ("Justin M. Forbes")
+
+* Fri Nov 13 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc3.20201113git585e5b17b92d.72.test]
+- 585e5b17b92d rebase
+
+* Thu Nov 12 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc3.20201112git3d5e28bff7ad.71.test]
+- 3d5e28bff7ad rebase
+
+* Wed Nov 11 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc3.20201111giteccc87672492.68.test]
+- eccc87672492 rebase
+- redhat: enable CONFIG_INTEL_IOMMU_SVM (Jerry Snitselaar)
+
+* Tue Nov 10 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc3.67.test]
+- More Fedora config fixes ("Justin M. Forbes")
+- Fedora 5.10 config updates ("Justin M. Forbes")
+
+* Mon Nov 09 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc3.66.test]
+- v5.10-rc3 rebase
+
+* Sun Nov 08 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc2.20201108git4429f14aeea9.65.test]
+- 4429f14aeea9 rebase
+
+* Sat Nov 07 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc2.20201107git659caaf65dc9.64.test]
+- 659caaf65dc9 rebase
+
+* Fri Nov 06 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc2.20201106git521b619acdc8.63.test]
+- 521b619acdc8 rebase
+- Fedora 5.10 configs round 1 ("Justin M. Forbes")
+
+* Wed Nov 04 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc2.20201104git4ef8451b3326.62.test]
+- 4ef8451b3326 rebase
+
+* Mon Nov 02 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc2.61.test]
+- v5.10-rc2 rebase
+
+* Sun Nov 01 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc1.20201101gitc2dc4c073fb7.60.test]
+- c2dc4c073fb7 rebase
+
+* Sat Oct 31 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc1.20201031git5fc6b075e165.59.test]
+- 5fc6b075e165 rebase
+- Allow building of kernel-tools standalone (Don Zickus)
+- Allow kernel-tools to build without selftests (Don Zickus)
+
+* Fri Oct 30 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc1.20201030git07e088730245.58.test]
+- 07e088730245 rebase
+- Fix LTO issues with kernel-tools (Don Zickus)
+- New configs in drivers/mfd (Fedora Kernel Team)
+- arm64/defconfig: Enable CONFIG_KEXEC_FILE (Bhupesh Sharma) [https://bugzilla.redhat.com/show_bug.cgi?id=1821565]
+- redhat/configs: Cleanup CONFIG_CRYPTO_SHA512 (Prarit Bhargava)
+- redhat: ark: disable CONFIG_NET_ACT_CTINFO (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_TEQL (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_SFB (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_QFQ (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_PLUG (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_PIE (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_MULTIQ (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_HHF (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_DSMARK (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_DRR (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_CODEL (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_CHOKE (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_CBQ (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_SCH_ATM (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_EMATCH and sub-targets (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_CLS_TCINDEX (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_CLS_RSVP6 (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_CLS_RSVP (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_CLS_ROUTE4 (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_CLS_BASIC (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_ACT_SKBMOD (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_ACT_SIMP (Davide Caratti)
+- redhat: ark: disable CONFIG_NET_ACT_NAT (Davide Caratti)
+
+* Thu Oct 29 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc1.20201029git23859ae44402.57.test]
+- 23859ae44402 rebase
+
+* Thu Oct 29 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc1.20201029gited8780e3f2ec.56.test]
+- Point pathfix to the new location for gen_compile_commands.py ("Justin M. Forbes")
 - Filter out LTO build options from the perl ccopts ("Justin M. Forbes")
-- Temporarily remove cdomain from sphinx documentation ("Justin M. Forbes")
-- Work around for gcc bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=96377 ("Justin M. Forbes")
+
+* Wed Oct 28 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc1.20201028gited8780e3f2ec.55.test]
+- ed8780e3f2ec rebase
+- Fix up a merge issue with rxe.c ("Justin M. Forbes")
+- configs: Disable CONFIG_SECURITY_SELINUX_DISABLE (Ondrej Mosnacek)
+
+* Mon Oct 26 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc1.54.test]
+- v5.10-rc1 rebase
+
+* Sat Oct 24 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201024git96485e446260.51.test]
+- [Automatic] Handle config dependency changes (Don Zickus)
+
+* Thu Oct 22 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201022git96485e446260.49.test]
+- 96485e446260 rebase
+
+* Thu Oct 22 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201022gitf804b3159482.48.test]
+- f804b3159482 rebase
+- New configs in kernel/trace (Fedora Kernel Team)
+- configs/iommu: Add config comment to empty CONFIG_SUN50I_IOMMU file (Jerry Snitselaar)
+
+* Tue Oct 20 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201020git071a0578b0ce.47.test]
+- Fix Fedora config locations ("Justin M. Forbes")
+- Fedora config updates ("Justin M. Forbes")
+
+* Sat Oct 17 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201017git071a0578b0ce.44.test]
+- 071a0578b0ce rebase
+- configs: enable CONFIG_CRYPTO_CTS=y so cts(cbc(aes)) is available in FIPS mode (Vladis Dronov)
+
+* Fri Oct 16 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201016git9ff9b0d392ea.43.test]
+- 9ff9b0d392ea rebase
+- Partial revert: Add master merge check (Don Zickus)
+
+* Fri Oct 16 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201016git578a7155c5a1.42.test]
+- 578a7155c5a1 rebase
+- Update Maintainers doc to reflect workflow changes (Don Zickus)
+
+* Thu Oct 15 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201015git3e4fb4346c78.41.test]
+- 3e4fb4346c78 rebase
+- WIP: redhat/docs: Update documentation for single branch workflow (Prarit Bhargava)
+
+* Thu Oct 15 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201015gitb5fc7a89e58b.40.test]
+- Add CONFIG_ARM64_MTE which is not picked up by the config scripts for some reason ("Justin M. Forbes")
+
+* Wed Oct 14 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201014gitb5fc7a89e58b.39.test]
+- b5fc7a89e58b rebase
+
+* Tue Oct 13 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201013gitc4439713e82a.38.test]
+- c4439713e82a rebase
+
+* Tue Oct 13 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.10.0-0.rc0.20201013git865c50e1d279.37.test]
+- 865c50e1d279 rebase
+
+* Tue Oct 13 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.9.0-35.test]
+- Disable Speakup synth DECEXT ("Justin M. Forbes")
+- Enable Speakup for Fedora since it is out of staging ("Justin M. Forbes")
 
 * Mon Oct 12 2020 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.9.0-34.test]
 - v5.9 rebase
