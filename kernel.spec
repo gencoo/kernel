@@ -56,7 +56,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc2.116
+%global distro_build 0.rc2.117
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -97,13 +97,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.11.0
-%define pkgrelease 0.rc2.116
+%define pkgrelease 0.rc2.117
 
 # This is needed to do merge window version magic
 %define patchlevel 11
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc2.116%{?buildid}%{?dist}
+%define specrelease 0.rc2.117%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -502,7 +502,7 @@ Requires: kernel-modules-uname-r = %{KVERREL}%{?variant}
 #
 BuildRequires: kmod, patch, bash, tar, git-core
 BuildRequires: bzip2, xz, findutils, gzip, m4, perl-interpreter, perl-Carp, perl-devel, perl-generators, make, diffutils, gawk
-BuildRequires: gcc, binutils, redhat-rpm-config, hmaccalc, bison, flex
+BuildRequires: gcc, binutils, redhat-rpm-config, hmaccalc, bison, flex, gcc-c++
 BuildRequires: net-tools, hostname, bc, elfutils-devel
 BuildRequires: dwarves
 BuildRequires: python3-devel
@@ -591,7 +591,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.11.0-0.rc2.116.tar.xz
+Source0: linux-5.11.0-0.rc2.117.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1235,8 +1235,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.11.0-0.rc2.116 -c
-mv linux-5.11.0-0.rc2.116 linux-%{KVERREL}
+%setup -q -n kernel-5.11.0-0.rc2.117 -c
+mv linux-5.11.0-0.rc2.117 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2724,11 +2724,34 @@ fi
 #
 #
 %changelog
-* Tue Jan 05 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc2.116]
+* Wed Jan 06 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc2.117]
 - v5.11-rc2 rebase
 
-* Tue Jan 05 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc2.20210105git36bbbd0e234d.116]
+* Wed Jan 06 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc2.20210106git36bbbd0e234d.117]
+- Add gcc-c++ to BuildRequires ("Justin M. Forbes")
+- irq: export irq_check_status_bit (Levi Yun)
 - Turn off vdso_install for ppc ("Justin M. Forbes")
+
+* Wed Jan 06 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc2.20210106git36bbbd0e234d.116]
+- Update CONFIG_KASAN_HW_TAGS ("Justin M. Forbes")
+- gcc-plugins: fix gcc 11 indigestion with plugins... (=?UTF-8?q?Valdis=20Kl=C4=93tnieks?=)
+- fedora: arm: move generic power off/reset to all arm (Peter Robinson)
+- fedora: ARMv7: build in DEVFREQ_GOV_SIMPLE_ONDEMAND until I work out why it's changed (Peter Robinson)
+- fedora: cleanup joystick_adc (Peter Robinson)
+- fedora: update some display options (Peter Robinson)
+- fedora: arm: enable TI PRU options (Peter Robinson)
+- fedora: arm: minor exynos plaform updates (Peter Robinson)
+- arm: SoC: disable Toshiba Visconti SoC (Peter Robinson)
+- common: disable ARCH_BCM4908 (NFC) (Peter Robinson)
+- fedora: minor arm config updates (Peter Robinson)
+- fedora: enable Tegra 234 SoC (Peter Robinson)
+- fedora: arm: enable new Hikey 3xx options (Peter Robinson)
+- Fedora: USB updates (Peter Robinson)
+- fedora: enable the GNSS receiver subsystem (Peter Robinson)
+- Remove POWER_AVS as no longer upstream (Peter Robinson)
+- Cleanup RESET_RASPBERRYPI (Peter Robinson)
+- Cleanup GPIO_CDEV_V1 options. (Peter Robinson)
+- fedora: arm crypto updates (Peter Robinson)
 
 * Tue Jan 05 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc2.20210105git36bbbd0e234d.115]
 - Revert "Merge branch 'ark-enable-structleak' into 'os-build'" (Justin Forbes)
