@@ -56,7 +56,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc2.117
+%global distro_build 0.rc2.119
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -97,13 +97,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.11.0
-%define pkgrelease 0.rc2.117
+%define pkgrelease 0.rc2.119
 
 # This is needed to do merge window version magic
 %define patchlevel 11
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc2.117%{?buildid}%{?dist}
+%define specrelease 0.rc2.119%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -591,7 +591,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.11.0-0.rc2.117.tar.xz
+Source0: linux-5.11.0-0.rc2.119.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1235,8 +1235,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.11.0-0.rc2.117 -c
-mv linux-5.11.0-0.rc2.117 linux-%{KVERREL}
+%setup -q -n kernel-5.11.0-0.rc2.119 -c
+mv linux-5.11.0-0.rc2.119 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2724,13 +2724,18 @@ fi
 #
 #
 %changelog
-* Wed Jan 06 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc2.117]
+* Fri Jan 08 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc2.119]
 - v5.11-rc2 rebase
 
-* Wed Jan 06 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc2.20210106git36bbbd0e234d.117]
-- Add gcc-c++ to BuildRequires ("Justin M. Forbes")
+* Fri Jan 08 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc2.20210108gitf5e6c330254a.119]
 - irq: export irq_check_status_bit (Levi Yun)
 - Turn off vdso_install for ppc ("Justin M. Forbes")
+
+* Fri Jan 08 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc2.20210108gitf5e6c330254a.118]
+- Fedora: arm updates for 5.11 and general cross Fedora cleanups (Peter Robinson)
+
+* Thu Jan 07 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc2.20210107git71c061d24438.117]
+- Add gcc-c++ to BuildRequires ("Justin M. Forbes")
 
 * Wed Jan 06 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc2.20210106git36bbbd0e234d.116]
 - Update CONFIG_KASAN_HW_TAGS ("Justin M. Forbes")
