@@ -7,6 +7,14 @@
 %global _lto_cflags %{nil}
 
 
+# Cross compile on copr for arm
+# See https://bugzilla.redhat.com/1879599
+%if 0%{?_with_cross_arm:1}
+%global _target_cpu armv7hl
+%global _arch arm
+%global _build_arch arm
+%global _with_cross    1
+%endif
 
 # The kernel's %%install section is special
 # Normally the %%install section starts by cleaning up the BUILD_ROOT
@@ -56,7 +64,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc3.124
+%global distro_build 0.rc3.125
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -97,13 +105,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.11.0
-%define pkgrelease 0.rc3.124
+%define pkgrelease 0.rc3.125
 
 # This is needed to do merge window version magic
 %define patchlevel 11
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc3.124%{?buildid}%{?dist}
+%define specrelease 0.rc3.125%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -576,6 +584,7 @@ BuildRequires: pesign >= 0.10-4
 %if %{with_cross}
 BuildRequires: binutils-%{_build_arch}-linux-gnu, gcc-%{_build_arch}-linux-gnu
 %define cross_opts CROSS_COMPILE=%{_build_arch}-linux-gnu-
+%define __strip %{_build_arch}-linux-gnu-strip
 %endif
 
 # These below are required to build man pages
@@ -592,7 +601,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.11.0-0.rc3.124.tar.xz
+Source0: linux-5.11.0-0.rc3.125.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1236,8 +1245,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.11.0-0.rc3.124 -c
-mv linux-5.11.0-0.rc3.124 linux-%{KVERREL}
+%setup -q -n kernel-5.11.0-0.rc3.125 -c
+mv linux-5.11.0-0.rc3.125 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2725,12 +2734,19 @@ fi
 #
 #
 %changelog
-* Wed Jan 13 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc3.124]
-- v5.11-rc3-32-ge609571b5ffa rebase
+* Thu Jan 14 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc3.125]
+- v5.11-rc3-68-g65f0d2414b70 rebase
+- build system: run parallel make for bpf and kselftests install (Denys Vlasenko)
+- Use cross_arm to compile kernel-ark on copr for armhfp (Nicolas Chauvet)
 
-* Wed Jan 13 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc3.20210113gite609571b5ffa.124]
+* Thu Jan 14 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc3.20210114git65f0d2414b70.125]
 - irq: export irq_check_status_bit (Levi Yun)
 - Turn off vdso_install for ppc ("Justin M. Forbes")
+
+* Thu Jan 14 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc3.20210114git65f0d2414b70.124]
+- Reword comment (Nicolas Chauvet)
+- Add with_cross_arm conditional (Nicolas Chauvet)
+- Redefines __strip if with_cross (Nicolas Chauvet)
 
 * Wed Jan 13 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc3.20210113gite609571b5ffa.123]
 - fedora: only enable ACPI_CONFIGFS, ACPI_CUSTOM_METHOD in debug kernels (Peter Robinson)
