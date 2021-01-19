@@ -64,7 +64,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc4.129
+%global distro_build 0.rc4.130
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -105,13 +105,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.11.0
-%define pkgrelease 0.rc4.129
+%define pkgrelease 0.rc4.130
 
 # This is needed to do merge window version magic
 %define patchlevel 11
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc4.129%{?buildid}%{?dist}
+%define specrelease 0.rc4.130%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -601,7 +601,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.11.0-0.rc4.129.tar.xz
+Source0: linux-5.11.0-0.rc4.130.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1246,8 +1246,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.11.0-0.rc4.129 -c
-mv linux-5.11.0-0.rc4.129 linux-%{KVERREL}
+%setup -q -n kernel-5.11.0-0.rc4.130 -c
+mv linux-5.11.0-0.rc4.130 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2735,10 +2735,15 @@ fi
 #
 #
 %changelog
-* Mon Jan 18 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc4.129]
-- v5.11-rc4 rebase
+* Tue Jan 19 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc4.130]
+- v5.11-rc4-8-g1e2a199f6ccd rebase
+
+* Tue Jan 19 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc4.20210119git1e2a199f6ccd.130]
 - irq: export irq_check_status_bit (Levi Yun)
 - Turn off vdso_install for ppc ("Justin M. Forbes")
+
+* Tue Jan 19 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc4.20210119git1e2a199f6ccd.129]
+- all: s390x: Increase CONFIG_PCI_NR_FUNCTIONS to 512 (#1888735) (Dan Horák)
 
 * Sat Jan 16 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc3.20210116git1d94330a437a.126]
 - Fedora 5.11 configs pt 1 ("Justin M. Forbes")
