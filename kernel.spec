@@ -64,7 +64,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc4.132
+%global distro_build 0.rc4.133
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -105,13 +105,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.11.0
-%define pkgrelease 0.rc4.132
+%define pkgrelease 0.rc4.133
 
 # This is needed to do merge window version magic
 %define patchlevel 11
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc4.132%{?buildid}%{?dist}
+%define specrelease 0.rc4.133%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -601,7 +601,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.11.0-0.rc4.132.tar.xz
+Source0: linux-5.11.0-0.rc4.133.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1246,8 +1246,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.11.0-0.rc4.132 -c
-mv linux-5.11.0-0.rc4.132 linux-%{KVERREL}
+%setup -q -n kernel-5.11.0-0.rc4.133 -c
+mv linux-5.11.0-0.rc4.133 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2735,10 +2735,10 @@ fi
 #
 #
 %changelog
-* Thu Jan 21 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc4.132]
-- v5.11-rc4-86-g9791581c049c rebase
+* Fri Jan 22 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc4.133]
+- v5.11-rc4-164-g83d09ad4b950 rebase
 
-* Thu Jan 21 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc4.20210121git9791581c049c.132]
+* Fri Jan 22 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc4.20210122git83d09ad4b950.133]
 - redhat: replace inline awk script with genlog.py call (Herton R. Krzesinski)
 - redhat: add genlog.py script (Herton R. Krzesinski)
 - irq: export irq_check_status_bit (Levi Yun)
