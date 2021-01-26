@@ -64,7 +64,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc4.133
+%global distro_build 0.rc5.134
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -105,13 +105,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.11.0
-%define pkgrelease 0.rc4.133
+%define pkgrelease 0.rc5.134
 
 # This is needed to do merge window version magic
 %define patchlevel 11
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc4.133%{?buildid}%{?dist}
+%define specrelease 0.rc5.134%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -601,7 +601,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.11.0-0.rc4.133.tar.xz
+Source0: linux-5.11.0-0.rc5.134.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1246,8 +1246,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.11.0-0.rc4.133 -c
-mv linux-5.11.0-0.rc4.133 linux-%{KVERREL}
+%setup -q -n kernel-5.11.0-0.rc5.134 -c
+mv linux-5.11.0-0.rc5.134 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2735,14 +2735,17 @@ fi
 #
 #
 %changelog
-* Fri Jan 22 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc4.133]
-- v5.11-rc4-164-g83d09ad4b950 rebase
-
-* Fri Jan 22 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc4.20210122git83d09ad4b950.133]
+* Mon Jan 25 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc5.134]
+- v5.11-rc5 rebase
 - redhat: replace inline awk script with genlog.py call (Herton R. Krzesinski)
 - redhat: add genlog.py script (Herton R. Krzesinski)
-- irq: export irq_check_status_bit (Levi Yun)
 - Turn off vdso_install for ppc (Justin M. Forbes)
+
+* Mon Jan 25 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc5.133]
+- Fedora 5.11 config updates part 4 ("Justin M. Forbes")
+- Fedora 5.11 config updates part 3 ("Justin M. Forbes")
+- Fedora 5.11 config updates part 2 ("Justin M. Forbes")
+- Update internal (test) module list from RHEL-8 (Joe Lawrence) [https://bugzilla.redhat.com/show_bug.cgi?id=1915073]
 
 * Thu Jan 21 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc4.20210121git9791581c049c.131]
 - Fix USB_XHCI_PCI regression ("Justin M. Forbes")
