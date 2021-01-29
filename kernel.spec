@@ -64,7 +64,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc5.137
+%global distro_build 0.rc5.138
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -105,13 +105,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.11.0
-%define pkgrelease 0.rc5.137
+%define pkgrelease 0.rc5.138
 
 # This is needed to do merge window version magic
 %define patchlevel 11
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc5.137%{?buildid}%{?dist}
+%define specrelease 0.rc5.138%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -601,7 +601,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.11.0-0.rc5.137.tar.xz
+Source0: linux-5.11.0-0.rc5.138.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1246,8 +1246,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.11.0-0.rc5.137 -c
-mv linux-5.11.0-0.rc5.137 linux-%{KVERREL}
+%setup -q -n kernel-5.11.0-0.rc5.138 -c
+mv linux-5.11.0-0.rc5.138 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2735,14 +2735,16 @@ fi
 #
 #
 %changelog
-* Thu Jan 28 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc5.137]
-- v5.11-rc5-40-g76c057c84d28 rebase
+* Fri Jan 29 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc5.138]
+- v5.11-rc5-239-gbec4c2968fce rebase
 
-* Thu Jan 28 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc5.20210128git76c057c84d28.137]
-- Turn off CONFIG_VIRTIO_CONSOLE for s390x zfcpdump (Justin M. Forbes)
+* Fri Jan 29 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc5.20210129gitbec4c2968fce.138]
 - redhat: replace inline awk script with genlog.py call (Herton R. Krzesinski)
 - redhat: add genlog.py script (Herton R. Krzesinski)
 - Turn off vdso_install for ppc (Justin M. Forbes)
+
+* Fri Jan 29 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc5.20210129gitbec4c2968fce.137]
+- Turn off CONFIG_VIRTIO_CONSOLE for s390x zfcpdump ("Justin M. Forbes")
 
 * Thu Jan 28 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc5.20210128git76c057c84d28.136]
 - Keep VIRTIO_CONSOLE on s390x available. (=?UTF-8?q?Jakub=20=C4=8Cajka?=)
