@@ -64,7 +64,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc6.141
+%global distro_build 0.rc6.143
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -105,13 +105,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.11.0
-%define pkgrelease 0.rc6.141
+%define pkgrelease 0.rc6.143
 
 # This is needed to do merge window version magic
 %define patchlevel 11
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc6.141%{?buildid}%{?dist}
+%define specrelease 0.rc6.143%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -466,7 +466,7 @@ Summary: The Linux kernel
 %define cpupowerarchs i686 x86_64 ppc64le aarch64
 %endif
 
-%if %{use_vdso}
+%if 0%{?use_vdso}
 
 %if 0%{?skip_nonpae_vdso}
 %define _use_vdso 0
@@ -601,7 +601,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.11.0-0.rc6.141.tar.xz
+Source0: linux-5.11.0-0.rc6.143.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1246,8 +1246,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.11.0-0.rc6.141 -c
-mv linux-5.11.0-0.rc6.141 linux-%{KVERREL}
+%setup -q -n kernel-5.11.0-0.rc6.143 -c
+mv linux-5.11.0-0.rc6.143 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2736,11 +2736,21 @@ fi
 #
 #
 %changelog
-* Mon Feb 01 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc6.141]
-- v5.11-rc6 rebase
+* Wed Feb 03 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc6.143]
+- v5.11-rc6-55-g3aaf0a27ffc2 rebase
+
+* Wed Feb 03 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc6.20210203git3aaf0a27ffc2.143]
+- Bluetooth: L2CAP: Try harder to accept device not knowing options (Bastien Nocera)
+
+* Wed Feb 03 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc6.20210203git3aaf0a27ffc2.142]
 - redhat: replace inline awk script with genlog.py call (Herton R. Krzesinski)
 - redhat: add genlog.py script (Herton R. Krzesinski)
-- Turn off vdso_install for ppc (Justin M. Forbes)
+- kernel.spec.template - fix use_vdso usage (Ben Crocker)
+
+* Tue Feb 02 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc6.20210202git88bb507a74ea.141]
+- redhat: remove remaining references of CONFIG_RH_DISABLE_DEPRECATED ("Herton R. Krzesinski")
+- .gitignore: fix previous mismerge with "HEAD line" ("Herton R. Krzesinski")
+- Turn off vdso_install for ppc ("Justin M. Forbes")
 
 * Sun Jan 31 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc5.20210131git0e9bcda5d286.139]
 - Remove bpf-helpers.7 from bpftool package (Jiri Olsa)
