@@ -64,7 +64,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc6.144
+%global distro_build 0.rc6.145
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -105,13 +105,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.11.0
-%define pkgrelease 0.rc6.144
+%define pkgrelease 0.rc6.145
 
 # This is needed to do merge window version magic
 %define patchlevel 11
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc6.144%{?buildid}%{?dist}
+%define specrelease 0.rc6.145%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -601,7 +601,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.11.0-0.rc6.144.tar.xz
+Source0: linux-5.11.0-0.rc6.145.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1246,8 +1246,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.11.0-0.rc6.144 -c
-mv linux-5.11.0-0.rc6.144 linux-%{KVERREL}
+%setup -q -n kernel-5.11.0-0.rc6.145 -c
+mv linux-5.11.0-0.rc6.145 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2736,12 +2736,15 @@ fi
 #
 #
 %changelog
-* Thu Feb 04 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc6.144]
-- v5.11-rc6-126-g61556703b610 rebase
+* Fri Feb 05 2021 Herton R. Krzesinski <herton@redhat.com> [5.11.0-0.rc6.145]
+- v5.11-rc6-139-gdd86e7fa07a3 rebase
 
-* Thu Feb 04 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc6.20210204git61556703b610.144]
-- Rename the master branch to rawhide for Fedora (Justin M. Forbes)
+* Fri Feb 05 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc6.20210205gitdd86e7fa07a3.145]
 - Bluetooth: L2CAP: Try harder to accept device not knowing options (Bastien Nocera)
+
+* Fri Feb 05 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc6.20210205gitdd86e7fa07a3.144]
+- Turn off additional KASAN options for Fedora (Justin M. Forbes)
+- Rename the master branch to rawhide for Fedora (Justin M. Forbes)
 
 * Thu Feb 04 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.11.0-0.rc6.20210204git61556703b610.143]
 - Makefile targets for packit integration (Ben Crocker)
