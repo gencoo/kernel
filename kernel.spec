@@ -64,7 +64,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc1.163
+%global distro_build 0.rc2.166
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -105,13 +105,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.12.0
-%define pkgrelease 0.rc1.163
+%define pkgrelease 0.rc2.166
 
 # This is needed to do merge window version magic
 %define patchlevel 12
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc1.163%{?buildid}%{?dist}
+%define specrelease 0.rc2.166%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -602,7 +602,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.12.0-0.rc1.163.tar.xz
+Source0: linux-5.12.0-0.rc2.166.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1250,8 +1250,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.12.0-0.rc1.163 -c
-mv linux-5.12.0-0.rc1.163 linux-%{KVERREL}
+%setup -q -n kernel-5.12.0-0.rc2.166 -c
+mv linux-5.12.0-0.rc2.166 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2762,8 +2762,11 @@ fi
 #
 #
 %changelog
-* Thu Mar 04 2021 Herton R. Krzesinski <herton@redhat.com> [5.12.0-0.rc1.163]
-- v5.12-rc1-22-gf69d02e37a85 rebase
+* Tue Mar 09 2021 Herton R. Krzesinski <herton@redhat.com> [5.12.0-0.rc2.166]
+- v5.12-rc2-59-g144c79ef3353 rebase
+
+* Fri Mar 05 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.12.0-0.rc1.20210305git280d542f6ffa.164]
+- Revert "ARM: fix __get_user_check() in case uaccess_* calls are not inlined" (Herton R. Krzesinski)
 
 * Thu Mar 04 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.12.0-0.rc1.20210304gitf69d02e37a85.163]
 - Revert "dt-bindings: panel: add binding for Xingbangda XBD599 panel" (Herton R. Krzesinski)
