@@ -64,7 +64,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc2.169
+%global distro_build 0.rc3.170
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -105,13 +105,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.12.0
-%define pkgrelease 0.rc2.169
+%define pkgrelease 0.rc3.170
 
 # This is needed to do merge window version magic
 %define patchlevel 12
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc2.169%{?buildid}%{?dist}
+%define specrelease 0.rc3.170%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -602,7 +602,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.12.0-0.rc2.169.tar.xz
+Source0: linux-5.12.0-0.rc3.170.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1250,8 +1250,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.12.0-0.rc2.169 -c
-mv linux-5.12.0-0.rc2.169 linux-%{KVERREL}
+%setup -q -n kernel-5.12.0-0.rc3.170 -c
+mv linux-5.12.0-0.rc3.170 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2762,11 +2762,30 @@ fi
 #
 #
 %changelog
-* Fri Mar 12 2021 Herton R. Krzesinski <herton@redhat.com> [5.12.0-0.rc2.169]
-- v5.12-rc2-296-ga74e6a014c9d rebase
-
-* Fri Mar 12 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.12.0-0.rc2.20210312gita74e6a014c9d.169]
-- Set CONFIG_MOUSE_SERIAL=n by default (Patrick Talbert)
+* Mon Mar 15 2021 Herton R. Krzesinski <herton@redhat.com> [5.12.0-0.rc3.170]
+- v5.12-rc3 rebase
+- Fedora: filters: update to move dfl-emif to modules (Peter Robinson)
+- [redhat] arm: unify EFI vars (Jeremy Linton)
+- [redhat] arm: Unify CPU_THERMAL (Jeremy Linton)
+- [redhat] arm: move SPE to generic (Jeremy Linton)
+- [redhat] aarch64: sync and enable some arm interconnect PMUs (Jeremy Linton)
+- [redhat] arm: move psci checker disable to common (Jeremy Linton)
+- [redhat] aarch64: SW_TTBR_PAN globally on (Jeremy Linton)
+- [redhat] aarch64: Move arm64_tlb_range to common (Jeremy Linton)
+- [redhat] aarch64: Enable hotplug memory (Jeremy Linton)
+- [redhat] aarch64: ACPI/CPPC can be a module (Jeremy Linton)
+- drop duplicate DEVFREQ_GOV_SIMPLE_ONDEMAND config (Peter Robinson)
+- efi: The EFI_VARS is legacy and now x86 only (Peter Robinson)
+- common: enable RTC_SYSTOHC to supplement update_persistent_clock64 (Peter Robinson)
+- generic: arm: enable SCMI for all options (Peter Robinson)
+- fedora: the PCH_CAN driver is x86-32 only (Peter Robinson)
+- common: disable legacy CAN device support (Peter Robinson)
+- common: Enable Microchip MCP251x/MCP251xFD CAN controllers (Peter Robinson)
+- common: Bosch MCAN support for Intel Elkhart Lake (Peter Robinson)
+- common: enable CAN_PEAK_PCIEFD PCI-E driver (Peter Robinson)
+- common: disable CAN_PEAK_PCIEC PCAN-ExpressCard (Peter Robinson)
+- common: enable common CAN layer 2 protocols (Peter Robinson)
+- ark: disable CAN_LEDS option (Peter Robinson)
 
 * Wed Mar 10 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.12.0-0.rc2.20210310git05a59d79793d.167]
 - Fedora: Turn on SND_SOC_INTEL_SKYLAKE_HDAUDIO_CODEC option (Hans de Goede)
