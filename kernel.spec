@@ -64,7 +64,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc3.170
+%global distro_build 0.rc4.175
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -105,13 +105,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.12.0
-%define pkgrelease 0.rc3.170
+%define pkgrelease 0.rc4.175
 
 # This is needed to do merge window version magic
 %define patchlevel 12
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc3.170%{?buildid}%{?dist}
+%define specrelease 0.rc4.175%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -602,7 +602,7 @@ BuildRequires: asciidoc
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.12.0-0.rc3.170.tar.xz
+Source0: linux-5.12.0-0.rc4.175.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1250,8 +1250,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.12.0-0.rc3.170 -c
-mv linux-5.12.0-0.rc3.170 linux-%{KVERREL}
+%setup -q -n kernel-5.12.0-0.rc4.175 -c
+mv linux-5.12.0-0.rc4.175 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2467,10 +2467,12 @@ fi\
 #
 %define kernel_variant_posttrans() \
 %{expand:%%posttrans %{?1:%{1}-}core}\
+%if 0%{!?fedora:1}\
 if [ -x %{_sbindir}/weak-modules ]\
 then\
     %{_sbindir}/weak-modules --add-kernel %{KVERREL}%{?1:+%{1}} || exit $?\
 fi\
+%endif\
 /bin/kernel-install add %{KVERREL}%{?1:+%{1}} /lib/modules/%{KVERREL}%{?1:+%{1}}/vmlinuz || exit $?\
 %{nil}
 
@@ -2762,18 +2764,18 @@ fi
 #
 #
 %changelog
-* Mon Mar 15 2021 Herton R. Krzesinski <herton@redhat.com> [5.12.0-0.rc3.170]
-- v5.12-rc3 rebase
+* Mon Mar 22 2021 Herton R. Krzesinski <herton@redhat.com> [5.12.0-0.rc4.175]
+- v5.12-rc4 rebase
+
+* Sat Mar 20 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.12.0-0.rc3.20210320git1c273e10bc0c.173]
+- CONFIG_VFIO now selects IOMMU_API instead of depending on it, causing several config mismatches for the zfcpdump kernel (Justin M. Forbes)
+
+* Thu Mar 18 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.12.0-0.rc3.20210318git6417f03132a6.171]
+- Turn off weak-modules for Fedora (Justin M. Forbes)
+- redhat: enable CONFIG_FW_LOADER_COMPRESS for ARK (Herton R. Krzesinski) [1939095]
+
+* Mon Mar 15 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.12.0-0.rc3.170]
 - Fedora: filters: update to move dfl-emif to modules (Peter Robinson)
-- [redhat] arm: unify EFI vars (Jeremy Linton)
-- [redhat] arm: Unify CPU_THERMAL (Jeremy Linton)
-- [redhat] arm: move SPE to generic (Jeremy Linton)
-- [redhat] aarch64: sync and enable some arm interconnect PMUs (Jeremy Linton)
-- [redhat] arm: move psci checker disable to common (Jeremy Linton)
-- [redhat] aarch64: SW_TTBR_PAN globally on (Jeremy Linton)
-- [redhat] aarch64: Move arm64_tlb_range to common (Jeremy Linton)
-- [redhat] aarch64: Enable hotplug memory (Jeremy Linton)
-- [redhat] aarch64: ACPI/CPPC can be a module (Jeremy Linton)
 - drop duplicate DEVFREQ_GOV_SIMPLE_ONDEMAND config (Peter Robinson)
 - efi: The EFI_VARS is legacy and now x86 only (Peter Robinson)
 - common: enable RTC_SYSTOHC to supplement update_persistent_clock64 (Peter Robinson)
