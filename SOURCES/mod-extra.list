@@ -17,6 +17,7 @@ avm_cs.ko
 avmfritz.ko
 ax25.ko
 b1.ko
+bareudp.ko
 bas_gigaset.ko
 batman-adv.ko
 baycom_par.ko
@@ -71,6 +72,7 @@ iforce.ko
 interact.ko
 ipddp.ko
 ipx.ko
+ip_vs_mh.ko
 isdn.ko
 joydump.ko
 kingsun-sir.ko

@@ -14,7 +14,7 @@
 # listed here.
 
 # Set the default dirs/modules to filter out
-driverdirs="atm auxdisplay bcma bluetooth firewire fmc iio infiniband isdn leds media memstick mfd mmc mtd nfc ntb pcmcia platform power ssb staging tty uio uwb w1"
+driverdirs="atm auxdisplay bcma bluetooth firewire fmc iio infiniband isdn leds media memstick mfd mmc mtd nfc ntb pcmcia platform power ssb staging tty uio uwb w1 virt"
 
 chardrvs="mwave pcmcia"
 
@@ -28,7 +28,7 @@ scsidrvs="aacraid aic7xxx aic94xx be2iscsi bfa bnx2i bnx2fc csiostor cxgbi esas2
 
 usbdrvs="atm image misc serial wusbcore"
 
-fsdrvs="affs befs coda cramfs ecryptfs hfs hfsplus jfs minix ncpfs nilfs2 ocfs2 reiserfs romfs squashfs sysv ubifs ufs"
+fsdrvs="affs befs cifs coda cramfs ecryptfs hfs hfsplus jfs minix ncpfs nilfs2 ocfs2 reiserfs romfs squashfs sysv ubifs ufs"
 
 netprots="6lowpan appletalk atm ax25 batman-adv bluetooth can dccp dsa ieee802154 irda l2tp mac80211 mac802154 mpls netrom nfc rds rfkill rose sctp smc wireless"
 
@@ -135,6 +135,8 @@ done
 
 # Just kill sound.
 filter_dir $1 kernel/sound
+filter_ko $1 drivers/base/regmap/regmap-sdw
+filter_dir $1 drivers/soundwire
 
 # Now go through and filter any single .ko files that might have deps on the
 # things we filtered above
