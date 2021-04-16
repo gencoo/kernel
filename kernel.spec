@@ -509,7 +509,7 @@ Name: kernel%{?variant}
 License: GPLv2 and Redistributable, no modification permitted
 URL: https://www.kernel.org/
 Version: %{rpmversion}
-Release: %{pkg_release}
+Release: %{pkg_release}.1
 # DO NOT CHANGE THE 'ExclusiveArch' LINE TO TEMPORARILY EXCLUDE AN ARCHITECTURE BUILD.
 # SET %%nobuildarches (ABOVE) INSTEAD
 %if 0%{?fedora}
@@ -2793,6 +2793,9 @@ fi
 #
 #
 %changelog
+* Fri Apr 16 2021 Mohan Boddu <mboddu@redhat.com> - 5.12.0-0.rc5.180.1
+- Rebuilt for RHEL 9 BETA on Apr 15th 2021. Related: rhbz#1947937
+
 * Fri Mar 26 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.12.0-0.rc4.20210326gitdb24726bfefa.178]
 - New configs in fs/pstore (CKI@GitLab)
 
