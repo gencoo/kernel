@@ -66,7 +66,7 @@ Summary: The Linux kernel
 # For a stable, released kernel, released_kernel should be 1.
 %global released_kernel 0
 
-%global distro_build 0.rc8.193
+%global distro_build 1
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -107,13 +107,13 @@ Summary: The Linux kernel
 %endif
 
 %define rpmversion 5.12.0
-%define pkgrelease 0.rc8.193
+%define pkgrelease 1
 
 # This is needed to do merge window version magic
 %define patchlevel 12
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc8.193%{?buildid}%{?dist}
+%define specrelease 1%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -622,7 +622,7 @@ BuildRequires: clang
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.12.0-0.rc8.193.tar.xz
+Source0: linux-5.12.0-1.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1276,8 +1276,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.12.0-0.rc8.193 -c
-mv linux-5.12.0-0.rc8.193 linux-%{KVERREL}
+%setup -q -n kernel-5.12.0-1 -c
+mv linux-5.12.0-1 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2791,8 +2791,14 @@ fi
 #
 #
 %changelog
-* Thu Apr 22 2021 Herton R. Krzesinski <herton@redhat.com> [5.12.0-0.rc8.193]
-- v5.12-rc8-1-g7af08140979a rebase
+* Wed Apr 28 2021 Herton R. Krzesinski <herton@redhat.com> [5.12.0-1.el9]
+- v5.12 rebase
+
+* Tue Apr 27 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.12.0-1]
+- Reset the counter as we start the 5.13 merge window (Justin M. Forbes)
+
+* Mon Apr 26 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.12.0-197]
+- Create ark-latest branch last for CI scripts (Don Zickus)
 
 * Wed Apr 21 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.12.0-0.rc8.20210421git7af08140979a.193]
 - Replace /usr/libexec/platform-python with /usr/bin/python3 (David Ward)
