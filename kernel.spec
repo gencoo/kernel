@@ -59,14 +59,21 @@
 
 Summary: The Linux kernel
 
-# For a kernel released for public testing, released_kernel should be 1.
-# For internal testing builds during development, it should be 0.
-# For rawhide and/or a kernel built from an rc or git snapshot,
-# released_kernel should be 0.
-# For a stable, released kernel, released_kernel should be 1.
+# Set released_kernel to 1 when the upstream source tarball contains a
+#  kernel release. (This includes prepatch or "rc" releases.)
+# Set released_kernel to 0 when the upstream source tarball contains an
+#  unreleased kernel development snapshot.
 %global released_kernel 0
 
-%global distro_build 0.rc2.19
+# Set debugbuildsenabled to 1 to build separate base and debug kernels
+#  (on supported architectures). The kernel-debug-* subpackages will
+#  contain the debug kernel.
+# Set debugbuildsenabled to 0 to not build a separate debug kernel, but
+#  to build the base kernel using the debug configuration. (Specifying
+#  the --with-release option overrides this setting.)
+%define debugbuildsenabled 1
+
+%global distro_build 0.rc3.25
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -106,24 +113,23 @@ Summary: The Linux kernel
 %define primary_target rhel
 %endif
 
+# The kernel tarball/base version
+%define kversion 5.13
+
 %define rpmversion 5.13.0
-%define pkgrelease 0.rc2.19
+%define pkgrelease 0.rc3.25
 
 # This is needed to do merge window version magic
 %define patchlevel 13
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc2.19%{?buildid}%{?dist}
+%define specrelease 0.rc3.25%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
-# What parts do we want to build? These are the kernels that are built IF the
-# architecture allows it. All should default to 1 (enabled) and be flipped to
-# 0 (disabled) by later arch-specific checks.
-
-# The following build options are enabled by default.
-# Use either --without <opt> in your rpmbuild command or force values
-# to 0 in here to disable them.
+# The following build options are enabled by default, but may become disabled
+# by later architecture-specific checks. These can also be disabled by using
+# --without <opt> in the rpmbuild command, or by forcing these values to 0.
 #
 # standard kernel
 %define with_up        %{?_without_up:        0} %{?!_without_up:        1}
@@ -131,6 +137,8 @@ Summary: The Linux kernel
 %define with_pae       %{?_without_pae:       0} %{?!_without_pae:       1}
 # kernel-debug
 %define with_debug     %{?_without_debug:     0} %{?!_without_debug:     1}
+# kernel-zfcpdump (s390 specific kernel for zfcpdump)
+%define with_zfcpdump  %{?_without_zfcpdump:  0} %{?!_without_zfcpdump:  1}
 # kernel-doc
 %define with_doc       %{?_without_doc:       0} %{?!_without_doc:       1}
 # kernel-headers
@@ -144,10 +152,6 @@ Summary: The Linux kernel
 %define with_bpftool   %{?_without_bpftool:   0} %{?!_without_bpftool:   1}
 # kernel-debuginfo
 %define with_debuginfo %{?_without_debuginfo: 0} %{?!_without_debuginfo: 1}
-# Control whether to install the vdso directories.
-%define with_vdso_install %{?_without_vdso_install: 0} %{?!_without_vdso_install: 1}
-# kernel-zfcpdump (s390 specific kernel for zfcpdump)
-%define with_zfcpdump  %{?_without_zfcpdump:  0} %{?!_without_zfcpdump:  1}
 # kernel-abi-whitelists
 %define with_kernel_abi_whitelists %{?_without_kernel_abi_whitelists: 0} %{?!_without_kernel_abi_whitelists: 1}
 # internal samples and selftests
@@ -172,6 +176,9 @@ Summary: The Linux kernel
 # Note that this option needs to have baseline setup in SOURCE300.
 %define with_kabidwchk %{?_without_kabidwchk: 0} %{?!_without_kabidwchk: 1}
 %define with_kabidw_base %{?_with_kabidw_base: 1} %{?!_with_kabidw_base: 0}
+#
+# Control whether to install the vdso directories.
+%define with_vdso_install %{?_without_vdso_install: 0} %{?!_without_vdso_install: 1}
 #
 # should we do C=1 builds with sparse
 %define with_sparse    %{?_with_sparse:       1} %{?!_with_sparse:       0}
@@ -199,14 +206,6 @@ Summary: The Linux kernel
 
 # Want to build a vanilla kernel build without any non-upstream patches?
 %define with_vanilla %{?_with_vanilla: 1} %{?!_with_vanilla: 0}
-
-# Set debugbuildsenabled to 1 for production (build separate debug kernels)
-#  and 0 for rawhide (all kernels are debug kernels).
-# See also 'make debug' and 'make release'.
-%define debugbuildsenabled 1
-
-# The kernel tarball/base version
-%define kversion 5.13
 
 %if 0%{?fedora}
 # Kernel headers are being split out into a separate package
@@ -273,6 +272,10 @@ Summary: The Linux kernel
 
 %if %{with_vanilla}
 %define nopatches 1
+%endif
+
+%if %{with_release}
+%define debugbuildsenabled 1
 %endif
 
 %if !%{debugbuildsenabled}
@@ -542,6 +545,7 @@ BuildRequires: zlib-devel binutils-devel newt-devel perl(ExtUtils::Embed) bison 
 BuildRequires: audit-libs-devel
 BuildRequires: java-devel
 BuildRequires: libbpf-devel
+BuildRequires: libbabeltrace-devel
 %ifnarch %{arm} s390x
 BuildRequires: numactl-devel
 %endif
@@ -619,7 +623,7 @@ BuildRequires: clang
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.13.0-0.rc2.19.tar.xz
+Source0: linux-5.13.0-0.rc3.25.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1039,9 +1043,9 @@ This is required to use SystemTap with %{name}%{?1:-%{1}}-%{KVERREL}.\
 
 #
 # This macro creates a kernel-<subpackage>-devel package.
-#	%%kernel_devel_package <subpackage> <pretty-name>
+#	%%kernel_devel_package [-m] <subpackage> <pretty-name>
 #
-%define kernel_devel_package() \
+%define kernel_devel_package(m) \
 %package %{?1:%{1}-}devel\
 Summary: Development package for building kernel modules to match the %{?2:%{2} }kernel\
 Provides: kernel%{?1:-%{1}}-devel-%{_target_cpu} = %{version}-%{release}\
@@ -1058,6 +1062,9 @@ Requires: bison\
 Requires: flex\
 Requires: make\
 Requires: gcc\
+%if %{-m:1}%{!-m:0}\
+Requires: kernel-devel-uname-r = %{KVERREL}\
+%endif\
 %description %{?1:%{1}-}devel\
 This package provides kernel headers and makefiles sufficient to build modules\
 against the %{?2:%{2} }kernel package.\
@@ -1098,9 +1105,9 @@ This package provides kernel modules for the %{?2:%{2} }kernel package for Red H
 
 #
 # This macro creates a kernel-<subpackage>-modules-extra package.
-#	%%kernel_modules_extra_package <subpackage> <pretty-name>
+#	%%kernel_modules_extra_package [-m] <subpackage> <pretty-name>
 #
-%define kernel_modules_extra_package() \
+%define kernel_modules_extra_package(m) \
 %package %{?1:%{1}-}modules-extra\
 Summary: Extra kernel modules to match the %{?2:%{2} }kernel\
 Provides: kernel%{?1:-%{1}}-modules-extra-%{_target_cpu} = %{version}-%{release}\
@@ -1110,6 +1117,9 @@ Provides: installonlypkg(kernel-module)\
 Provides: kernel%{?1:-%{1}}-modules-extra-uname-r = %{KVERREL}%{?1:+%{1}}\
 Requires: kernel-uname-r = %{KVERREL}%{?1:+%{1}}\
 Requires: kernel%{?1:-%{1}}-modules-uname-r = %{KVERREL}%{?1:+%{1}}\
+%if %{-m:1}%{!-m:0}\
+Requires: kernel-modules-extra-uname-r = %{KVERREL}\
+%endif\
 AutoReq: no\
 AutoProv: yes\
 %description %{?1:%{1}-}modules-extra\
@@ -1118,9 +1128,9 @@ This package provides less commonly used kernel modules for the %{?2:%{2} }kerne
 
 #
 # This macro creates a kernel-<subpackage>-modules package.
-#	%%kernel_modules_package <subpackage> <pretty-name>
+#	%%kernel_modules_package [-m] <subpackage> <pretty-name>
 #
-%define kernel_modules_package() \
+%define kernel_modules_package(m) \
 %package %{?1:%{1}-}modules\
 Summary: kernel modules to match the %{?2:%{2}-}core kernel\
 Provides: kernel%{?1:-%{1}}-modules-%{_target_cpu} = %{version}-%{release}\
@@ -1129,6 +1139,9 @@ Provides: kernel-modules = %{version}-%{release}%{?1:+%{1}}\
 Provides: installonlypkg(kernel-module)\
 Provides: kernel%{?1:-%{1}}-modules-uname-r = %{KVERREL}%{?1:+%{1}}\
 Requires: kernel-uname-r = %{KVERREL}%{?1:+%{1}}\
+%if %{-m:1}%{!-m:0}\
+Requires: kernel-modules-uname-r = %{KVERREL}\
+%endif\
 AutoReq: no\
 AutoProv: yes\
 %description %{?1:%{1}-}modules\
@@ -1152,22 +1165,27 @@ The meta-package for the %{1} kernel\
 #
 # This macro creates a kernel-<subpackage> and its -devel and -debuginfo too.
 #	%%define variant_summary The Linux kernel compiled for <configuration>
-#	%%kernel_variant_package [-n <pretty-name>] <subpackage>
+#	%%kernel_variant_package [-n <pretty-name>] [-m] <subpackage>
 #
-%define kernel_variant_package(n:) \
+%define kernel_variant_package(n:m) \
 %package %{?1:%{1}-}core\
 Summary: %{variant_summary}\
 Provides: kernel-%{?1:%{1}-}core-uname-r = %{KVERREL}%{?1:+%{1}}\
 Provides: installonlypkg(kernel)\
+%if %{-m:1}%{!-m:0}\
+Requires: kernel-core-uname-r = %{KVERREL}\
+%endif\
 %{expand:%%kernel_reqprovconf}\
 %if %{?1:1} %{!?1:0} \
 %{expand:%%kernel_meta_package %{?1:%{1}}}\
 %endif\
-%{expand:%%kernel_devel_package %{?1:%{1}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}}}\
-%{expand:%%kernel_modules_package %{?1:%{1}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}}}\
-%{expand:%%kernel_modules_extra_package %{?1:%{1}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}}}\
+%{expand:%%kernel_devel_package %{?1:%{1}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}} %{-m:%{-m}}}\
+%{expand:%%kernel_modules_package %{?1:%{1}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}} %{-m:%{-m}}}\
+%{expand:%%kernel_modules_extra_package %{?1:%{1}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}} %{-m:%{-m}}}\
+%if %{-m:0}%{!-m:1}\
 %{expand:%%kernel_modules_internal_package %{?1:%{1}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}}}\
 %{expand:%%kernel_debuginfo_package %{?1:%{1}}}\
+%endif\
 %{nil}
 
 # Now, each variant package.
@@ -1190,7 +1208,11 @@ zfcpdump infrastructure.
 %endif
 
 %define variant_summary The Linux kernel compiled with extra debugging enabled
+%if !%{debugbuildsenabled}
+%kernel_variant_package -m debug
+%else
 %kernel_variant_package debug
+%endif
 %description debug-core
 The kernel package contains the Linux kernel (vmlinuz), the core of any
 Linux operating system.  The kernel handles the basic functions
@@ -1270,8 +1292,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.13.0-0.rc2.19 -c
-mv linux-5.13.0-0.rc2.19 linux-%{KVERREL}
+%setup -q -n kernel-5.13.0-0.rc3.25 -c
+mv linux-5.13.0-0.rc3.25 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2517,8 +2539,10 @@ fi\
 %kernel_variant_post -v lpae -r (kernel|kernel-smp)
 %endif
 
+%if %{with_debug}
 %kernel_variant_preun debug
 %kernel_variant_post -v debug
+%endif
 
 %if %{with_zfcpdump}
 %kernel_variant_preun zfcpdump
@@ -2743,6 +2767,13 @@ fi
 
 %kernel_variant_files %{_use_vdso} %{with_up}
 %kernel_variant_files %{_use_vdso} %{with_debug} debug
+%if !%{debugbuildsenabled}
+%files debug
+%files debug-core
+%files debug-devel
+%files debug-modules
+%files debug-modules-extra
+%endif
 %kernel_variant_files %{use_vdso} %{with_pae} lpae
 %kernel_variant_files %{_use_vdso} %{with_zfcpdump} zfcpdump
 
@@ -2764,8 +2795,27 @@ fi
 #
 #
 %changelog
+* Mon May 24 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc3.25]
+- v5.13-rc3 rebase
+- Override %%{debugbuildsenabled} if the --with-release option is used (David Ward)
+- Improve comments in SPEC file, and move some option tests and macros (David Ward)
+
+* Fri May 21 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc2.20210521git79a106fc6585.22]
+- configs: enable CONFIG_EXFAT_FS (Pavel Reichl) [1943423]
+- Revert s390x/zfcpdump part of a9d179c40281 and ecbfddd98621 (Vladis Dronov)
+- Embed crypto algos, modes and templates needed in the FIPS mode (Vladis Dronov) [1947240]
+- configs: Add and enable CONFIG_HYPERV_TESTING for debug kernels (Mohammed Gamal)
+- mm/cma: mark CMA on x86_64 tech preview and print RHEL-specific infos (David Hildenbrand) [1945002]
+- configs: enable CONFIG_CMA on x86_64 in ARK (David Hildenbrand) [1945002]
+
+* Thu May 20 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc2.20210520gitc3d0e3fd41b7.21]
+- rpmspec: build debug-* meta-packages if debug builds are disabled (Herton R. Krzesinski)
+
+* Tue May 18 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc2.20210518git8ac91e6c6033.20]
+- UIO: disable unused config options (Aristeu Rozanski) [1957819]
+- ARK-config: Make amd_pinctrl module builtin (Hans de Goede)
+
 * Mon May 17 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc2.19]
-- v5.13-rc2 rebase
 - rpmspec: revert/drop content hash for kernel-headers (Herton R. Krzesinski)
 - rpmspec: fix check that calls InitBuildVars (Herton R. Krzesinski)
 
