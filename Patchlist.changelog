@@ -1,8 +1,17 @@
+https://gitlab.com/cki-project/kernel-ark/-/commit/9ecb01bae94e7379d2da1b5e375241ea3b40ff3b
+ 9ecb01bae94e7379d2da1b5e375241ea3b40ff3b bpf: Fix unprivileged_bpf_disabled setup
+
+https://gitlab.com/cki-project/kernel-ark/-/commit/217f590d1ac59c7253497adb15c8a81d59b8be95
+ 217f590d1ac59c7253497adb15c8a81d59b8be95 nvme: nvme_mpath_init remove multipath check
+
 https://gitlab.com/cki-project/kernel-ark/-/commit/3b0b403f2c1261ea8e4ab576e5a44664a7abd12c
  3b0b403f2c1261ea8e4ab576e5a44664a7abd12c mm/cma: mark CMA on x86_64 tech preview and print RHEL-specific infos
 
 https://gitlab.com/cki-project/kernel-ark/-/commit/42fcca9ea8f8acd6f561e9589f92462246e572ff
  42fcca9ea8f8acd6f561e9589f92462246e572ff Revert "nvme: multipath: Change default of kernel NVMe multipath to be disabled"
+
+https://gitlab.com/cki-project/kernel-ark/-/commit/043900845a208ff1fd0ba71ad9c0f4da17c59243
+ 043900845a208ff1fd0ba71ad9c0f4da17c59243 team: mark team driver as deprecated
 
 https://gitlab.com/cki-project/kernel-ark/-/commit/81cf9b7d49bb0a3786746e73d3090d97cefe301e
  81cf9b7d49bb0a3786746e73d3090d97cefe301e nvme: multipath: Change default of kernel NVMe multipath to be disabled

@@ -73,7 +73,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 0.rc3.25
+%global distro_build 0.rc4.33
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -117,13 +117,13 @@ Summary: The Linux kernel
 %define kversion 5.13
 
 %define rpmversion 5.13.0
-%define pkgrelease 0.rc3.25
+%define pkgrelease 0.rc4.33
 
 # This is needed to do merge window version magic
 %define patchlevel 13
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc3.25%{?buildid}%{?dist}
+%define specrelease 0.rc4.33%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -546,6 +546,7 @@ BuildRequires: audit-libs-devel
 BuildRequires: java-devel
 BuildRequires: libbpf-devel
 BuildRequires: libbabeltrace-devel
+BuildRequires: libtraceevent-devel
 %ifnarch %{arm} s390x
 BuildRequires: numactl-devel
 %endif
@@ -623,7 +624,7 @@ BuildRequires: clang
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.13.0-0.rc3.25.tar.xz
+Source0: linux-5.13.0-0.rc4.33.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -875,7 +876,7 @@ This package provides debug information for the perf package.
 # symlinks because of the trailing nonmatching alternation and
 # the leading .*, because of find-debuginfo.sh's buggy handling
 # of matching the pattern against the symlinks file.
-%{expand:%%global _find_debuginfo_opts %{?_find_debuginfo_opts} -p '.*%%{_bindir}/perf(\.debug)?|.*%%{_libexecdir}/perf-core/.*|.*%%{_libdir}/traceevent/plugins/.*|.*%%{_libdir}/libperf-jvmti.so(\.debug)?|XXX' -o perf-debuginfo.list}
+%{expand:%%global _find_debuginfo_opts %{?_find_debuginfo_opts} -p '.*%%{_bindir}/perf(\.debug)?|.*%%{_libexecdir}/perf-core/.*|.*%%{_libdir}/libperf-jvmti.so(\.debug)?|XXX' -o perf-debuginfo.list}
 
 %package -n python3-perf
 Summary: Python bindings for apps which will manipulate perf events
@@ -1292,8 +1293,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.13.0-0.rc3.25 -c
-mv linux-5.13.0-0.rc3.25 linux-%{KVERREL}
+%setup -q -n kernel-5.13.0-0.rc4.33 -c
+mv linux-5.13.0-0.rc4.33 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2073,7 +2074,7 @@ InitBuildVars
 %endif
 
 %global perf_make \
-  %{__make} %{?make_opts} EXTRA_CFLAGS="${RPM_OPT_FLAGS}" LDFLAGS="%{__global_ldflags}" %{?cross_opts} -C tools/perf V=1 NO_PERF_READ_VDSO32=1 NO_PERF_READ_VDSOX32=1 WERROR=0 NO_LIBUNWIND=1 HAVE_CPLUS_DEMANGLE=1 NO_GTK2=1 NO_STRLCPY=1 NO_BIONIC=1 LIBBPF_DYNAMIC=1 prefix=%{_prefix} PYTHON=%{__python3}
+  %{__make} %{?make_opts} EXTRA_CFLAGS="${RPM_OPT_FLAGS}" LDFLAGS="%{__global_ldflags}" %{?cross_opts} -C tools/perf V=1 NO_PERF_READ_VDSO32=1 NO_PERF_READ_VDSOX32=1 WERROR=0 NO_LIBUNWIND=1 HAVE_CPLUS_DEMANGLE=1 NO_GTK2=1 NO_STRLCPY=1 NO_BIONIC=1 LIBBPF_DYNAMIC=1 LIBTRACEEVENT_DYNAMIC=1 prefix=%{_prefix} PYTHON=%{__python3}
 %if %{with_perf}
 # perf
 # make sure check-headers.sh is executable
@@ -2286,7 +2287,7 @@ tar xjvf %{SOURCE300} -C $INSTALL_KABI_PATH
 
 %if %{with_perf}
 # perf tool binary and supporting scripts/binaries
-%{perf_make} DESTDIR=$RPM_BUILD_ROOT lib=%{_lib} install-bin install-traceevent-plugins
+%{perf_make} DESTDIR=$RPM_BUILD_ROOT lib=%{_lib} install-bin
 # remove the 'trace' symlink.
 rm -f %{buildroot}%{_bindir}/trace
 
@@ -2594,8 +2595,7 @@ fi
 %files -n perf
 %{_bindir}/perf
 %{_libdir}/libperf-jvmti.so
-%dir %{_libdir}/traceevent/plugins
-%{_libdir}/traceevent/plugins/*
+%exclude %{_libdir}/traceevent
 %dir %{_libexecdir}/perf-core
 %{_libexecdir}/perf-core/*
 %{_datadir}/perf-core/*
@@ -2795,8 +2795,25 @@ fi
 #
 #
 %changelog
+* Wed Jun 02 2021 Herton R. Krzesinski <herton@redhat.com> [5.13.0-0.rc4.33]
+- v5.13-rc4-48-g231bc5390667 rebase [1962878]
+- bpf: Fix unprivileged_bpf_disabled setup (Jiri Olsa)
+- Enable CONFIG_BPF_UNPRIV_DEFAULT_OFF (Jiri Olsa)
+
+* Tue Jun 01 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc4.20210601gitc2131f7e73c9.32]
+- configs/common/s390: disable CONFIG_QETH_{OSN,OSX} (Philipp Rudo) [1903201]
+
+* Fri May 28 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc3.20210528git97e5bf604b7a.28]
+- nvme: nvme_mpath_init remove multipath check (Mike Snitzer)
+
+* Wed May 26 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc3.20210526gitad9f25d33860.27]
+- team: mark team driver as deprecated (Hangbin Liu) [1945477]
+
+* Tue May 25 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc3.20210525gita050a6d2b7e8.26]
+- Make CRYPTO_EC also builtin (Simo Sorce) [1947240]
+- Do not hard-code a default value for DIST (David Ward)
+
 * Mon May 24 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc3.25]
-- v5.13-rc3 rebase
 - Override %%{debugbuildsenabled} if the --with-release option is used (David Ward)
 - Improve comments in SPEC file, and move some option tests and macros (David Ward)
 
