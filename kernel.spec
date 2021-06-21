@@ -73,7 +73,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 0.rc4.33
+%global distro_build 0.rc7.51
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -117,15 +117,19 @@ Summary: The Linux kernel
 %define kversion 5.13
 
 %define rpmversion 5.13.0
-%define pkgrelease 0.rc4.33
+%define pkgrelease 0.rc7.51
 
 # This is needed to do merge window version magic
 %define patchlevel 13
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc4.33%{?buildid}%{?dist}
+%define specrelease 0.rc7.51%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
+
+# libexec dir is not used by the linker, so the shared object there
+# should not be exported to RPM provides
+%global __provides_exclude_from ^%{_libexecdir}/kselftests
 
 # The following build options are enabled by default, but may become disabled
 # by later architecture-specific checks. These can also be disabled by using
@@ -211,8 +215,6 @@ Summary: The Linux kernel
 # Kernel headers are being split out into a separate package
 %define with_headers 0
 %define with_cross_headers 0
-# no selftests for now
-%define with_selftests 0
 # no ipa_clone for now
 %define with_ipaclones 0
 # no whitelist
@@ -241,6 +243,8 @@ Summary: The Linux kernel
 %define with_kabichk 0
 %define with_kabidupchk 0
 %define with_kabidwchk 0
+%define with_kabidw_base 0
+%define with_kernel_abi_whitelists 0
 %endif
 
 # turn off kABI DWARF-based check if we're generating the base dataset
@@ -299,6 +303,15 @@ Summary: The Linux kernel
 %if %{with_baseonly}
 %define with_pae 0
 %define with_debug 0
+%define with_vdso_install 0
+%define with_perf 0
+%define with_tools 0
+%define with_bpftool 0
+%define with_kernel_abi_whitelists 0
+%define with_selftests 0
+%define with_cross 0
+%define with_cross_headers 0
+%define with_ipaclones 0
 %endif
 
 # if requested, only build pae kernel
@@ -310,9 +323,15 @@ Summary: The Linux kernel
 # if requested, only build debug kernel
 %if %{with_dbgonly}
 %define with_up 0
-%define with_tools 0
+%define with_vdso_install 0
 %define with_perf 0
+%define with_tools 0
 %define with_bpftool 0
+%define with_kernel_abi_whitelists 0
+%define with_selftests 0
+%define with_cross 0
+%define with_cross_headers 0
+%define with_ipaclones 0
 %endif
 
 # turn off kABI DUP check and DWARF-based check if kABI check is disabled
@@ -325,6 +344,10 @@ Summary: The Linux kernel
 %define use_vdso 1
 %endif
 
+# selftests require bpftool to be built
+%if %{with_selftests}
+%define with_bpftool 1
+%endif
 
 %ifnarch noarch
 %define with_kernel_abi_whitelists 0
@@ -524,7 +547,7 @@ Requires: kernel-modules-uname-r = %{KVERREL}
 #
 # List the packages used during the kernel build
 #
-BuildRequires: kmod, patch, bash, tar, git-core
+BuildRequires: kmod, patch, bash, coreutils, tar, git-core, which
 BuildRequires: bzip2, xz, findutils, gzip, m4, perl-interpreter, perl-Carp, perl-devel, perl-generators, make, diffutils, gawk
 BuildRequires: gcc, binutils, redhat-rpm-config, hmaccalc, bison, flex, gcc-c++
 BuildRequires: net-tools, hostname, bc, elfutils-devel
@@ -550,6 +573,9 @@ BuildRequires: libtraceevent-devel
 %ifnarch %{arm} s390x
 BuildRequires: numactl-devel
 %endif
+%ifarch aarch64
+BuildRequires: opencsd-devel >= 1.0.0
+%endif
 %endif
 %if %{with_tools}
 BuildRequires: gettext ncurses-devel
@@ -567,7 +593,7 @@ BuildRequires: clang llvm
 %ifnarch %{arm}
 BuildRequires: numactl-devel
 %endif
-BuildRequires: libcap-devel libcap-ng-devel rsync
+BuildRequires: libcap-devel libcap-ng-devel rsync libmnl-devel
 %endif
 BuildConflicts: rhbuildsys(DiskFree) < 500Mb
 %if %{with_debuginfo}
@@ -624,7 +650,7 @@ BuildRequires: clang
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.13.0-0.rc4.33.tar.xz
+Source0: linux-5.13.0-0.rc7.51.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -762,6 +788,7 @@ Source301: kernel-kabi-dw-%{rpmversion}-%{distro_build}.tar.bz2
 # Sources for kernel-tools
 Source2000: cpupower.service
 Source2001: cpupower.config
+Source2002: kvm_stat.logrotate
 
 # Some people enjoy building customized kernels from the dist-git in Fedora and
 # use this to override configuration options. One day they may all use the
@@ -949,7 +976,7 @@ This package provides debug information for package kernel-tools.
 # symlinks because of the trailing nonmatching alternation and
 # the leading .*, because of find-debuginfo.sh's buggy handling
 # of matching the pattern against the symlinks file.
-%{expand:%%global _find_debuginfo_opts %{?_find_debuginfo_opts} -p '.*%%{_bindir}/centrino-decode(\.debug)?|.*%%{_bindir}/powernow-k8-decode(\.debug)?|.*%%{_bindir}/cpupower(\.debug)?|.*%%{_libdir}/libcpupower.*|.*%%{_bindir}/turbostat(\.debug)?|.*%%{_bindir}/x86_energy_perf_policy(\.debug)?|.*%%{_bindir}/tmon(\.debug)?|.*%%{_bindir}/lsgpio(\.debug)?|.*%%{_bindir}/gpio-hammer(\.debug)?|.*%%{_bindir}/gpio-event-mon(\.debug)?|.*%%{_bindir}/gpio-watch(\.debug)?|.*%%{_bindir}/iio_event_monitor(\.debug)?|.*%%{_bindir}/iio_generic_buffer(\.debug)?|.*%%{_bindir}/lsiio(\.debug)?|.*%%{_bindir}/intel-speed-select(\.debug)?|XXX' -o kernel-tools-debuginfo.list}
+%{expand:%%global _find_debuginfo_opts %{?_find_debuginfo_opts} -p '.*%%{_bindir}/centrino-decode(\.debug)?|.*%%{_bindir}/powernow-k8-decode(\.debug)?|.*%%{_bindir}/cpupower(\.debug)?|.*%%{_libdir}/libcpupower.*|.*%%{_bindir}/turbostat(\.debug)?|.*%%{_bindir}/x86_energy_perf_policy(\.debug)?|.*%%{_bindir}/tmon(\.debug)?|.*%%{_bindir}/lsgpio(\.debug)?|.*%%{_bindir}/gpio-hammer(\.debug)?|.*%%{_bindir}/gpio-event-mon(\.debug)?|.*%%{_bindir}/gpio-watch(\.debug)?|.*%%{_bindir}/iio_event_monitor(\.debug)?|.*%%{_bindir}/iio_generic_buffer(\.debug)?|.*%%{_bindir}/lsiio(\.debug)?|.*%%{_bindir}/intel-speed-select(\.debug)?|.*%%{_bindir}/page_owner_sort(\.debug)?|.*%%{_bindir}/slabinfo(\.debug)?|XXX' -o kernel-tools-debuginfo.list}
 
 # with_tools
 %endif
@@ -981,8 +1008,7 @@ This package provides debug information for the bpftool package.
 %package selftests-internal
 Summary: Kernel samples and selftests
 License: GPLv2
-Requires: binutils, bpftool, iproute-tc, nmap-ncat
-Requires: kernel-modules-internal = %{version}-%{release}
+Requires: binutils, bpftool, iproute-tc, nmap-ncat, python3
 %description selftests-internal
 Kernel sample programs and selftests.
 
@@ -1011,13 +1037,13 @@ Linux kernel ABI, including lists of kernel symbols that are needed by
 external Linux kernel modules, and a yum plugin to aid enforcement.
 
 %if %{with_kabidw_base}
-%package kabidw-base
+%package kernel-kabidw-base-internal
 Summary: The baseline dataset for kABI verification using DWARF data
 Group: System Environment/Kernel
 AutoReqProv: no
-%description kabidw-base
-The kabidw-base package contains data describing the current ABI of the Red Hat
-Enterprise Linux kernel, suitable for the kabi-dw tool.
+%description kernel-kabidw-base-internal
+The package contains data describing the current ABI of the Red Hat Enterprise
+Linux kernel, suitable for the kabi-dw tool.
 %endif
 
 #
@@ -1293,8 +1319,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.13.0-0.rc4.33 -c
-mv linux-5.13.0-0.rc4.33 linux-%{KVERREL}
+%setup -q -n kernel-5.13.0-0.rc7.51 -c
+mv linux-5.13.0-0.rc7.51 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -1679,7 +1705,7 @@ BuildKernel() {
 
 %if %{with_kabidw_base}
     # Don't build kabi base for debug kernels
-    if [ "$Variant" != "kdump" -a "$Variant" != "debug" ]; then
+    if [ "$Variant" != "zfcpdump" -a "$Variant" != "debug" ]; then
         mkdir -p $RPM_BUILD_ROOT/kabi-dwarf
         tar xjvf %{SOURCE301} -C $RPM_BUILD_ROOT/kabi-dwarf
 
@@ -1698,7 +1724,7 @@ BuildKernel() {
 %endif
 
 %if %{with_kabidwchk}
-    if [ "$Variant" != "kdump" ]; then
+    if [ "$Variant" != "zfcpdump" ]; then
         mkdir -p $RPM_BUILD_ROOT/kabi-dwarf
         tar xjvf %{SOURCE301} -C $RPM_BUILD_ROOT/kabi-dwarf
         if [ -d "$RPM_BUILD_ROOT/kabi-dwarf/base/%{_target_cpu}${Variant:+.${Variant}}" ]; then
@@ -2073,8 +2099,11 @@ InitBuildVars
 %endif
 %endif
 
+%ifarch aarch64
+%global perf_build_extra_opts CORESIGHT=1
+%endif
 %global perf_make \
-  %{__make} %{?make_opts} EXTRA_CFLAGS="${RPM_OPT_FLAGS}" LDFLAGS="%{__global_ldflags}" %{?cross_opts} -C tools/perf V=1 NO_PERF_READ_VDSO32=1 NO_PERF_READ_VDSOX32=1 WERROR=0 NO_LIBUNWIND=1 HAVE_CPLUS_DEMANGLE=1 NO_GTK2=1 NO_STRLCPY=1 NO_BIONIC=1 LIBBPF_DYNAMIC=1 LIBTRACEEVENT_DYNAMIC=1 prefix=%{_prefix} PYTHON=%{__python3}
+  %{__make} %{?make_opts} EXTRA_CFLAGS="${RPM_OPT_FLAGS}" LDFLAGS="%{__global_ldflags}" %{?cross_opts} -C tools/perf V=1 NO_PERF_READ_VDSO32=1 NO_PERF_READ_VDSOX32=1 WERROR=0 NO_LIBUNWIND=1 HAVE_CPLUS_DEMANGLE=1 NO_GTK2=1 NO_STRLCPY=1 NO_BIONIC=1 LIBBPF_DYNAMIC=1 LIBTRACEEVENT_DYNAMIC=1 %{?perf_build_extra_opts} prefix=%{_prefix} PYTHON=%{__python3}
 %if %{with_perf}
 # perf
 # make sure check-headers.sh is executable
@@ -2090,7 +2119,7 @@ chmod +x tools/perf/check-headers.sh
 # cpupower
 # make sure version-gen.sh is executable.
 chmod +x tools/power/cpupower/utils/version-gen.sh
-%{tools_make} %{?_smp_mflags} -C tools/power/cpupower CPUFREQ_BENCH=false
+%{tools_make} %{?_smp_mflags} -C tools/power/cpupower CPUFREQ_BENCH=false DEBUG=false
 %ifarch x86_64
     pushd tools/power/cpupower/debug/x86_64
     %{tools_make} %{?_smp_mflags} centrino-decode powernow-k8-decode
@@ -2119,6 +2148,10 @@ pushd tools/gpio/
 # Needs to be fixed to pick up CFLAGS
 %{__make}
 popd
+# build VM tools
+pushd tools/vm/
+%{tools_make} slabinfo page_owner_sort
+popd
 %endif
 
 %global bpftool_make \
@@ -2130,12 +2163,36 @@ popd
 %endif
 
 %if %{with_selftests}
-%{make} -s %{?_smp_mflags} ARCH=$Arch V=1 samples/bpf/
+# Unfortunately, samples/bpf/Makefile expects that the headers are installed
+# in the source tree. We installed them previously to $RPM_BUILD_ROOT/usr
+# but there's no way to tell the Makefile to take them from there.
+%{make} %{?_smp_mflags} headers_install
+%{make} %{?_smp_mflags} ARCH=$Arch V=1 samples/bpf/
+
+# Prevent bpf selftests to build bpftool repeatedly:
+export BPFTOOL=$(pwd)/tools/bpf/bpftool/bpftool
+
 pushd tools/testing/selftests
 # We need to install here because we need to call make with ARCH set which
 # doesn't seem possible to do in the install section.
-%{make} -s %{?_smp_mflags} ARCH=$Arch V=1 TARGETS="bpf livepatch net" INSTALL_PATH=%{buildroot}%{_libexecdir}/kselftests install
+%{make} %{?_smp_mflags} ARCH=$Arch V=1 TARGETS="bpf livepatch net net/forwarding net/mptcp netfilter tc-testing" SKIP_TARGETS="" INSTALL_PATH=%{buildroot}%{_libexecdir}/kselftests install
+
+# 'make install' for bpf is broken and upstream refuses to fix it.
+# Install the needed files manually.
+for dir in bpf bpf/no_alu32 bpf/progs; do
+	# In ARK, the rpm build continues even if some of the selftests
+	# cannot be built. It's not always possible to build selftests,
+	# as upstream sometimes dependens on too new llvm version or has
+	# other issues. If something did not get built, just skip it.
+	test -d $dir || continue
+	mkdir -p %{buildroot}%{_libexecdir}/kselftests/$dir
+	find $dir -maxdepth 1 -type f \( -executable -o -name '*.py' -o -name settings -o \
+		-name 'btf_dump_test_case_*.c' -o \
+		-name '*.o' -exec sh -c 'readelf -h "{}" | grep -q "^  Machine:.*BPF"' \; \) -print0 | \
+	xargs -0 cp -t %{buildroot}%{_libexecdir}/kselftests/$dir || true
+done
 popd
+export -n BPFTOOL
 %endif
 
 %if %{with_doc}
@@ -2297,12 +2354,7 @@ rm -f %{buildroot}%{_bindir}/trace
 
 # remove examples
 rm -rf %{buildroot}/usr/lib/perf/examples
-# remove the stray files that somehow got packaged
-rm -rf %{buildroot}/usr/lib/perf/include/bpf/bpf.h
-rm -rf %{buildroot}/usr/lib/perf/include/bpf/stdio.h
-rm -rf %{buildroot}/usr/lib/perf/include/bpf/linux/socket.h
-rm -rf %{buildroot}/usr/lib/perf/include/bpf/pid_filter.h
-rm -rf %{buildroot}/usr/lib/perf/include/bpf/unistd.h
+rm -rf %{buildroot}/usr/lib/perf/include
 
 # python-perf extension
 %{perf_make} DESTDIR=$RPM_BUILD_ROOT install-python_ext
@@ -2350,9 +2402,16 @@ popd
 pushd tools/gpio
 %{__make} DESTDIR=%{buildroot} install
 popd
+install -m644 -D %{SOURCE2002} %{buildroot}%{_sysconfdir}/logrotate.d/kvm_stat
 pushd tools/kvm/kvm_stat
 %{__make} INSTALL_ROOT=%{buildroot} install-tools
 %{__make} INSTALL_ROOT=%{buildroot} install-man
+install -m644 -D kvm_stat.service %{buildroot}%{_unitdir}/kvm_stat.service
+popd
+# install VM tools
+pushd tools/vm/
+install -m755 slabinfo %{buildroot}%{_bindir}/slabinfo
+install -m755 page_owner_sort %{buildroot}%{_bindir}/page_owner_sort
 popd
 %endif
 
@@ -2373,6 +2432,7 @@ install -m755 *.sh %{buildroot}%{_libexecdir}/ksamples/bpf
 # test_lwt_bpf.sh compiles test_lwt_bpf.c when run; this works only from the
 # kernel tree. Just remove it.
 rm %{buildroot}%{_libexecdir}/ksamples/bpf/test_lwt_bpf.sh
+install -m644 *_kern.o %{buildroot}%{_libexecdir}/ksamples/bpf || true
 install -m644 tcp_bpf.readme %{buildroot}%{_libexecdir}/ksamples/bpf
 popd
 # install pktgen samples
@@ -2388,11 +2448,23 @@ find -type d -exec install -d %{buildroot}%{_libexecdir}/kselftests/drivers/net/
 find -type f -executable -exec install -D -m755 {} %{buildroot}%{_libexecdir}/kselftests/drivers/net/mlxsw/{} \;
 find -type f ! -executable -exec install -D -m644 {} %{buildroot}%{_libexecdir}/kselftests/drivers/net/mlxsw/{} \;
 popd
+# install drivers/net/netdevsim selftests
+pushd tools/testing/selftests/drivers/net/netdevsim
+find -type d -exec install -d %{buildroot}%{_libexecdir}/kselftests/drivers/net/netdevsim/{} \;
+find -type f -executable -exec install -D -m755 {} %{buildroot}%{_libexecdir}/kselftests/drivers/net/netdevsim/{} \;
+find -type f ! -executable -exec install -D -m644 {} %{buildroot}%{_libexecdir}/kselftests/drivers/net/netdevsim/{} \;
+popd
 # install net/forwarding selftests
 pushd tools/testing/selftests/net/forwarding
 find -type d -exec install -d %{buildroot}%{_libexecdir}/kselftests/net/forwarding/{} \;
 find -type f -executable -exec install -D -m755 {} %{buildroot}%{_libexecdir}/kselftests/net/forwarding/{} \;
 find -type f ! -executable -exec install -D -m644 {} %{buildroot}%{_libexecdir}/kselftests/net/forwarding/{} \;
+popd
+# install net/mptcp selftests
+pushd tools/testing/selftests/net/mptcp
+find -type d -exec install -d %{buildroot}%{_libexecdir}/kselftests/net/mptcp/{} \;
+find -type f -executable -exec install -D -m755 {} %{buildroot}%{_libexecdir}/kselftests/net/mptcp/{} \;
+find -type f ! -executable -exec install -D -m644 {} %{buildroot}%{_libexecdir}/kselftests/net/mptcp/{} \;
 popd
 # install tc-testing selftests
 pushd tools/testing/selftests/tc-testing
@@ -2405,6 +2477,12 @@ pushd tools/testing/selftests/livepatch
 find -type d -exec install -d %{buildroot}%{_libexecdir}/kselftests/livepatch/{} \;
 find -type f -executable -exec install -D -m755 {} %{buildroot}%{_libexecdir}/kselftests/livepatch/{} \;
 find -type f ! -executable -exec install -D -m644 {} %{buildroot}%{_libexecdir}/kselftests/livepatch/{} \;
+popd
+# install netfilter selftests
+pushd tools/testing/selftests/netfilter
+find -type d -exec install -d %{buildroot}%{_libexecdir}/kselftests/netfilter/{} \;
+find -type f -executable -exec install -D -m755 {} %{buildroot}%{_libexecdir}/kselftests/netfilter/{} \;
+find -type f ! -executable -exec install -D -m644 {} %{buildroot}%{_libexecdir}/kselftests/netfilter/{} \;
 popd
 %endif
 
@@ -2576,7 +2654,7 @@ fi
 
 %if %{with_kabidw_base}
 %ifarch x86_64 s390x ppc64 ppc64le aarch64
-%files kabidw-base
+%files kernel-kabidw-base-internal
 %defattr(-,root,root)
 /kabidw-base/%{_target_cpu}/*
 %endif
@@ -2648,6 +2726,10 @@ fi
 %{_bindir}/gpio-watch
 %{_mandir}/man1/kvm_stat*
 %{_bindir}/kvm_stat
+%{_unitdir}/kvm_stat.service
+%config(noreplace) %{_sysconfdir}/logrotate.d/kvm_stat
+%{_bindir}/page_owner_sort
+%{_bindir}/slabinfo
 
 %if %{with_debuginfo}
 %files -f kernel-tools-debuginfo.list -n kernel-tools-debuginfo
@@ -2795,8 +2877,88 @@ fi
 #
 #
 %changelog
-* Wed Jun 02 2021 Herton R. Krzesinski <herton@redhat.com> [5.13.0-0.rc4.33]
-- v5.13-rc4-48-g231bc5390667 rebase [1962878]
+* Mon Jun 21 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc7.51]
+- v5.13-rc7 rebase
+- Turn off DRM_XEN_FRONTEND for Fedora as we had DRM_XEN off already (Justin M. Forbes)
+
+* Sat Jun 19 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc6.20210619gitfd0aa1a4567d.49]
+- Fedora 5.13 config updates pt 3 (Justin M. Forbes)
+
+* Fri Jun 18 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc6.20210618gitfd0aa1a4567d.48]
+- all: enable ath11k wireless modules (Peter Robinson)
+- all: Enable WWAN and associated MHI bus pieces (Peter Robinson)
+- spec: Enable sefltests rpm build (Jiri Olsa)
+- spec: Allow bpf selftest/samples to fail (Jiri Olsa)
+- bpf, selftests: Disable tests that need clang13 (Toke Høiland-Jørgensen)
+- kvm: Add kvm_stat.service file and kvm_stat logrotate config to the tools (Jiri Benc)
+- kernel.spec: Add missing source files to kernel-selftests-internal (Jiri Benc)
+- kernel.spec: selftests: add net/forwarding to TARGETS list (Jiri Benc)
+- kernel.spec: selftests: add build requirement on libmnl-devel (Jiri Benc)
+- kernel.spec: add action.o to kernel-selftests-internal (Jiri Benc)
+- kernel.spec: avoid building bpftool repeatedly (Jiri Benc)
+- kernel.spec: selftests require python3 (Jiri Benc)
+- kernel.spec: skip selftests that failed to build (Jiri Benc)
+- kernel.spec: fix installation of bpf selftests (Jiri Benc)
+- redhat: fix samples and selftests make options (Jiri Benc)
+- kernel.spec: enable mptcp selftests for kernel-selftests-internal (Jiri Benc)
+- kernel.spec: Do not export shared objects from libexecdir to RPM Provides (Jiri Benc)
+- kernel.spec: add missing dependency for the which package (Jiri Benc)
+- kernel.spec: add netfilter selftests to kernel-selftests-internal (Jiri Benc)
+- kernel.spec: move slabinfo and page_owner_sort debuginfo to tools-debuginfo (Jiri Benc)
+- kernel.spec: package and ship VM tools (Jiri Benc)
+- configs: enable CONFIG_PAGE_OWNER (Jiri Benc)
+- kernel.spec: add coreutils (Jiri Benc)
+- kernel.spec: add netdevsim driver selftests to kernel-selftests-internal (Jiri Benc)
+- redhat/Makefile: Clean out the --without flags from the baseonly rule (Jiri Benc)
+- kernel.spec: Stop building unnecessary rpms for baseonly builds (Jiri Benc)
+- kernel.spec: disable more kabi switches for gcov build (Jiri Benc)
+- kernel.spec: Rename kabi-dw base (Jiri Benc)
+- kernel.spec: Fix error messages during build of zfcpdump kernel (Jiri Benc)
+- kernel.spec: perf: remove bpf examples (Jiri Benc)
+- kernel.spec: selftests should not depend on modules-internal (Jiri Benc)
+- kernel.spec: build samples (Jiri Benc)
+- kernel.spec: tools: sync missing options with RHEL 8 (Jiri Benc)
+- redhat/configs: nftables: Enable extra flowtable symbols (Phil Sutter)
+- redhat/configs: Sync netfilter options with RHEL8 (Phil Sutter)
+- Fedora 5.13 config updates pt 2 (Justin M. Forbes)
+
+* Thu Jun 17 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc6.20210617git70585216fe77.47]
+- Move CONFIG_ARCH_INTEL_SOCFPGA up a level for Fedora (Justin M. Forbes)
+
+* Thu Jun 17 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc6.20210617git94f0b2d4a1d0.46]
+- fedora: enable the Rockchip rk3399 pcie drivers (Peter Robinson)
+- PCI: rockchip: Register IRQs just before pci_host_probe() (Javier Martinez Canillas)
+- arm64: dts: rockchip: Update PCI host bridge window to 32-bit address memory (Punit Agrawal)
+- PCI: of: Refactor the check for non-prefetchable 32-bit window (Punit Agrawal)
+- PCI: of: Relax the condition for warning about non-prefetchable memory aperture size (Punit Agrawal)
+- PCI: of: Clear 64-bit flag for non-prefetchable memory below 4GB (Punit Agrawal)
+- Fedora 5.13 config updates pt 1 (Justin M. Forbes)
+- Fix version requirement from opencsd-devel buildreq (Justin M. Forbes)
+
+* Wed Jun 16 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc6.20210616git94f0b2d4a1d0.45]
+- configs/ark/s390: set CONFIG_MARCH_Z14 and CONFIG_TUNE_Z15 (Philipp Rudo) [1876435]
+- configs/common/s390: Clean up CONFIG_{MARCH,TUNE}_Z* (Philipp Rudo)
+- configs/process_configs.sh: make use of dummy-tools (Philipp Rudo)
+- configs/common: disable CONFIG_INIT_STACK_ALL_{PATTERN,ZERO} (Philipp Rudo)
+- configs/common/aarch64: disable CONFIG_RELR (Philipp Rudo)
+- redhat/config: enable STMICRO nic for RHEL (Mark Salter)
+- redhat/configs: Enable ARCH_TEGRA on RHEL (Mark Salter)
+
+* Fri Jun 11 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc5.20210611git929d931f2b40.41]
+- redhat/configs: enable IMA_KEXEC for supported arches (Bruno Meneguele)
+- redhat/configs: enable INTEGRITY_SIGNATURE to all arches (Bruno Meneguele)
+
+* Fri Jun 11 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc5.20210611git06af8679449d.40]
+- configs: enable CONFIG_LEDS_BRIGHTNESS_HW_CHANGED (Benjamin Tissoires)
+
+* Sat Jun 05 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc4.20210604gitf88cd3fb9df2.36]
+- RHEL: disable io_uring support (Jeff Moyer)
+
+* Thu Jun 03 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.13.0-0.rc4.20210603git324c92e5e0ee.34]
+- all: Changing CONFIG_UV_SYSFS to build uv_sysfs.ko as a loadable module. (Frank Ramsay)
+- Enable NITRO_ENCLAVES on RHEL (Vitaly Kuznetsov)
+- Update the Quick Start documentation (David Ward)
+- redhat/configs: Set PVPANIC_MMIO for x86 and PVPANIC_PCI for aarch64 (Eric Auger) [1961178]
 - bpf: Fix unprivileged_bpf_disabled setup (Jiri Olsa)
 - Enable CONFIG_BPF_UNPRIV_DEFAULT_OFF (Jiri Olsa)
 
