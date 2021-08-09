@@ -542,7 +542,7 @@ Name: kernel
 License: GPLv2 and Redistributable, no modification permitted
 URL: https://www.kernel.org/
 Version: %{rpmversion}
-Release: %{pkg_release}
+Release: %{pkg_release}.1
 # DO NOT CHANGE THE 'ExclusiveArch' LINE TO TEMPORARILY EXCLUDE AN ARCHITECTURE BUILD.
 # SET %%nobuildarches (ABOVE) INSTEAD
 %if 0%{?fedora}
@@ -2952,6 +2952,10 @@ fi
 #
 #
 %changelog
+* Mon Aug 09 2021 Mohan Boddu <mboddu@redhat.com> - 5.14.0-0.rc4.35.1
+- Rebuilt for IMA sigs, glibc 2.34, aarch64 flags
+  Related: rhbz#1991688
+
 * Mon Aug 02 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-0.rc4.35]
 - redhat: add gating configuration for centos stream/rhel9 (Herton R. Krzesinski)
 - kernel-5.14.0-0.rc4.35 (Fedora Kernel Team)
