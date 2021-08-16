@@ -80,7 +80,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 0.rc4.35
+%global distro_build 0.rc6.46
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -124,13 +124,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 0.rc4.35
+%define pkgrelease 0.rc6.46
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc4.35%{?buildid}%{?dist}
+%define specrelease 0.rc6.46%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -542,7 +542,7 @@ Name: kernel
 License: GPLv2 and Redistributable, no modification permitted
 URL: https://www.kernel.org/
 Version: %{rpmversion}
-Release: %{pkg_release}.1
+Release: %{pkg_release}
 # DO NOT CHANGE THE 'ExclusiveArch' LINE TO TEMPORARILY EXCLUDE AN ARCHITECTURE BUILD.
 # SET %%nobuildarches (ABOVE) INSTEAD
 %if 0%{?fedora}
@@ -671,7 +671,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-0.rc4.35.tar.xz
+Source0: linux-5.14.0-0.rc6.46.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1357,8 +1357,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-0.rc4.35 -c
-mv linux-5.14.0-0.rc4.35 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-0.rc6.46 -c
+mv linux-5.14.0-0.rc6.46 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2952,11 +2952,26 @@ fi
 #
 #
 %changelog
-* Mon Aug 09 2021 Mohan Boddu <mboddu@redhat.com> - 5.14.0-0.rc4.35.1
-- Rebuilt for IMA sigs, glibc 2.34, aarch64 flags
-  Related: rhbz#1991688
+* Fri Aug 13 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.14.0-0.rc5.20210813gitf8e6dfc64f61.45]
+- update filters for Fedora (Justin M. Forbes)
 
-* Mon Aug 02 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-0.rc4.35]
+* Tue Aug 10 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.14.0-0.rc5.20210810git9a73fa375d58.42]
+- redhat/configs/evaluate_configs: Update help output (Prarit Bhargava)
+- redhat/configs: Double MAX_LOCKDEP_CHAINS (Justin M. Forbes)
+- fedora: configs: Fix WM5102 Kconfig (Hans de Goede)
+- powerpc: enable CONFIG_POWER9_CPU (Diego Domingos) [1876436]
+- redhat/configs: Fix CONFIG_VIRTIO_IOMMU to 'y' on aarch64 (Eric Auger) [1972795]
+- Revert "ice: mark driver as tech-preview" (Jonathan Toppins)
+
+* Thu Aug 05 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.14.0-0.rc4.20210805git251a1524293d.37]
+- common: Update for CXL (Compute Express Link) configs (Peter Robinson)
+- redhat: configs: disable CRYPTO_SM modules (Herton R. Krzesinski) [1990040]
+- Remove fedora version of the LOCKDEP_BITS, we should use common (Justin M. Forbes)
+- Re-enable sermouse for x86 (rhbz 1974002) (Justin M. Forbes)
+
+* Wed Aug 04 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.14.0-0.rc4.20210804gitd5ad8ec3cfb5.36]
+- Revert "Merge branch 'releasefix' into 'os-build'" (Justin M. Forbes)
+- Fedora 5.14 configs round 1 (Justin M. Forbes)
 - redhat: add gating configuration for centos stream/rhel9 (Herton R. Krzesinski)
 - kernel-5.14.0-0.rc4.35 (Fedora Kernel Team)
 - kernel-5.14.0-0.rc3.20210801gitf3438b4c4e69.34 (Fedora Kernel Team)
