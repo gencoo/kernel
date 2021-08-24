@@ -80,7 +80,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 0.rc6.46
+%global distro_build 0.rc7.54
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -124,13 +124,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 0.rc6.46
+%define pkgrelease 0.rc7.54
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 0.rc6.46%{?buildid}%{?dist}
+%define specrelease 0.rc7.54%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -671,7 +671,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-0.rc6.46.tar.xz
+Source0: linux-5.14.0-0.rc7.54.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1357,8 +1357,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-0.rc6.46 -c
-mv linux-5.14.0-0.rc6.46 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-0.rc7.54 -c
+mv linux-5.14.0-0.rc7.54 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2952,6 +2952,46 @@ fi
 #
 #
 %changelog
+* Tue Aug 24 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-0.rc7.54]
+- v5.14-rc7 rebase
+
+* Tue Aug 24 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.14.0-0.rc7.20210824gitd5ae8d7f85b7.54]
+- arm64: dts: rockchip: Disable CDN DP on Pinebook Pro (Matthias Brugger)
+- arm64: dts: rockchip: Setup USB typec port as datarole on (Dan Johansen)
+- Revert "IB/rxe: Mark Soft-RoCE Transport driver as tech-preview" (Herton R. Krzesinski)
+- redhat/configs: Enable genet and brcmfmac wlan (Jeremy Linton) [1992902]
+- [scsi] megaraid_sas: re-add certain pci-ids (Tomas Henzl)
+- xfs: drop experimental warnings for bigtime and inobtcount (Bill O'Donnell) [1995321]
+- Disable liquidio driver on ark/rhel (Herton R. Krzesinski) [1993393]
+
+* Sat Aug 21 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.14.0-0.rc6.20210821gitfa54d366a6e4.51]
+- More Fedora config updates (Justin M. Forbes)
+
+* Fri Aug 20 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.14.0-0.rc6.20210820gitd992fe5318d8.50]
+- Fedora config updates for 5.14 (Justin M. Forbes)
+
+* Thu Aug 19 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.14.0-0.rc6.20210819gitd6d09a694205.49]
+- CI: Rename ARK CI pipeline type (Veronika Kabatova)
+- CI: Finish up c9s config (Veronika Kabatova)
+- CI: Update ppc64le config (Veronika Kabatova)
+- CI: use more templates (Veronika Kabatova)
+
+* Wed Aug 18 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.14.0-0.rc6.20210818git614cb2751d31.48]
+- Filter updates for aarch64 (Justin M. Forbes)
+- increase CONFIG_NODES_SHIFT for aarch64 (Chris von Recklinghausen) [1890304]
+
+* Tue Aug 17 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.14.0-0.rc6.20210817git794c7931a242.47]
+- Revert "redhat: ark: disable CONFIG_NET_SCH_MULTIQ" (Marcelo Ricardo Leitner)
+- redhat: configs: Enable CONFIG_WIRELESS_HOTKEY (Hans de Goede)
+- redhat/configs: Update CONFIG_NVRAM (Desnes A. Nunes do Rosario) [1988254]
+- common: serial: build in SERIAL_8250_LPSS for x86 (Peter Robinson)
+- powerpc: enable CONFIG_FUNCTION_PROFILER (Diego Domingos) [1831065]
+- crypto: rng - Override drivers/char/random in FIPS mode (Herbert Xu)
+- random: Add hook to override device reads and getrandom(2) (Herbert Xu)
+- redhat/configs: Disable Soft-RoCE driver (Kamal Heib)
+- filter-modules.sh: add more sound modules to filter (Jaroslav Kysela)
+- redhat/configs: sound configuration cleanups and updates (Jaroslav Kysela)
+
 * Fri Aug 13 2021 Fedora Kernel Team <kernel-team@fedoraproject.org> [5.14.0-0.rc5.20210813gitf8e6dfc64f61.45]
 - update filters for Fedora (Justin M. Forbes)
 
