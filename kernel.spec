@@ -80,7 +80,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 1
+%global distro_build 2
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -125,13 +125,13 @@ Summary: The Linux kernel
 
 %define rpmversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 1
+%define pkgrelease 2
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 1%{?buildid}%{?dist}
+%define specrelease 2%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -672,7 +672,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-1.tar.xz
+Source0: linux-5.14.0-2.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1357,8 +1357,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-1 -c
-mv linux-5.14.0-1 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-2 -c
+mv linux-5.14.0-2 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2957,6 +2957,11 @@ fi
 #
 #
 %changelog
+* Mon Sep 13 2021 Herton R. Krzesinski <herton@redhat.com> [5.14-2]
+- redhat: update branches/targets after 9 Beta fork (Herton R. Krzesinski)
+- hv_utils: Set the maximum packet size for VSS driver to the length of the receive buffer (Vitaly Kuznetsov) [1996628]
+- Enable bridge jobs for scratch pipelines (Michael Hofmann)
+
 * Mon Aug 30 2021 Herton R. Krzesinski <herton@redhat.com> [5.14-1]
 - redhat: drop Patchlist.changelog for RHEL (Jan Stancek) [1997494]
 - redhat: update Makefile.variables for centos/rhel9 fork (Herton R. Krzesinski)
