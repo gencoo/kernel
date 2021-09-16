@@ -80,7 +80,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 2
+%global distro_build 3
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -125,13 +125,13 @@ Summary: The Linux kernel
 
 %define rpmversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 2
+%define pkgrelease 3
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 2%{?buildid}%{?dist}
+%define specrelease 3%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -672,7 +672,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-2.tar.xz
+Source0: linux-5.14.0-3.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1357,8 +1357,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-2 -c
-mv linux-5.14.0-2 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-3 -c
+mv linux-5.14.0-3 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2957,10 +2957,23 @@ fi
 #
 #
 %changelog
+* Thu Sep 16 2021 Herton R. Krzesinski <herton@redhat.com> [5.14-3]
+- misc/pvpanic-pci: Allow automatic loading (Eric Auger) [1977192]
+- md/raid10: Remove unnecessary rcu_dereference in raid10_handle_discard (Nigel Croxon) [1965294]
+- rcu: Avoid unneeded function call in rcu_read_unlock() (Waiman Long) [1998549]
+- Enable bridge jobs for scratch pipelines (Michael Hofmann)
+- CI: use 9.0-beta-rt branch for -rt pipeline (Jan Stancek)
+- crypto: ccp - Add support for new CCP/PSP device ID (Vladis Dronov) [1987099]
+- crypto: ccp - shutdown SEV firmware on kexec (Vladis Dronov) [1987099]
+
 * Mon Sep 13 2021 Herton R. Krzesinski <herton@redhat.com> [5.14-2]
 - redhat: update branches/targets after 9 Beta fork (Herton R. Krzesinski)
 - hv_utils: Set the maximum packet size for VSS driver to the length of the receive buffer (Vitaly Kuznetsov) [1996628]
 - Enable bridge jobs for scratch pipelines (Michael Hofmann)
+
+* Tue Sep 14 2021 Jan Stancek <jstancek@redhat.com> [5.14-1.1.1]
+- md/raid10: Remove unnecessary rcu_dereference in raid10_handle_discard (Nigel Croxon) [1965294]
+- rcu: Avoid unneeded function call in rcu_read_unlock() (Waiman Long) [1998549]
 
 * Mon Aug 30 2021 Herton R. Krzesinski <herton@redhat.com> [5.14-1]
 - redhat: drop Patchlist.changelog for RHEL (Jan Stancek) [1997494]
