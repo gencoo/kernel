@@ -80,7 +80,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 3
+%global distro_build 4
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -125,13 +125,13 @@ Summary: The Linux kernel
 
 %define rpmversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 3
+%define pkgrelease 4.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 3%{?buildid}%{?dist}
+%define specrelease 4%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -672,7 +672,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-3.tar.xz
+Source0: linux-5.14.0-4.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1357,8 +1357,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-3 -c
-mv linux-5.14.0-3 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-4.el9 -c
+mv linux-5.14.0-4.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2957,6 +2957,45 @@ fi
 #
 #
 %changelog
+* Wed Sep 22 2021 Herton R. Krzesinski <herton@redhat.com> [5.14-4.el9]
+- Drivers: hv: vmbus: Fix kernel crash upon unbinding a device from uio_hv_generic driver (Vitaly Kuznetsov) [1999535]
+- ipc: replace costly bailout check in sysvipc_find_ipc() (Rafael Aquini) [1987130 2003270] {CVE-2021-3669}
+- redhat/configs: Disable CONFIG_DRM_VMWGFX on aarch64 (Michel Dänzer) [1996993]
+- redhat: set USE_DIST_IN_SOURCE=1 for 9.0-beta (Jan Stancek)
+- redhat: add option to use DIST tag in sources (Jan Stancek)
+- CI: Enable notification messages for RHEL9 (Veronika Kabatova)
+- CI: Enable private pipelines for RT branches (Veronika Kabatova)
+- CI: Remove ARK leftovers (Veronika Kabatova)
+- redhat: add *-matched meta packages to rpminspect emptyrpm config (Herton R. Krzesinski)
+- gfs2: Don't call dlm after protocol is unmounted (Bob Peterson) [1988451]
+- gfs2: don't stop reads while withdraw in progress (Bob Peterson) [1988451]
+- gfs2: Mark journal inodes as "don't cache" (Bob Peterson) [1988451]
+- cgroup/cpuset: Avoid memory migration when nodemasks match (Waiman Long) [1980430]
+- cgroup/cpuset: Enable memory migration for cpuset v2 (Waiman Long) [1980430]
+- iscsi_ibft: Fix isa_bus_to_virt not working under ARM (Maurizio Lombardi) [1963801]
+- x86/setup: Explicitly include acpi.h (Maurizio Lombardi) [1963801]
+- iscsi_ibft: fix warning in reserve_ibft_region() (Maurizio Lombardi) [1963801]
+- iscsi_ibft: fix crash due to KASLR physical memory remapping (Maurizio Lombardi) [1963801]
+- redhat: fix chronological order in the changelog file (Herton R. Krzesinski)
+
+* Fri Sep 17 2021 Jan Stancek <jstancek@redhat.com> [5.14-1.2.1.el9]
+- redhat/configs: Disable CONFIG_DRM_VMWGFX on aarch64 (Michel Dänzer) [1996993]
+- redhat: set USE_DIST_IN_SOURCE=1 for 9.0-beta (Jan Stancek)
+- redhat: add option to use DIST tag in sources (Jan Stancek)
+- CI: Enable notification messages for RHEL9 (Veronika Kabatova)
+- CI: Enable private pipelines for RT branches (Veronika Kabatova)
+- CI: Remove ARK leftovers (Veronika Kabatova)
+- redhat: add *-matched meta packages to rpminspect emptyrpm config (Herton R. Krzesinski)
+- gfs2: Don't call dlm after protocol is unmounted (Bob Peterson) [1988451]
+- gfs2: don't stop reads while withdraw in progress (Bob Peterson) [1988451]
+- gfs2: Mark journal inodes as "don't cache" (Bob Peterson) [1988451]
+- cgroup/cpuset: Avoid memory migration when nodemasks match (Waiman Long) [1980430]
+- cgroup/cpuset: Enable memory migration for cpuset v2 (Waiman Long) [1980430]
+- iscsi_ibft: Fix isa_bus_to_virt not working under ARM (Maurizio Lombardi) [1963801]
+- x86/setup: Explicitly include acpi.h (Maurizio Lombardi) [1963801]
+- iscsi_ibft: fix warning in reserve_ibft_region() (Maurizio Lombardi) [1963801]
+- iscsi_ibft: fix crash due to KASLR physical memory remapping (Maurizio Lombardi) [1963801]
+
 * Thu Sep 16 2021 Herton R. Krzesinski <herton@redhat.com> [5.14-3]
 - misc/pvpanic-pci: Allow automatic loading (Eric Auger) [1977192]
 - md/raid10: Remove unnecessary rcu_dereference in raid10_handle_discard (Nigel Croxon) [1965294]
