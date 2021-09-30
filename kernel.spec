@@ -80,7 +80,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 4
+%global distro_build 5
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -124,14 +124,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define patchversion 5.14
-%define pkgrelease 4.el9
+%define pkgrelease 5.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 4%{?buildid}%{?dist}
+%define specrelease 5%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -672,7 +671,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-4.el9.tar.xz
+Source0: linux-5.14.0-5.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -691,43 +690,37 @@ Source9: x509.genkey.fedora
 %if %{?released_kernel}
 
 Source10: redhatsecurebootca5.cer
-Source11: redhatsecurebootca1.cer
-Source12: redhatsecureboot501.cer
-Source13: redhatsecureboot301.cer
-Source14: secureboot_s390.cer
-Source15: secureboot_ppc.cer
+Source11: redhatsecurebootca3.cer
+Source12: redhatsecurebootca6.cer
+Source13: redhatsecureboot501.cer
+Source14: redhatsecureboot302.cer
+Source15: redhatsecureboot601.cer
 
-%define secureboot_ca_1 %{SOURCE10}
-%define secureboot_ca_0 %{SOURCE11}
 %ifarch x86_64 aarch64
-%define secureboot_key_1 %{SOURCE12}
-%define pesign_name_1 redhatsecureboot501
+%define secureboot_ca_0 %{SOURCE10}
 %define secureboot_key_0 %{SOURCE13}
-%define pesign_name_0 redhatsecureboot301
+%define pesign_name_0 redhatsecureboot501
 %endif
 %ifarch s390x
+%define secureboot_ca_0 %{SOURCE11}
 %define secureboot_key_0 %{SOURCE14}
 %define pesign_name_0 redhatsecureboot302
 %endif
 %ifarch ppc64le
+%define secureboot_ca_0 %{SOURCE12}
 %define secureboot_key_0 %{SOURCE15}
-%define pesign_name_0 redhatsecureboot303
+%define pesign_name_0 redhatsecureboot601
 %endif
 
 # released_kernel
 %else
 
 Source10: redhatsecurebootca4.cer
-Source11: redhatsecurebootca2.cer
-Source12: redhatsecureboot401.cer
-Source13: redhatsecureboot003.cer
+Source11: redhatsecureboot401.cer
 
-%define secureboot_ca_1 %{SOURCE10}
-%define secureboot_ca_0 %{SOURCE11}
-%define secureboot_key_1 %{SOURCE12}
-%define pesign_name_1 redhatsecureboot401
-%define secureboot_key_0 %{SOURCE13}
-%define pesign_name_0 redhatsecureboot003
+%define secureboot_ca_0 %{SOURCE10}
+%define secureboot_key_0 %{SOURCE11}
+%define pesign_name_0 redhatsecureboot401
 
 # released_kernel
 %endif
@@ -827,7 +820,7 @@ Source4002: gating.yaml
 
 %if !%{nopatches}
 
-Patch1: patch-%{patchversion}-redhat.patch
+Patch1: patch-%{rpmversion}-redhat.patch
 %endif
 
 # empty final patch to facilitate testing of kernel patches
@@ -1357,15 +1350,15 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-4.el9 -c
-mv linux-5.14.0-4.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-5.el9 -c
+mv linux-5.14.0-5.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
 
 %if !%{nopatches}
 
-ApplyOptionalPatch patch-%{patchversion}-redhat.patch
+ApplyOptionalPatch patch-%{rpmversion}-redhat.patch
 %endif
 
 ApplyOptionalPatch linux-kernel-test.patch
@@ -1630,10 +1623,15 @@ BuildKernel() {
     fi
 
     %ifarch x86_64 aarch64
-    %pesign -s -i $SignImage -o vmlinuz.tmp -a %{secureboot_ca_0} -c %{secureboot_key_0} -n %{pesign_name_0}
-    %pesign -s -i vmlinuz.tmp -o vmlinuz.signed -a %{secureboot_ca_1} -c %{secureboot_key_1} -n %{pesign_name_1}
-    rm vmlinuz.tmp
+    if [ -x /usr/bin/rpm-sign ]; then
+        %define _rhel 9
+        %pesign -s -i $SignImage -o vmlinuz.signed -a %{secureboot_ca_0} -c %{secureboot_key_0} -n %{pesign_name_0}
+        %undefine _rhel
+    else
+        %pesign -s -i $SignImage -o vmlinuz.signed
+    fi
     %endif
+
     %ifarch s390x ppc64le
     if [ -x /usr/bin/rpm-sign ]; then
 	rpm-sign --key "%{pesign_name_0}" --lkmsign $SignImage --output vmlinuz.signed
@@ -2097,13 +2095,7 @@ BuildKernel() {
 
     # Red Hat UEFI Secure Boot CA cert, which can be used to authenticate the kernel
     mkdir -p $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer
-    %ifarch x86_64 aarch64
-       install -m 0644 %{secureboot_ca_0} $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/kernel-signing-ca-20200609.cer
-       install -m 0644 %{secureboot_ca_1} $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/kernel-signing-ca-20140212.cer
-       ln -s kernel-signing-ca-20200609.cer $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/kernel-signing-ca.cer
-    %else
-       install -m 0644 %{secureboot_ca_0} $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/kernel-signing-ca.cer
-    %endif
+    install -m 0644 %{secureboot_ca_0} $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/kernel-signing-ca.cer
     %ifarch s390x ppc64le
     if [ $DoModules -eq 1 ]; then
 	if [ -x /usr/bin/rpm-sign ]; then
@@ -2957,6 +2949,34 @@ fi
 #
 #
 %changelog
+* Thu Sep 30 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-5.el9]
+- redhat/configs: enable CONFIG_SQUASHFS_ZSTD which is already enabled in Fedora 34 (Tao Liu) [1998953]
+- fs: dlm: fix return -EINTR on recovery stopped (Alexander Aring) [2004213]
+- redhat: replace redhatsecureboot303 signing key with redhatsecureboot601 (Jan Stancek) [2002499]
+- redhat: define _rhel variable because pesign macro now needs it (Jan Stancek) [2002499]
+- redhat: drop certificates that were deprecated after GRUB's BootHole flaw (Jan Stancek) [1994849]
+- redhat: correct file name of redhatsecurebootca1 (Jan Stancek) [2002499]
+- redhat: align file names with names of signing keys for ppc and s390 (Jan Stancek) [2002499]
+- redhat: restore sublevel in changelog (Jan Stancek)
+- fs: dlm: avoid comms shutdown delay in release_lockspace (Alexander Aring) [1994749]
+- redhat/configs: Enable CONFIG_BLK_CGROUP_IOLATENCY & CONFIG_BLK_CGROUP_FC_APPID (Waiman Long) [1996675]
+- redhat/configs: remove conflicting SYSTEM_BLACKLIST_KEYRING (Bruno Meneguele) [2002350]
+- Enable "inter server to server" NFSv4.2 COPY (Steve Dickson) [1487367]
+
+* Wed Sep 29 2021 Jan Stancek <jstancek@redhat.com> [5.14.0-1.5.1.el9]
+- fs: dlm: fix return -EINTR on recovery stopped (Alexander Aring) [2004213]
+- redhat/configs: Update configs for secure IPL (Claudio Imbrenda) [1976884]
+- redhat: replace redhatsecureboot303 signing key with redhatsecureboot601 (Jan Stancek) [2002499]
+- redhat: define _rhel variable because pesign macro now needs it (Jan Stancek) [2002499]
+- redhat: drop certificates that were deprecated after GRUB's BootHole flaw (Jan Stancek) [1994849]
+- redhat: correct file name of redhatsecurebootca1 (Jan Stancek) [2002499]
+- redhat: align file names with names of signing keys for ppc and s390 (Jan Stancek) [2002499]
+
+* Mon Sep 27 2021 Jan Stancek <jstancek@redhat.com> [5.14.0-1.4.1.el9]
+- redhat: restore sublevel in changelog (Jan Stancek)
+- fs: dlm: avoid comms shutdown delay in release_lockspace (Alexander Aring) [1994749]
+- redhat/configs: Enable CONFIG_BLK_CGROUP_IOLATENCY & CONFIG_BLK_CGROUP_FC_APPID (Waiman Long) [1996675]
+
 * Wed Sep 22 2021 Herton R. Krzesinski <herton@redhat.com> [5.14-4.el9]
 - Drivers: hv: vmbus: Fix kernel crash upon unbinding a device from uio_hv_generic driver (Vitaly Kuznetsov) [1999535]
 - ipc: replace costly bailout check in sysvipc_find_ipc() (Rafael Aquini) [1987130 2003270] {CVE-2021-3669}
@@ -2977,6 +2997,10 @@ fi
 - iscsi_ibft: fix warning in reserve_ibft_region() (Maurizio Lombardi) [1963801]
 - iscsi_ibft: fix crash due to KASLR physical memory remapping (Maurizio Lombardi) [1963801]
 - redhat: fix chronological order in the changelog file (Herton R. Krzesinski)
+
+* Wed Sep 22 2021 Jan Stancek <jstancek@redhat.com> [5.14.0-1.3.1.el9]
+- redhat/configs: remove conflicting SYSTEM_BLACKLIST_KEYRING (Bruno Meneguele) [2002350]
+- Enable "inter server to server" NFSv4.2 COPY (Steve Dickson) [1487367]
 
 * Fri Sep 17 2021 Jan Stancek <jstancek@redhat.com> [5.14-1.2.1.el9]
 - redhat/configs: Disable CONFIG_DRM_VMWGFX on aarch64 (Michel Dänzer) [1996993]
