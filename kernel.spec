@@ -80,7 +80,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 6
+%global distro_build 7
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -124,13 +124,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 6.el9
+%define pkgrelease 7.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 6%{?buildid}%{?dist}
+%define specrelease 7%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -671,7 +671,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-6.el9.tar.xz
+Source0: linux-5.14.0-7.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1350,8 +1350,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-6.el9 -c
-mv linux-5.14.0-6.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-7.el9 -c
+mv linux-5.14.0-7.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2228,7 +2228,7 @@ export BPFTOOL=$(pwd)/tools/bpf/bpftool/bpftool
 pushd tools/testing/selftests
 # We need to install here because we need to call make with ARCH set which
 # doesn't seem possible to do in the install section.
-%{make} %{?_smp_mflags} ARCH=$Arch V=1 TARGETS="bpf livepatch net net/forwarding net/mptcp netfilter tc-testing" SKIP_TARGETS="" INSTALL_PATH=%{buildroot}%{_libexecdir}/kselftests VMLINUX_H="${RPM_VMLINUX_H}" install
+%{make} %{?_smp_mflags} ARCH=$Arch V=1 TARGETS="bpf livepatch net net/forwarding net/mptcp netfilter tc-testing" SKIP_TARGETS="" FORCE_TARGETS=1 INSTALL_PATH=%{buildroot}%{_libexecdir}/kselftests VMLINUX_H="${RPM_VMLINUX_H}" install
 
 # 'make install' for bpf is broken and upstream refuses to fix it.
 # Install the needed files manually.
@@ -2942,6 +2942,19 @@ fi
 #
 #
 %changelog
+* Mon Oct 11 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-7.el9]
+- redhat: Enable Nitro Enclaves driver on x86 for real (Vitaly Kuznetsov) [2011739]
+- redhat/.gitignore: Add rhel9 KABI files (Prarit Bhargava) [2009489]
+- hwmon: (k10temp) Add support for yellow carp (David Arcari) [1987069]
+- hwmon: (k10temp) Rework the temperature offset calculation (David Arcari) [1987069]
+- hwmon: (k10temp) Don't show Tdie for all Zen/Zen2/Zen3 CPU/APU (David Arcari) [1987069]
+- hwmon: (k10temp) Add additional missing Zen2 and Zen3 APUs (David Arcari) [1987069]
+- hwmon: (k10temp) support Zen3 APUs (David Arcari) [1987069]
+- selinux,smack: fix subjective/objective credential use mixups (Ondrej Mosnacek) [2008145]
+- redhat: kernel.spec: selftests: abort on build failure (Jiri Benc) [2004012]
+- Revert "bpf, selftests: Disable tests that need clang13" (Jiri Benc) [2004012]
+- selftests, bpf: Fix makefile dependencies on libbpf (Jiri Benc) [2004012]
+
 * Fri Oct 08 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-6.el9]
 - pinctrl: Bulk conversion to generic_handle_domain_irq() (David Arcari) [2000232]
 - pinctrl: amd: Handle wake-up interrupt (David Arcari) [2000232]
