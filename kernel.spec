@@ -3,6 +3,11 @@
 # environment changes that affect %%install need to go
 # here before the %%install macro is pre-built.
 
+# Include Fedora files
+%global include_fedora 0
+# Include RHEL files
+%global include_rhel 1
+
 # Disable LTO in userspace packages.
 %global _lto_cflags %{nil}
 
@@ -80,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 7
+%global distro_build 8
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -124,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 7.el9
+%define pkgrelease 8.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 7%{?buildid}%{?dist}
+%define specrelease 8%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -671,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-7.el9.tar.xz
+Source0: linux-5.14.0-8.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -683,9 +688,6 @@ Source1: Makefile.rhelver
 %ifarch s390x
 %define signing_key_filename kernel-signing-s390.cer
 %endif
-
-Source8: x509.genkey.rhel
-Source9: x509.genkey.fedora
 
 %if %{?released_kernel}
 
@@ -725,63 +727,71 @@ Source11: redhatsecureboot401.cer
 # released_kernel
 %endif
 
-Source22: mod-extra.list.rhel
-Source16: mod-extra.list.fedora
-Source17: mod-denylist.sh
-Source18: mod-sign.sh
-Source79: parallel_xz.sh
+Source20: mod-denylist.sh
+Source21: mod-sign.sh
+Source22: parallel_xz.sh
 
-Source80: filter-x86_64.sh.fedora
-Source81: filter-armv7hl.sh.fedora
-Source82: filter-i686.sh.fedora
-Source83: filter-aarch64.sh.fedora
-Source86: filter-ppc64le.sh.fedora
-Source87: filter-s390x.sh.fedora
-Source89: filter-modules.sh.fedora
+%define modsign_cmd %{SOURCE21}
 
-Source90: filter-x86_64.sh.rhel
-Source91: filter-armv7hl.sh.rhel
-Source92: filter-i686.sh.rhel
-Source93: filter-aarch64.sh.rhel
-Source96: filter-ppc64le.sh.rhel
-Source97: filter-s390x.sh.rhel
-Source99: filter-modules.sh.rhel
-%define modsign_cmd %{SOURCE18}
+%if 0%{?include_rhel}
+Source23: x509.genkey.rhel
 
-Source20: kernel-aarch64-rhel.config
-Source21: kernel-aarch64-debug-rhel.config
-Source30: kernel-ppc64le-rhel.config
-Source31: kernel-ppc64le-debug-rhel.config
-Source32: kernel-s390x-rhel.config
-Source33: kernel-s390x-debug-rhel.config
-Source34: kernel-s390x-zfcpdump-rhel.config
-Source35: kernel-x86_64-rhel.config
-Source36: kernel-x86_64-debug-rhel.config
+Source24: kernel-aarch64-rhel.config
+Source25: kernel-aarch64-debug-rhel.config
+Source26: mod-extra.list.rhel
 
-Source37: kernel-aarch64-fedora.config
-Source38: kernel-aarch64-debug-fedora.config
-Source39: kernel-armv7hl-fedora.config
-Source40: kernel-armv7hl-debug-fedora.config
-Source41: kernel-armv7hl-lpae-fedora.config
-Source42: kernel-armv7hl-lpae-debug-fedora.config
-Source43: kernel-i686-fedora.config
-Source44: kernel-i686-debug-fedora.config
-Source45: kernel-ppc64le-fedora.config
-Source46: kernel-ppc64le-debug-fedora.config
-Source47: kernel-s390x-fedora.config
-Source48: kernel-s390x-debug-fedora.config
-Source49: kernel-x86_64-fedora.config
-Source50: kernel-x86_64-debug-fedora.config
+Source27: kernel-ppc64le-rhel.config
+Source28: kernel-ppc64le-debug-rhel.config
+Source29: kernel-s390x-rhel.config
+Source30: kernel-s390x-debug-rhel.config
+Source31: kernel-s390x-zfcpdump-rhel.config
+Source32: kernel-x86_64-rhel.config
+Source33: kernel-x86_64-debug-rhel.config
 
+Source34: filter-x86_64.sh.rhel
+Source35: filter-armv7hl.sh.rhel
+Source36: filter-i686.sh.rhel
+Source37: filter-aarch64.sh.rhel
+Source38: filter-ppc64le.sh.rhel
+Source39: filter-s390x.sh.rhel
+Source40: filter-modules.sh.rhel
+%endif
 
+%if 0%{?include_fedora}
+Source50: x509.genkey.fedora
+Source51: mod-extra.list.fedora
 
-Source51: generate_all_configs.sh
+Source52: kernel-aarch64-fedora.config
+Source53: kernel-aarch64-debug-fedora.config
+Source54: kernel-armv7hl-fedora.config
+Source55: kernel-armv7hl-debug-fedora.config
+Source56: kernel-armv7hl-lpae-fedora.config
+Source57: kernel-armv7hl-lpae-debug-fedora.config
+Source58: kernel-i686-fedora.config
+Source59: kernel-i686-debug-fedora.config
+Source60: kernel-ppc64le-fedora.config
+Source61: kernel-ppc64le-debug-fedora.config
+Source62: kernel-s390x-fedora.config
+Source63: kernel-s390x-debug-fedora.config
+Source64: kernel-x86_64-fedora.config
+Source65: kernel-x86_64-debug-fedora.config
 
-Source52: process_configs.sh
-Source56: update_scripts.sh
-Source57: generate_crashkernel_default.sh
+Source67: filter-x86_64.sh.fedora
+Source68: filter-armv7hl.sh.fedora
+Source69: filter-i686.sh.fedora
+Source70: filter-aarch64.sh.fedora
+Source71: filter-ppc64le.sh.fedora
+Source72: filter-s390x.sh.fedora
+Source73: filter-modules.sh.fedora
+%endif
 
-Source54: mod-internal.list
+Source80: generate_all_configs.sh
+Source81: process_configs.sh
+
+Source82: update_scripts.sh
+Source83: generate_crashkernel_default.sh
+
+Source84: mod-internal.list
 
 Source100: rheldup3.x509
 Source101: rhelkpatch1.x509
@@ -1350,8 +1360,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-7.el9 -c
-mv linux-5.14.0-7.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-8.el9 -c
+mv linux-5.14.0-8.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -1402,7 +1412,7 @@ cd configs
 
 # Drop some necessary files from the source dir into the buildroot
 cp $RPM_SOURCE_DIR/kernel-*.config .
-cp %{SOURCE51} .
+cp %{SOURCE80} .
 # merge.pl
 cp %{SOURCE3000} .
 # kernel-local
@@ -1450,7 +1460,7 @@ done
 %endif
 %endif
 
-cp %{SOURCE52} .
+cp %{SOURCE81} .
 OPTS=""
 %if %{with_configchecks}
 	OPTS="$OPTS -w -n -c"
@@ -1462,7 +1472,7 @@ done
 %endif
 ./process_configs.sh $OPTS kernel %{rpmversion}
 
-cp %{SOURCE56} .
+cp %{SOURCE82} .
 RPM_SOURCE_DIR=$RPM_SOURCE_DIR ./update_scripts.sh %{primary_target}
 
 # end of kernel config
@@ -1981,9 +1991,9 @@ BuildKernel() {
     remove_depmod_files
 
     # Identify modules in the kernel-modules-extras package
-    %{SOURCE17} $RPM_BUILD_ROOT lib/modules/$KernelVer $RPM_SOURCE_DIR/mod-extra.list
+    %{SOURCE20} $RPM_BUILD_ROOT lib/modules/$KernelVer $RPM_SOURCE_DIR/mod-extra.list
     # Identify modules in the kernel-modules-extras package
-    %{SOURCE17} $RPM_BUILD_ROOT lib/modules/$KernelVer %{SOURCE54} internal
+    %{SOURCE20} $RPM_BUILD_ROOT lib/modules/$KernelVer %{SOURCE84} internal
 
     #
     # Generate the kernel-core and kernel-modules files lists
@@ -2084,7 +2094,7 @@ BuildKernel() {
     find $RPM_BUILD_ROOT/usr/src/kernels -name ".*.cmd" -delete
 
     # Generate crashkernel default config
-    %{SOURCE57} "$KernelVer" "$Arch" "$RPM_BUILD_ROOT"
+    %{SOURCE83} "$KernelVer" "$Arch" "$RPM_BUILD_ROOT"
 
     # Red Hat UEFI Secure Boot CA cert, which can be used to authenticate the kernel
     mkdir -p $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer
@@ -2942,6 +2952,29 @@ fi
 #
 #
 %changelog
+* Fri Oct 15 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-8.el9]
+- selftests/powerpc: Add scv versions of the basic TM syscall tests (Desnes A. Nunes do Rosario) [1986651]
+- powerpc/64s: system call scv tabort fix for corrupt irq soft-mask state (Desnes A. Nunes do Rosario) [1986651]
+- mm/swap: consider max pages in iomap_swapfile_add_extent (Carlos Maiolino) [2005191]
+- platform/x86/intel: pmc/core: Add GBE Package C10 fix for Alder Lake PCH (David Arcari) [2007707]
+- platform/x86/intel: pmc/core: Add Alder Lake low power mode support for pmc core (David Arcari) [2007707]
+- platform/x86/intel: pmc/core: Add Latency Tolerance Reporting (LTR) support to Alder Lake (David Arcari) [2007707]
+- platform/x86/intel: pmc/core: Add Alderlake support to pmc core driver (David Arcari) [2007707]
+- platform/x86: intel_pmc_core: Move to intel sub-directory (David Arcari) [2007707]
+- platform/x86: intel_pmc_core: Prevent possibile overflow (David Arcari) [2007707]
+- Clean-up CONFIG_X86_PLATFORM_DRIVERS_INTEL (David Arcari) [2007707]
+- KVM: nVMX: Filter out all unsupported controls when eVMCS was activated (Vitaly Kuznetsov) [2001912]
+- ipc: remove memcg accounting for sops objects in do_semtimedop() (Rafael Aquini) [1999707] {CVE-2021-3759}
+- memcg: enable accounting of ipc resources (Rafael Aquini) [1999707] {CVE-2021-3759}
+- redhat: BUILDID parameter must come last in genspec.sh (Herton R. Krzesinski)
+- redhat/Makefile.variables: Set INCLUDE_FEDORA_FILES to 0 (Prarit Bhargava) [2009545]
+- redhat: Remove fedora configs directories and files. (Prarit Bhargava) [2009545]
+- redhat/kernel.spec.template: Cleanup source numbering (Prarit Bhargava) [2009545]
+- redhat/kernel.spec.template: Reorganize RHEL and Fedora specific files (Prarit Bhargava) [2009545]
+- redhat/kernel.spec.template: Add include_fedora and include_rhel variables (Prarit Bhargava) [2009545]
+- redhat/Makefile: Make kernel-local global (Prarit Bhargava) [2009545]
+- redhat/Makefile: Use flavors file (Prarit Bhargava) [2009545]
+
 * Mon Oct 11 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-7.el9]
 - redhat: Enable Nitro Enclaves driver on x86 for real (Vitaly Kuznetsov) [2011739]
 - redhat/.gitignore: Add rhel9 KABI files (Prarit Bhargava) [2009489]
