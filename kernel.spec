@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 8
+%global distro_build 9
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 8.el9
+%define pkgrelease 9.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 8%{?buildid}%{?dist}
+%define specrelease 9%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-8.el9.tar.xz
+Source0: linux-5.14.0-9.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1360,8 +1360,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-8.el9 -c
-mv linux-5.14.0-8.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-9.el9 -c
+mv linux-5.14.0-9.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2952,6 +2952,19 @@ fi
 #
 #
 %changelog
+* Wed Oct 20 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-9.el9]
+- powerpc/pseries: Prevent free CPU ids being reused on another node (Desnes A. Nunes do Rosario) [2004809]
+- pseries/drmem: update LMBs after LPM (Desnes A. Nunes do Rosario) [2004809]
+- powerpc/numa: Consider the max NUMA node for migratable LPAR (Desnes A. Nunes do Rosario) [2004809]
+- selftests: bpf: disable test_lirc_mode2 (Jiri Benc) [2006359]
+- selftests: bpf: disable test_doc_build.sh (Jiri Benc) [2006359]
+- selftests: bpf: define SO_RCVTIMEO and SO_SNDTIMEO properly for ppc64le (Jiri Benc) [2006359]
+- selftests: bpf: skip FOU tests in test_tc_tunnel (Jiri Benc) [2006359]
+- selftests: bpf: disable test_seg6_loop test (Jiri Benc) [2006359]
+- selftests: bpf: disable test_lwt_seg6local (Jiri Benc) [2006359]
+- selftests: bpf: disable test_bpftool_build.sh (Jiri Benc) [2006359]
+- selftests: add option to skip specific tests in RHEL (Jiri Benc) [2006359]
+
 * Fri Oct 15 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-8.el9]
 - selftests/powerpc: Add scv versions of the basic TM syscall tests (Desnes A. Nunes do Rosario) [1986651]
 - powerpc/64s: system call scv tabort fix for corrupt irq soft-mask state (Desnes A. Nunes do Rosario) [1986651]
