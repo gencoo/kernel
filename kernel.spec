@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 9
+%global distro_build 10
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 9.el9
+%define pkgrelease 10.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 9%{?buildid}%{?dist}
+%define specrelease 10%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-9.el9.tar.xz
+Source0: linux-5.14.0-10.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1360,8 +1360,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-9.el9 -c
-mv linux-5.14.0-9.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-10.el9 -c
+mv linux-5.14.0-10.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2952,6 +2952,12 @@ fi
 #
 #
 %changelog
+* Tue Oct 26 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-10.el9]
+- block: return ELEVATOR_DISCARD_MERGE if possible (Ming Lei) [1991958]
+- blk-mq: avoid to iterate over stale request (Ming Lei) [2009110]
+- redhat/configs: enable CONFIG_IMA_WRITE_POLICY (Bruno Meneguele) [2006320]
+- CI: Update deprecated configs (Veronika Kabatova)
+
 * Wed Oct 20 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-9.el9]
 - powerpc/pseries: Prevent free CPU ids being reused on another node (Desnes A. Nunes do Rosario) [2004809]
 - pseries/drmem: update LMBs after LPM (Desnes A. Nunes do Rosario) [2004809]
