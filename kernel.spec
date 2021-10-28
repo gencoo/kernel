@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 10
+%global distro_build 11
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 10.el9
+%define pkgrelease 11.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 10%{?buildid}%{?dist}
+%define specrelease 11%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-10.el9.tar.xz
+Source0: linux-5.14.0-11.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1360,8 +1360,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-10.el9 -c
-mv linux-5.14.0-10.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-11.el9 -c
+mv linux-5.14.0-11.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2952,6 +2952,11 @@ fi
 #
 #
 %changelog
+* Thu Oct 28 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-11.el9]
+- selinux: remove the SELinux lockdown implementation (Ondrej Mosnacek) [1940843 1945581]
+- bpf: Fix integer overflow in prealloc_elems_and_freelist() (Yauheni Kaliuta) [2010494] {CVE-2021-41864}
+- seltests: bpf: test_tunnel: Use ip neigh (Jiri Benc) [2006326]
+
 * Tue Oct 26 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-10.el9]
 - block: return ELEVATOR_DISCARD_MERGE if possible (Ming Lei) [1991958]
 - blk-mq: avoid to iterate over stale request (Ming Lei) [2009110]
