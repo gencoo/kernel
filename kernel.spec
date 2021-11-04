@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 11
+%global distro_build 12
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 11.el9
+%define pkgrelease 12.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 11%{?buildid}%{?dist}
+%define specrelease 12%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-11.el9.tar.xz
+Source0: linux-5.14.0-12.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1360,8 +1360,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-11.el9 -c
-mv linux-5.14.0-11.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-12.el9 -c
+mv linux-5.14.0-12.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2952,6 +2952,16 @@ fi
 #
 #
 %changelog
+* Thu Nov 04 2021 Jarod Wilson <jarod@redhat.com> [5.14.0-12.el9]
+- redhat: make dist-srpm-gcov add to BUILDOPTS (Jan Stancek) [2017628]
+- redhat: Fix dist-srpm-gcov (Jan Stancek) [2017628]
+- s390: report more CPU capabilities (Robin Dapp) [2012095]
+- s390/disassembler: add instructions (Robin Dapp) [2012095]
+- audit: move put_tree() to avoid trim_trees refcount underflow and UAF (Richard Guy Briggs) [1985904]
+- libbpf: Properly ignore STT_SECTION symbols in legacy map definitions (Jiri Olsa) [1998266]
+- libbpf: Ignore STT_SECTION symbols in 'maps' section (Jiri Olsa) [1998266]
+- selftests, bpf: test_lwt_ip_encap: Really disable rp_filter (Jiri Benc) [2006328]
+
 * Thu Oct 28 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-11.el9]
 - selinux: remove the SELinux lockdown implementation (Ondrej Mosnacek) [1940843 1945581]
 - bpf: Fix integer overflow in prealloc_elems_and_freelist() (Yauheni Kaliuta) [2010494] {CVE-2021-41864}
