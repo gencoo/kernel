@@ -1,0 +1,3050 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Al Stone <ahs3@redhat.com>
+Date: Tue, 27 Feb 2018 00:21:23 -0500
+Subject: [PATCH 01/32] ACPI: APEI: arm64: Ignore broken HPE moonshot APEI
+ support
+
+Message-id: <20180227002123.21608-1-ahs3@redhat.com>
+Patchwork-id: 206052
+O-Subject: [RHEL8 BZ1518076 PATCH] ACPI: APEI: arm64: Ignore broken HPE moonshot APEI support
+Bugzilla: 1518076
+RH-Acked-by: Mark Salter <msalter@redhat.com>
+RH-Acked-by: Jeremy McNicoll <jmcnicol@redhat.com>
+
+Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1518076
+Brew: https://brewweb.engineering.redhat.com/brew/taskinfo?taskID=15417197
+Tested: compile-only; several other patches are required for full booting
+        QE has tested limited boot (see comment#12 of BZ)
+
+This is a re-post of a RHEL-ALT-7.5 patch specific to aarch64 moonshots
+that we use in beaker.  It is required for these machines to boot.
+
+    commit 8a663a264863efedf8bb4a9d76ac603920fdd739
+    Author: Robert Richter <rrichter@redhat.com>
+    Date:   Wed Aug 16 19:49:30 2017 -0400
+
+    [acpi] APEI: arm64: Ignore broken HPE moonshot APEI support
+
+    From: Mark Salter <msalter@redhat.com>
+    Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1344237
+    Brew: https://brewweb.engineering.redhat.com/brew/taskinfo?taskID=13768971
+    Tested: Booted on moonshot with patched 4.11.0-20 kernel
+    Upstream: RHEL-only
+
+    The aarch64 HP moonshot platforms we have in beaker and elsewhere have
+    a firmware bug which causes a spurious fatal memory error via APEI at
+    boot time. This platform is no longer supported and no further firmware
+    updates are expected. This is a downstream-only hack to avoid the problem
+    by bailing out of HEST table probing if we detect a moonshot HEST table.
+
+    Signed-off-by: Mark Salter <msalter@redhat.com>
+    Signed-off-by: Robert Richter <rrichter@redhat.com>
+    Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
+
+Upstream Status: RHEL only
+Signed-off-by: Al Stone <ahs3@redhat.com>
+Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
+---
+ drivers/acpi/apei/hest.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/acpi/apei/hest.c b/drivers/acpi/apei/hest.c
+index 277f00b288d1..adbce15c273d 100644
+--- a/drivers/acpi/apei/hest.c
++++ b/drivers/acpi/apei/hest.c
+@@ -94,6 +94,14 @@ int apei_hest_parse(apei_hest_func_t func, void *data)
+ 	if (hest_disable || !hest_tab)
+ 		return -EINVAL;
+ 
++#ifdef CONFIG_ARM64
++	/* Ignore broken firmware */
++	if (!strncmp(hest_tab->header.oem_id, "HPE   ", 6) &&
++	    !strncmp(hest_tab->header.oem_table_id, "ProLiant", 8) &&
++	    MIDR_IMPLEMENTOR(read_cpuid_id()) == ARM_CPU_IMP_APM)
++		return -EINVAL;
++#endif
++
+ 	hest_hdr = (struct acpi_hest_header *)(hest_tab + 1);
+ 	for (i = 0; i < hest_tab->error_source_count; i++) {
+ 		len = hest_esrc_len(hest_hdr);
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mark Salter <msalter@redhat.com>
+Date: Thu, 10 May 2018 17:38:43 -0400
+Subject: [PATCH 02/32] ACPI / irq: Workaround firmware issue on X-Gene based
+ m400
+
+Message-id: <20180510173844.29580-3-msalter@redhat.com>
+Patchwork-id: 214383
+O-Subject: [RHEL-8 BZ1519554 2/3] ACPI / irq: Workaround firmware issue on X-Gene based m400
+Bugzilla: 1519554
+RH-Acked-by: Al Stone <astone@redhat.com>
+RH-Acked-by: Tony Camuso <tcamuso@redhat.com>
+
+Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1519554
+Brew: https://brewweb.engineering.redhat.com/brew/taskinfo?taskID=16144520
+
+The ACPI firmware on the xgene-based m400 platorms erroneously
+describes its UART interrupt as ACPI_PRODUCER rather than
+ACPI_CONSUMER. This leads to the UART driver being unable to
+find its interrupt and the kernel unable find a console.
+Work around this by avoiding the producer/consumer check
+for X-Gene UARTs.
+
+Upstream Status: RHEL only
+Signed-off-by: Mark Salter <msalter@redhat.com>
+Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
+---
+ drivers/acpi/irq.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/acpi/irq.c b/drivers/acpi/irq.c
+index c68e694fca26..146cba5ae5bc 100644
+--- a/drivers/acpi/irq.c
++++ b/drivers/acpi/irq.c
+@@ -130,6 +130,7 @@ struct acpi_irq_parse_one_ctx {
+ 	unsigned int index;
+ 	unsigned long *res_flags;
+ 	struct irq_fwspec *fwspec;
++	bool skip_producer_check;
+ };
+ 
+ /**
+@@ -201,7 +202,8 @@ static acpi_status acpi_irq_parse_one_cb(struct acpi_resource *ares,
+ 		return AE_CTRL_TERMINATE;
+ 	case ACPI_RESOURCE_TYPE_EXTENDED_IRQ:
+ 		eirq = &ares->data.extended_irq;
+-		if (eirq->producer_consumer == ACPI_PRODUCER)
++		if (!ctx->skip_producer_check &&
++		    eirq->producer_consumer == ACPI_PRODUCER)
+ 			return AE_OK;
+ 		if (ctx->index >= eirq->interrupt_count) {
+ 			ctx->index -= eirq->interrupt_count;
+@@ -236,8 +238,19 @@ static acpi_status acpi_irq_parse_one_cb(struct acpi_resource *ares,
+ static int acpi_irq_parse_one(acpi_handle handle, unsigned int index,
+ 			      struct irq_fwspec *fwspec, unsigned long *flags)
+ {
+-	struct acpi_irq_parse_one_ctx ctx = { -EINVAL, index, flags, fwspec };
++	struct acpi_irq_parse_one_ctx ctx = { -EINVAL, index, flags, fwspec, false };
+ 
++	/*
++	 * Firmware on arm64-based HPE m400 platform incorrectly marks
++	 * its UART interrupt as ACPI_PRODUCER rather than ACPI_CONSUMER.
++	 * Don't do the producer/consumer check for that device.
++	 */
++	if (IS_ENABLED(CONFIG_ARM64)) {
++		struct acpi_device *adev = acpi_bus_get_acpi_device(handle);
++
++		if (adev && !strcmp(acpi_device_hid(adev), "APMC0D08"))
++			ctx.skip_producer_check = true;
++	}
+ 	acpi_walk_resources(handle, METHOD_NAME__CRS, acpi_irq_parse_one_cb, &ctx);
+ 	return ctx.rc;
+ }
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mark Salter <msalter@redhat.com>
+Date: Thu, 10 May 2018 17:38:44 -0400
+Subject: [PATCH 03/32] aarch64: acpi scan: Fix regression related to X-Gene
+ UARTs
+
+Message-id: <20180510173844.29580-4-msalter@redhat.com>
+Patchwork-id: 214381
+O-Subject: [RHEL-8 BZ1519554 3/3] aarch64: acpi scan: Fix regression related to X-Gene UARTs
+Bugzilla: 1519554
+RH-Acked-by: Al Stone <astone@redhat.com>
+RH-Acked-by: Tony Camuso <tcamuso@redhat.com>
+
+Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1519554
+Brew: https://brewweb.engineering.redhat.com/brew/taskinfo?taskID=16144520
+
+Commit e361d1f85855 ("ACPI / scan: Fix enumeration for special UART
+devices") caused a regression with some X-Gene based platforms (Mustang
+and M400) with invalid DSDT. The DSDT makes it appear that the UART
+device is also a slave device attached to itself. With the above commit
+the UART won't be enumerated by ACPI scan (slave serial devices shouldn't
+be). So check for X-Gene UART device and skip slace device check on it.
+
+Upstream Status: RHEL only
+Signed-off-by: Mark Salter <msalter@redhat.com>
+Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
+---
+ drivers/acpi/scan.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/acpi/scan.c b/drivers/acpi/scan.c
+index 5b54c80b9d32..86c314f8d8a0 100644
+--- a/drivers/acpi/scan.c
++++ b/drivers/acpi/scan.c
+@@ -1720,6 +1720,15 @@ static bool acpi_device_enumeration_by_parent(struct acpi_device *device)
+ 	if (!acpi_match_device_ids(device, i2c_multi_instantiate_ids))
+ 		return false;
+ 
++	/*
++	 * Firmware on some arm64 X-Gene platforms will make the UART
++	 * device appear as both a UART and a slave of that UART. Just
++	 * bail out here for X-Gene UARTs.
++	 */
++	if (IS_ENABLED(CONFIG_ARM64) &&
++	    !strcmp(acpi_device_hid(device), "APMC0D08"))
++		return false;
++
+ 	INIT_LIST_HEAD(&resource_list);
+ 	acpi_dev_get_resources(device, &resource_list,
+ 			       acpi_check_serial_bus_slave,
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mark Salter <msalter@redhat.com>
+Date: Fri, 11 May 2018 21:01:17 -0400
+Subject: [PATCH 04/32] acpi: prefer booting with ACPI over DTS
+
+Message-id: <20180511210117.10457-1-msalter@redhat.com>
+Patchwork-id: 214708
+O-Subject: [RHEL-8 BZ1576869] [RHEL only] acpi: prefer booting with ACPI over DTS
+Bugzilla: 1576869
+RH-Acked-by: Jonathan Toppins <jtoppins@redhat.com>
+RH-Acked-by: Tony Camuso <tcamuso@redhat.com>
+RH-Acked-by: Bhupesh Sharma <bhsharma@redhat.com>
+RH-Acked-by: Dean Nelson <dnelson@redhat.com>
+
+Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1576869
+Brew: https://brewweb.engineering.redhat.com/brew/taskinfo?taskID=16208479
+Testing: Verified kernel defaults to ACPI on Mustang
+
+From: Jonathan Toppins <jtoppins@redhat.com>
+
+    This patch forces ACPI boot tables to be preferred over DTS.
+
+    Currently for ACPI to be used a user either has to set acpi=on on the
+    kernel command line or make sure any device tree passed to the kernel
+    is empty. If the dtb passed to the kernel is non-empty then device-tree
+    will be chosen as the boot method of choice.
+
+    RHEL does not wish to support this boot method so change table boot
+    preferences to use ACPI. In the event ACPI table checks fail the kernel
+    will fallback to using DTS to boot.
+
+    Signed-off-by: Jonathan Toppins <jtoppins@redhat.com>
+
+Upstream Status: RHEL only
+Signed-off-by: Mark Salter <msalter@redhat.com>
+Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
+---
+ arch/arm64/kernel/acpi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/kernel/acpi.c b/arch/arm64/kernel/acpi.c
+index f3851724fe35..cac21da49455 100644
+--- a/arch/arm64/kernel/acpi.c
++++ b/arch/arm64/kernel/acpi.c
+@@ -40,7 +40,7 @@ int acpi_pci_disabled = 1;	/* skip ACPI PCI scan and IRQ initialization */
+ EXPORT_SYMBOL(acpi_pci_disabled);
+ 
+ static bool param_acpi_off __initdata;
+-static bool param_acpi_on __initdata;
++static bool param_acpi_on __initdata = true;
+ static bool param_acpi_force __initdata;
+ 
+ static int __init parse_acpi(char *arg)
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jeremy Cline <jcline@redhat.com>
+Date: Tue, 23 Jul 2019 15:26:09 +0000
+Subject: [PATCH 05/32] tags.sh: Ignore redhat/rpm
+
+Rebased for v5.3-rc1. Commit 95fd3f87bfbe ("kbuild: add a flag to force
+absolute path for srctree") changed the context.
+
+    Message-id: <20180529180112.28376-1-prarit@redhat.com>
+    Patchwork-id: 8101
+    O-Subject: [kernel team] [RHEL8.0 BZ 1582586] scripts/tags.sh: Ignore redhat/rpm
+    Bugzilla: 1582586
+    RH-Acked-by: Tony Camuso <tcamuso@redhat.com>
+    RH-Acked-by: Jarod Wilson <jarod@redhat.com>
+    RH-Acked-by: Neil Horman <nhorman@redhat.com>
+
+    Bugzilla: http://bugzilla.redhat.com/1582586
+    Brew: https://brewweb.devel.redhat.com/taskinfo?taskID=16502319
+
+    RHEL_only.
+
+    If 'make cscope' is run on a tree which has had 'make rh-rpm',
+    'make rh-cross-*', etc., on it, the tags information contains entries
+    from the redhat/rpm/ directories.
+
+    Ignore the tags search in redhat/rpm.
+
+    Backport of RHEL7 464ad7779507 ("[scripts] tags.sh: ignore redhat/rpm").
+
+    Signed-off-by: Prarit Bhargava <prarit@redhat.com>
+    Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
+
+Upstream Status: RHEL only
+Signed-off-by: Jeremy Cline <jcline@redhat.com>
+---
+ scripts/tags.sh | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/scripts/tags.sh b/scripts/tags.sh
+index db8ba411860a..2294fb0f17a9 100755
+--- a/scripts/tags.sh
++++ b/scripts/tags.sh
+@@ -16,6 +16,8 @@ fi
+ ignore="$(echo "$RCS_FIND_IGNORE" | sed 's|\\||g' )"
+ # tags and cscope files should also ignore MODVERSION *.mod.c files
+ ignore="$ignore ( -name *.mod.c ) -prune -o"
++# RHEL tags and cscope should also ignore redhat/rpm
++ignore="$ignore ( -path redhat/rpm ) -prune -o"
+ 
+ # Use make KBUILD_ABS_SRCTREE=1 {tags|cscope}
+ # to force full paths for a non-O= build
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Robert Richter <rrichter@redhat.com>
+Date: Thu, 7 Jun 2018 22:59:32 -0400
+Subject: [PATCH 06/32] Vulcan: AHCI PCI bar fix for Broadcom Vulcan early
+ silicon
+
+Message-id: <1528412373-19128-2-git-send-email-rrichter@redhat.com>
+Patchwork-id: 220950
+O-Subject: [RHEL-8.0 BZ 1563590 v2 1/2] PCI: Vulcan: AHCI PCI bar fix for Broadcom Vulcan early silicon
+Bugzilla: 1563590
+RH-Acked-by: Dean Nelson <dnelson@redhat.com>
+RH-Acked-by: Mark Langsdorf <mlangsdo@redhat.com>
+RH-Acked-by: Mark Salter <msalter@redhat.com>
+
+From: Ashok Kumar Sekar <asekar@redhat.com>
+
+PCI BAR 5 is not setup correctly for the on-board AHCI
+controller on Broadcom's Vulcan processor. Added a quirk to fix BAR 5
+by using BAR 4's resources which are populated correctly but NOT used
+by the AHCI controller actually.
+
+RHEL-only:
+
+Both patches are in RHEL-7.6 also. Inclusion of the patches into RHEL-8
+was discussed. Since there are partners with Ax system configurations it
+was decided to carry them in RHEL8 too. See:
+
+ https://bugzilla.redhat.com/show_bug.cgi?id=1563590#c1
+
+Upstream Status: RHEL only
+Signed-off-by: Ashok Kumar Sekar <asekar@redhat.com>
+Signed-off-by: Jayachandran C <jchandra@broadcom.com>
+Signed-off-by: Robert Richter <rrichter@redhat.com>
+Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
+---
+ drivers/pci/quirks.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
+index 208fa03acdda..88cfaa8ac3b3 100644
+--- a/drivers/pci/quirks.c
++++ b/drivers/pci/quirks.c
+@@ -4269,6 +4269,30 @@ DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_BROADCOM, 0x9000,
+ DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_BROADCOM, 0x9084,
+ 				quirk_bridge_cavm_thrx2_pcie_root);
+ 
++/*
++ * PCI BAR 5 is not setup correctly for the on-board AHCI controller
++ * on Broadcom's Vulcan processor. Added a quirk to fix BAR 5 by
++ * using BAR 4's resources which are populated correctly and NOT
++ * actually used by the AHCI controller.
++ */
++static void quirk_fix_vulcan_ahci_bars(struct pci_dev *dev)
++{
++	struct resource *r =  &dev->resource[4];
++
++	if (!(r->flags & IORESOURCE_MEM) || (r->start == 0))
++		return;
++
++	/* Set BAR5 resource to BAR4 */
++	dev->resource[5] = *r;
++
++	/* Update BAR5 in pci config space */
++	pci_write_config_dword(dev, PCI_BASE_ADDRESS_5, r->start);
++
++	/* Clear BAR4's resource */
++	memset(r, 0, sizeof(*r));
++}
++DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_BROADCOM, 0x9027, quirk_fix_vulcan_ahci_bars);
++
+ /*
+  * Intersil/Techwell TW686[4589]-based video capture cards have an empty (zero)
+  * class code.  Fix it.
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Robert Richter <rrichter@redhat.com>
+Date: Thu, 7 Jun 2018 22:59:33 -0400
+Subject: [PATCH 07/32] ahci: thunderx2: Fix for errata that affects stop
+ engine
+
+Message-id: <1528412373-19128-3-git-send-email-rrichter@redhat.com>
+Patchwork-id: 220952
+O-Subject: [RHEL-8.0 BZ 1563590 v2 2/2] ahci: thunderx2: Fix for errata that affects stop engine
+Bugzilla: 1563590
+RH-Acked-by: Dean Nelson <dnelson@redhat.com>
+RH-Acked-by: Mark Langsdorf <mlangsdo@redhat.com>
+RH-Acked-by: Mark Salter <msalter@redhat.com>
+
+From: Jayachandran C <jnair@caviumnetworks.com>
+
+Apply workaround for this errata:
+  Synopsis: Resetting PxCMD.ST may hang the SATA device
+
+  Description: An internal ping-pong buffer state is not reset
+  correctly for an PxCMD.ST=0 command for a SATA channel. This
+  may cause the SATA interface to hang when a PxCMD.ST=0 command
+  is received.
+
+  Workaround: A SATA_BIU_CORE_ENABLE.sw_init_bsi must be asserted
+  by the driver whenever the PxCMD.ST needs to be de-asserted. This
+  will reset both the ports. So, it may not always work in a 2
+  channel SATA system.
+
+  Resolution: Fix in B0.
+
+Add the code to ahci_stop_engine() to do this. It is not easy to
+stop the other "port" since it is associated with a different AHCI
+interface. Please note that with this fix, SATA reset does not
+hang any more, but it can cause failures on the other interface
+if that is in active use.
+
+Unfortunately, we have nothing other the the CPU ID to check if the
+SATA block has this issue.
+
+RHEL-only:
+
+Both patches are in RHEL-7.6 also. Inclusion of the patches into RHEL-8
+was discussed. Since there are partners with Ax system configurations it
+was decided to carry them in RHEL8 too. See:
+
+ https://bugzilla.redhat.com/show_bug.cgi?id=1563590#c1
+
+[v3 with new delays]
+Signed-off-by: Jayachandran C <jnair@caviumnetworks.com>
+
+Upstream Status: RHEL only
+Signed-off-by: Robert Richter <rrichter@redhat.com>
+Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
+---
+ drivers/ata/libahci.c | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/drivers/ata/libahci.c b/drivers/ata/libahci.c
+index 395772fa3943..35aa1b420262 100644
+--- a/drivers/ata/libahci.c
++++ b/drivers/ata/libahci.c
+@@ -672,6 +672,24 @@ int ahci_stop_engine(struct ata_port *ap)
+ 	tmp &= ~PORT_CMD_START;
+ 	writel(tmp, port_mmio + PORT_CMD);
+ 
++#ifdef CONFIG_ARM64
++	/* Rev Ax of Cavium CN99XX needs a hack for port stop */
++	if (dev_is_pci(ap->host->dev) &&
++	    to_pci_dev(ap->host->dev)->vendor == 0x14e4 &&
++	    to_pci_dev(ap->host->dev)->device == 0x9027 &&
++	    midr_is_cpu_model_range(read_cpuid_id(),
++			MIDR_CPU_MODEL(ARM_CPU_IMP_BRCM, BRCM_CPU_PART_VULCAN),
++			MIDR_CPU_VAR_REV(0, 0),
++			MIDR_CPU_VAR_REV(0, MIDR_REVISION_MASK))) {
++		tmp = readl(hpriv->mmio + 0x8000);
++		udelay(100);
++		writel(tmp | (1 << 26), hpriv->mmio + 0x8000);
++		udelay(100);
++		writel(tmp & ~(1 << 26), hpriv->mmio + 0x8000);
++		dev_warn(ap->host->dev, "CN99XX SATA reset workaround applied\n");
++	}
++#endif
++
+ 	/* wait for engine to stop. This could be as long as 500 msec */
+ 	tmp = ata_wait_register(ap, port_mmio + PORT_CMD,
+ 				PORT_CMD_LIST_ON, PORT_CMD_LIST_ON, 1, 500);
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Laura Abbott <labbott@redhat.com>
+Date: Sun, 10 Feb 2019 01:27:54 +0000
+Subject: [PATCH 08/32] ipmi: do not configure ipmi for HPE m400
+
+Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1670017
+Brew: https://brewweb.engineering.redhat.com/brew/taskinfo?taskID=20147017
+
+Commit 913a89f009d9 ("ipmi: Don't initialize anything in the core until
+something uses it") added new locking which broke context.
+
+    Message-id: <20180713142210.15700-1-tcamuso@redhat.com>
+    Patchwork-id: 224899
+    O-Subject: [RHEL8 BZ 1583537 1/1] ipmi: do not configure ipmi for HPE m400
+    Bugzilla: 1583537
+    RH-Acked-by: Dean Nelson <dnelson@redhat.com>
+    RH-Acked-by: Al Stone <ahs3@redhat.com>
+    RH-Acked-by: Mark Salter <msalter@redhat.com>
+
+    bugzilla:https://bugzilla.redhat.com/show_bug.cgi?id=1583537
+    brew: https://brewweb.engineering.redhat.com/brew/taskinfo?taskID=17150528
+
+    RHEL-only
+
+    The ARM-based HPE m400 reports host-side ipmi as residing in intel
+    port-io space, which does not exist in ARM processors. Therefore, when
+    running on an m400, host-side ipmi configuration code must simply return
+    zero without trying to configure the host-side ipmi.
+
+    This patch prevents panic on boot by averting attempts to configure
+    host-side ipmi on this platform.
+
+    Though HPE m400 is not certified with RHEL, and HPE has relegated it to
+    EOL status, the platform is still used extensively in ARM development
+    and test for RHEL.
+
+    Testing:
+    Boot without blacklisting ipmi and check to see that no ipmi modules
+    are loaded.
+
+    Signed-off-by: Tony Camuso <tcamuso@redhat.com>
+
+    cc: Prarit Bhargava <prarit@redhat.com>
+    cc: Brendan Conoboy <blc@redhat.com>
+    cc: Jeff Bastian <jbastian@redhat.com>
+    cc: Scott Herold <sherold@redhat.com>
+    Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
+
+Upstream Status: RHEL only
+Signed-off-by: Laura Abbott <labbott@redhat.com>
+Acked-by: Tony Camuso <tcamuso@redhat.com>
+Acked-by: Dean Nelson <dnelson@redhat.com>
+Acked-by: Jarod Wilson <jarod@redhat.com>
+Acked-by: Mark Salter <msalter@redhat.com>
+---
+ drivers/char/ipmi/ipmi_dmi.c        | 15 +++++++++++++++
+ drivers/char/ipmi/ipmi_msghandler.c | 16 +++++++++++++++-
+ 2 files changed, 30 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/char/ipmi/ipmi_dmi.c b/drivers/char/ipmi/ipmi_dmi.c
+index bbf7029e224b..cf7faa970dd6 100644
+--- a/drivers/char/ipmi/ipmi_dmi.c
++++ b/drivers/char/ipmi/ipmi_dmi.c
+@@ -215,6 +215,21 @@ static int __init scan_for_dmi_ipmi(void)
+ {
+ 	const struct dmi_device *dev = NULL;
+ 
++#ifdef CONFIG_ARM64
++	/* RHEL-only
++	 * If this is ARM-based HPE m400, return now, because that platform
++	 * reports the host-side ipmi address as intel port-io space, which
++	 * does not exist in the ARM architecture.
++	 */
++	const char *dmistr = dmi_get_system_info(DMI_PRODUCT_NAME);
++
++	if (dmistr && (strcmp("ProLiant m400 Server", dmistr) == 0)) {
++		pr_debug("%s does not support host ipmi\n", dmistr);
++		return 0;
++	}
++	/* END RHEL-only */
++#endif
++
+ 	while ((dev = dmi_find_device(DMI_DEV_TYPE_IPMI, NULL, dev)))
+ 		dmi_decode_ipmi((const struct dmi_header *) dev->device_data);
+ 
+diff --git a/drivers/char/ipmi/ipmi_msghandler.c b/drivers/char/ipmi/ipmi_msghandler.c
+index b404cc46cbda..c74d611bcb79 100644
+--- a/drivers/char/ipmi/ipmi_msghandler.c
++++ b/drivers/char/ipmi/ipmi_msghandler.c
+@@ -35,6 +35,7 @@
+ #include <linux/uuid.h>
+ #include <linux/nospec.h>
+ #include <linux/vmalloc.h>
++#include <linux/dmi.h>
+ #include <linux/delay.h>
+ 
+ #define IPMI_DRIVER_VERSION "39.2"
+@@ -5173,8 +5174,21 @@ static int __init ipmi_init_msghandler_mod(void)
+ {
+ 	int rv;
+ 
+-	pr_info("version " IPMI_DRIVER_VERSION "\n");
++#ifdef CONFIG_ARM64
++	/* RHEL-only
++	 * If this is ARM-based HPE m400, return now, because that platform
++	 * reports the host-side ipmi address as intel port-io space, which
++	 * does not exist in the ARM architecture.
++	 */
++	const char *dmistr = dmi_get_system_info(DMI_PRODUCT_NAME);
+ 
++	if (dmistr && (strcmp("ProLiant m400 Server", dmistr) == 0)) {
++		pr_debug("%s does not support host ipmi\n", dmistr);
++		return -ENOSYS;
++	}
++	/* END RHEL-only */
++#endif
++	pr_info("version " IPMI_DRIVER_VERSION "\n");
+ 	mutex_lock(&ipmi_interfaces_mutex);
+ 	rv = ipmi_register_driver();
+ 	mutex_unlock(&ipmi_interfaces_mutex);
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Laura Abbott <labbott@redhat.com>
+Date: Mon, 20 May 2019 22:21:02 -0400
+Subject: [PATCH 09/32] iommu/arm-smmu: workaround DMA mode issues
+
+Message-id: <20190520222102.19488-1-labbott@redhat.com>
+Patchwork-id: 259215
+O-Subject: [ARK INTERNAL PATCH] iommu/arm-smmu: workaround DMA mode issues
+Bugzilla:
+RH-Acked-by: Mark Langsdorf <mlangsdo@redhat.com>
+RH-Acked-by: Mark Salter <msalter@redhat.com>
+
+From: Mark Salter <msalter@redhat.com>
+
+Rebased for v5.2-rc1
+
+	Bugzilla: 1652259
+	Brew: https://brewweb.engineering.redhat.com/brew/taskinfo?taskID=19244562
+	Upstream status: RHEL only.
+
+	rhel8 commit 65feb1ed0ec9a088a63a90d46c0f7563ac96ad0f
+	Author: Mark Salter <msalter@redhat.com>
+	Date:   Wed Nov 21 17:15:59 2018 +0100
+
+	    [iommu] iommu/arm-smmu: workaround DMA mode issues
+
+	    Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1624077
+	    Brew: https://brewweb.engineering.redhat.com/brew/taskinfo?taskID=18112820
+	    Testing: Verified iommu.passthrough=1 no longer needed on gigabyte platforms.
+	    Upstream Status: RHEL-only
+
+	    In RHEL_ALT 7.5 we carried a RHEL-only patch which forced the arm smmuv2
+	    into bypass mode due to performance issues on CN88xx. This was intended
+	    to be a temporary hack until the issues were resolved. Another vendor
+	    had issues with the iommu in bypass mode so we reverted the RHEL-only
+	    patch so that iommu is in DMA mode by default (upstream default).
+
+	    It turns on that there are remaining SMMU DMA mode issues on Gigabyte
+	    platformws with CN88xx cpus. The problem manifests itself by pcie
+	    card drivers failing to initialize the cards when SMMU is in DMA mode.
+	    The root cause has not been determined yet, but looks likely to be
+	    a hw or firmware issue. This patch forces bypass mode for Gigabyte
+	    platforms. CN88xx isn't officially supported in RHEL but we have a
+	    lot of them being used internally for testing, so I think we want
+	    this to support that use case in RHEL8.
+
+	    Signed-off-by: Mark Salter <msalter@redhat.com>
+	    Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
+
+	Acked-by: Mark Salter <msalter@redhat.com>
+	Acked-by: Donald Dutile <ddutile@redhat.com>
+
+Upstream Status: RHEL only
+Signed-off-by: Laura Abbott <labbott@redhat.com>
+---
+ drivers/iommu/iommu.c | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+diff --git a/drivers/iommu/iommu.c b/drivers/iommu/iommu.c
+index 3303d707bab4..372edaaafaa1 100644
+--- a/drivers/iommu/iommu.c
++++ b/drivers/iommu/iommu.c
+@@ -7,6 +7,7 @@
+ #define pr_fmt(fmt)    "iommu: " fmt
+ 
+ #include <linux/device.h>
++#include <linux/dmi.h>
+ #include <linux/dma-iommu.h>
+ #include <linux/kernel.h>
+ #include <linux/bits.h>
+@@ -3118,6 +3119,27 @@ u32 iommu_sva_get_pasid(struct iommu_sva *handle)
+ }
+ EXPORT_SYMBOL_GPL(iommu_sva_get_pasid);
+ 
++#ifdef CONFIG_ARM64
++static int __init iommu_quirks(void)
++{
++	const char *vendor, *name;
++
++	vendor = dmi_get_system_info(DMI_SYS_VENDOR);
++	name = dmi_get_system_info(DMI_PRODUCT_NAME);
++
++	if (vendor &&
++	    (strncmp(vendor, "GIGABYTE", 8) == 0 && name &&
++	     (strncmp(name, "R120", 4) == 0 ||
++	      strncmp(name, "R270", 4) == 0))) {
++		pr_warn("Gigabyte %s detected, force iommu passthrough mode", name);
++		iommu_def_domain_type = IOMMU_DOMAIN_IDENTITY;
++	}
++
++	return 0;
++}
++arch_initcall(iommu_quirks);
++#endif
++
+ /*
+  * Changes the default domain of an iommu group that has *only* one device
+  *
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jeremy Cline <jcline@redhat.com>
+Date: Tue, 1 Oct 2019 15:51:23 +0000
+Subject: [PATCH 10/32] arm: aarch64: Drop the EXPERT setting from
+ ARM64_FORCE_52BIT
+
+Message-id: <20191001181256.22935-1-jcline@redhat.com>
+Patchwork-id: 275498
+O-Subject: [ARK INTERNAL PATCH] [ARK INTERNAL PATCH] [redhat] Add patch
+    to drop the EXPERT setting from ARM64_FORCE_52BIT
+Bugzilla:
+RH-Acked-by: Laura Abbott <labbott@redhat.com>
+
+We don't turn on EXPERT as there are few settings we actually want to
+mess with. Remove the dependency for ARM64_FORCE_52BIT as we do want
+that on in debug builds to help find 52-bit bugs.
+
+Upstream Status: RHEL only
+Signed-off-by: Jeremy Cline <jcline@redhat.com>
+---
+ arch/arm64/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
+index fee914c716aa..c987f305f429 100644
+--- a/arch/arm64/Kconfig
++++ b/arch/arm64/Kconfig
+@@ -911,7 +911,7 @@ endchoice
+ 
+ config ARM64_FORCE_52BIT
+ 	bool "Force 52-bit virtual addresses for userspace"
+-	depends on ARM64_VA_BITS_52 && EXPERT
++	depends on ARM64_VA_BITS_52
+ 	help
+ 	  For systems with 52-bit userspace VAs enabled, the kernel will attempt
+ 	  to maintain compatibility with older software by providing 48-bit VAs
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Peter Jones <pjones@redhat.com>
+Date: Mon, 2 Oct 2017 18:22:13 -0400
+Subject: [PATCH 11/32] Add efi_status_to_str() and rework efi_status_to_err().
+
+This adds efi_status_to_str() for use when printing efi_status_t
+messages, and reworks efi_status_to_err() so that the two use a common
+list of errors.
+
+Upstream Status: RHEL only
+Signed-off-by: Peter Jones <pjones@redhat.com>
+---
+ drivers/firmware/efi/efi.c | 124 +++++++++++++++++++++++++++----------
+ include/linux/efi.h        |   3 +
+ 2 files changed, 96 insertions(+), 31 deletions(-)
+
+diff --git a/drivers/firmware/efi/efi.c b/drivers/firmware/efi/efi.c
+index 847f33ffc4ae..363037f8eaf8 100644
+--- a/drivers/firmware/efi/efi.c
++++ b/drivers/firmware/efi/efi.c
+@@ -31,6 +31,7 @@
+ #include <linux/ucs2_string.h>
+ #include <linux/memblock.h>
+ #include <linux/security.h>
++#include <linux/bsearch.h>
+ 
+ #include <asm/early_ioremap.h>
+ 
+@@ -841,40 +842,101 @@ int efi_mem_type(unsigned long phys_addr)
+ }
+ #endif
+ 
++struct efi_error_code {
++	efi_status_t status;
++	int errno;
++	const char *description;
++};
++
++static const struct efi_error_code efi_error_codes[] = {
++	{ EFI_SUCCESS, 0, "Success"},
++#if 0
++	{ EFI_LOAD_ERROR, -EPICK_AN_ERRNO, "Load Error"},
++#endif
++	{ EFI_INVALID_PARAMETER, -EINVAL, "Invalid Parameter"},
++	{ EFI_UNSUPPORTED, -ENOSYS, "Unsupported"},
++	{ EFI_BAD_BUFFER_SIZE, -ENOSPC, "Bad Buffer Size"},
++	{ EFI_BUFFER_TOO_SMALL, -ENOSPC, "Buffer Too Small"},
++	{ EFI_NOT_READY, -EAGAIN, "Not Ready"},
++	{ EFI_DEVICE_ERROR, -EIO, "Device Error"},
++	{ EFI_WRITE_PROTECTED, -EROFS, "Write Protected"},
++	{ EFI_OUT_OF_RESOURCES, -ENOMEM, "Out of Resources"},
++#if 0
++	{ EFI_VOLUME_CORRUPTED, -EPICK_AN_ERRNO, "Volume Corrupt"},
++	{ EFI_VOLUME_FULL, -EPICK_AN_ERRNO, "Volume Full"},
++	{ EFI_NO_MEDIA, -EPICK_AN_ERRNO, "No Media"},
++	{ EFI_MEDIA_CHANGED, -EPICK_AN_ERRNO, "Media changed"},
++#endif
++	{ EFI_NOT_FOUND, -ENOENT, "Not Found"},
++#if 0
++	{ EFI_ACCESS_DENIED, -EPICK_AN_ERRNO, "Access Denied"},
++	{ EFI_NO_RESPONSE, -EPICK_AN_ERRNO, "No Response"},
++	{ EFI_NO_MAPPING, -EPICK_AN_ERRNO, "No mapping"},
++	{ EFI_TIMEOUT, -EPICK_AN_ERRNO, "Time out"},
++	{ EFI_NOT_STARTED, -EPICK_AN_ERRNO, "Not started"},
++	{ EFI_ALREADY_STARTED, -EPICK_AN_ERRNO, "Already started"},
++#endif
++	{ EFI_ABORTED, -EINTR, "Aborted"},
++#if 0
++	{ EFI_ICMP_ERROR, -EPICK_AN_ERRNO, "ICMP Error"},
++	{ EFI_TFTP_ERROR, -EPICK_AN_ERRNO, "TFTP Error"},
++	{ EFI_PROTOCOL_ERROR, -EPICK_AN_ERRNO, "Protocol Error"},
++	{ EFI_INCOMPATIBLE_VERSION, -EPICK_AN_ERRNO, "Incompatible Version"},
++#endif
++	{ EFI_SECURITY_VIOLATION, -EACCES, "Security Policy Violation"},
++#if 0
++	{ EFI_CRC_ERROR, -EPICK_AN_ERRNO, "CRC Error"},
++	{ EFI_END_OF_MEDIA, -EPICK_AN_ERRNO, "End of Media"},
++	{ EFI_END_OF_FILE, -EPICK_AN_ERRNO, "End of File"},
++	{ EFI_INVALID_LANGUAGE, -EPICK_AN_ERRNO, "Invalid Languages"},
++	{ EFI_COMPROMISED_DATA, -EPICK_AN_ERRNO, "Compromised Data"},
++
++	// warnings
++	{ EFI_WARN_UNKOWN_GLYPH, -EPICK_AN_ERRNO, "Warning Unknown Glyph"},
++	{ EFI_WARN_DELETE_FAILURE, -EPICK_AN_ERRNO, "Warning Delete Failure"},
++	{ EFI_WARN_WRITE_FAILURE, -EPICK_AN_ERRNO, "Warning Write Failure"},
++	{ EFI_WARN_BUFFER_TOO_SMALL, -EPICK_AN_ERRNO, "Warning Buffer Too Small"},
++#endif
++};
++
++static int
++efi_status_cmp_bsearch(const void *key, const void *item)
++{
++	u64 status = (u64)(uintptr_t)key;
++	struct efi_error_code *code = (struct efi_error_code *)item;
++
++	if (status < code->status)
++		return -1;
++	if (status > code->status)
++		return 1;
++	return 0;
++}
++
+ int efi_status_to_err(efi_status_t status)
+ {
+-	int err;
+-
+-	switch (status) {
+-	case EFI_SUCCESS:
+-		err = 0;
+-		break;
+-	case EFI_INVALID_PARAMETER:
+-		err = -EINVAL;
+-		break;
+-	case EFI_OUT_OF_RESOURCES:
+-		err = -ENOSPC;
+-		break;
+-	case EFI_DEVICE_ERROR:
+-		err = -EIO;
+-		break;
+-	case EFI_WRITE_PROTECTED:
+-		err = -EROFS;
+-		break;
+-	case EFI_SECURITY_VIOLATION:
+-		err = -EACCES;
+-		break;
+-	case EFI_NOT_FOUND:
+-		err = -ENOENT;
+-		break;
+-	case EFI_ABORTED:
+-		err = -EINTR;
+-		break;
+-	default:
+-		err = -EINVAL;
+-	}
++	struct efi_error_code *found;
++	size_t num = sizeof(efi_error_codes) / sizeof(struct efi_error_code);
+ 
+-	return err;
++	found = bsearch((void *)(uintptr_t)status, efi_error_codes,
++			sizeof(struct efi_error_code), num,
++			efi_status_cmp_bsearch);
++	if (!found)
++		return -EINVAL;
++	return found->errno;
++}
++
++const char *
++efi_status_to_str(efi_status_t status)
++{
++	struct efi_error_code *found;
++	size_t num = sizeof(efi_error_codes) / sizeof(struct efi_error_code);
++
++	found = bsearch((void *)(uintptr_t)status, efi_error_codes,
++			sizeof(struct efi_error_code), num,
++			efi_status_cmp_bsearch);
++	if (!found)
++		return "Unknown error code";
++	return found->description;
+ }
+ 
+ static DEFINE_SPINLOCK(efi_mem_reserve_persistent_lock);
+diff --git a/include/linux/efi.h b/include/linux/efi.h
+index 6b5d36babfcc..cbac8a7db3bd 100644
+--- a/include/linux/efi.h
++++ b/include/linux/efi.h
+@@ -43,6 +43,8 @@
+ #define EFI_ABORTED		(21 | (1UL << (BITS_PER_LONG-1)))
+ #define EFI_SECURITY_VIOLATION	(26 | (1UL << (BITS_PER_LONG-1)))
+ 
++#define EFI_IS_ERROR(x)		((x) & (1UL << (BITS_PER_LONG-1)))
++
+ typedef unsigned long efi_status_t;
+ typedef u8 efi_bool_t;
+ typedef u16 efi_char16_t;		/* UNICODE character */
+@@ -825,6 +827,7 @@ static inline bool efi_rt_services_supported(unsigned int mask)
+ #endif
+ 
+ extern int efi_status_to_err(efi_status_t status);
++extern const char *efi_status_to_str(efi_status_t status);
+ 
+ /*
+  * Variable Attributes
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Peter Jones <pjones@redhat.com>
+Date: Mon, 2 Oct 2017 18:18:30 -0400
+Subject: [PATCH 12/32] Make get_cert_list() use efi_status_to_str() to print
+ error messages.
+
+Upstream Status: RHEL only
+Signed-off-by: Peter Jones <pjones@redhat.com>
+Signed-off-by: Jeremy Cline <jcline@redhat.com>
+---
+ security/integrity/platform_certs/load_uefi.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/security/integrity/platform_certs/load_uefi.c b/security/integrity/platform_certs/load_uefi.c
+index f290f78c3f30..d3e7ae04f5be 100644
+--- a/security/integrity/platform_certs/load_uefi.c
++++ b/security/integrity/platform_certs/load_uefi.c
+@@ -46,7 +46,8 @@ static __init void *get_cert_list(efi_char16_t *name, efi_guid_t *guid,
+ 		return NULL;
+ 
+ 	if (*status != EFI_BUFFER_TOO_SMALL) {
+-		pr_err("Couldn't get size: 0x%lx\n", *status);
++		pr_err("Couldn't get size: %s (0x%lx)\n",
++		       efi_status_to_str(*status), *status);
+ 		return NULL;
+ 	}
+ 
+@@ -57,7 +58,8 @@ static __init void *get_cert_list(efi_char16_t *name, efi_guid_t *guid,
+ 	*status = efi.get_variable(name, guid, NULL, &lsize, db);
+ 	if (*status != EFI_SUCCESS) {
+ 		kfree(db);
+-		pr_err("Error reading db var: 0x%lx\n", *status);
++		pr_err("Error reading db var: %s (0x%lx)\n",
++		       efi_status_to_str(*status), *status);
+ 		return NULL;
+ 	}
+ 
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jeremy Cline <jcline@redhat.com>
+Date: Mon, 30 Sep 2019 21:22:47 +0000
+Subject: [PATCH 13/32] security: lockdown: expose a hook to lock the kernel
+ down
+
+In order to automatically lock down kernels running on UEFI machines
+booted in Secure Boot mode, expose the lock_kernel_down() hook.
+
+Upstream Status: RHEL only
+Signed-off-by: Jeremy Cline <jcline@redhat.com>
+---
+ include/linux/lsm_hook_defs.h | 2 ++
+ include/linux/lsm_hooks.h     | 6 ++++++
+ include/linux/security.h      | 5 +++++
+ security/lockdown/lockdown.c  | 1 +
+ security/security.c           | 6 ++++++
+ 5 files changed, 20 insertions(+)
+
+diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
+index 61590c1f2d33..4c10750865c2 100644
+--- a/include/linux/lsm_hook_defs.h
++++ b/include/linux/lsm_hook_defs.h
+@@ -394,6 +394,8 @@ LSM_HOOK(void, LSM_RET_VOID, bpf_prog_free_security, struct bpf_prog_aux *aux)
+ #endif /* CONFIG_BPF_SYSCALL */
+ 
+ LSM_HOOK(int, 0, locked_down, enum lockdown_reason what)
++LSM_HOOK(int, 0, lock_kernel_down, const char *where, enum lockdown_reason level)
++
+ 
+ #ifdef CONFIG_PERF_EVENTS
+ LSM_HOOK(int, 0, perf_event_open, struct perf_event_attr *attr, int type)
+diff --git a/include/linux/lsm_hooks.h b/include/linux/lsm_hooks.h
+index 59024618554e..ab9ca4d393da 100644
+--- a/include/linux/lsm_hooks.h
++++ b/include/linux/lsm_hooks.h
+@@ -1545,6 +1545,12 @@
+  *
+  *     @what: kernel feature being accessed
+  *
++ * @lock_kernel_down
++ * 	Put the kernel into lock-down mode.
++ *
++ * 	@where: Where the lock-down is originating from (e.g. command line option)
++ * 	@level: The lock-down level (can only increase)
++ *
+  * Security hooks for perf events
+  *
+  * @perf_event_open:
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 46a02ce34d00..37e991a10d70 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -472,6 +472,7 @@ int security_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen);
+ int security_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen);
+ int security_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen);
+ int security_locked_down(enum lockdown_reason what);
++int security_lock_kernel_down(const char *where, enum lockdown_reason level);
+ #else /* CONFIG_SECURITY */
+ 
+ static inline int call_blocking_lsm_notifier(enum lsm_event event, void *data)
+@@ -1353,6 +1354,10 @@ static inline int security_locked_down(enum lockdown_reason what)
+ {
+ 	return 0;
+ }
++static inline int security_lock_kernel_down(const char *where, enum lockdown_reason level)
++{
++	return 0;
++}
+ #endif	/* CONFIG_SECURITY */
+ 
+ #if defined(CONFIG_SECURITY) && defined(CONFIG_WATCH_QUEUE)
+diff --git a/security/lockdown/lockdown.c b/security/lockdown/lockdown.c
+index 87cbdc64d272..18555cf18da7 100644
+--- a/security/lockdown/lockdown.c
++++ b/security/lockdown/lockdown.c
+@@ -73,6 +73,7 @@ static int lockdown_is_locked_down(enum lockdown_reason what)
+ 
+ static struct security_hook_list lockdown_hooks[] __lsm_ro_after_init = {
+ 	LSM_HOOK_INIT(locked_down, lockdown_is_locked_down),
++	LSM_HOOK_INIT(lock_kernel_down, lock_kernel_down),
+ };
+ 
+ static int __init lockdown_lsm_init(void)
+diff --git a/security/security.c b/security/security.c
+index 67264cb08fb3..85a0227bfac1 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -2599,6 +2599,12 @@ int security_locked_down(enum lockdown_reason what)
+ }
+ EXPORT_SYMBOL(security_locked_down);
+ 
++int security_lock_kernel_down(const char *where, enum lockdown_reason level)
++{
++	return call_int_hook(lock_kernel_down, 0, where, level);
++}
++EXPORT_SYMBOL(security_lock_kernel_down);
++
+ #ifdef CONFIG_PERF_EVENTS
+ int security_perf_event_open(struct perf_event_attr *attr, int type)
+ {
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: David Howells <dhowells@redhat.com>
+Date: Tue, 27 Feb 2018 10:04:55 +0000
+Subject: [PATCH 14/32] efi: Add an EFI_SECURE_BOOT flag to indicate secure
+ boot mode
+
+UEFI machines can be booted in Secure Boot mode.  Add an EFI_SECURE_BOOT
+flag that can be passed to efi_enabled() to find out whether secure boot is
+enabled.
+
+Move the switch-statement in x86's setup_arch() that inteprets the
+secure_boot boot parameter to generic code and set the bit there.
+
+Upstream Status: RHEL only
+Suggested-by: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Signed-off-by: David Howells <dhowells@redhat.com>
+Reviewed-by: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+cc: linux-efi@vger.kernel.org
+[Rebased for context; efi_is_table_address was moved to arch/x86]
+Signed-off-by: Jeremy Cline <jcline@redhat.com>
+---
+ arch/x86/kernel/setup.c           | 14 +-----------
+ drivers/firmware/efi/Makefile     |  1 +
+ drivers/firmware/efi/secureboot.c | 38 +++++++++++++++++++++++++++++++
+ include/linux/efi.h               | 19 ++++++++++------
+ 4 files changed, 52 insertions(+), 20 deletions(-)
+ create mode 100644 drivers/firmware/efi/secureboot.c
+
+diff --git a/arch/x86/kernel/setup.c b/arch/x86/kernel/setup.c
+index d71267081153..da9c2e03a179 100644
+--- a/arch/x86/kernel/setup.c
++++ b/arch/x86/kernel/setup.c
+@@ -1106,19 +1106,7 @@ void __init setup_arch(char **cmdline_p)
+ 	/* Allocate bigger log buffer */
+ 	setup_log_buf(1);
+ 
+-	if (efi_enabled(EFI_BOOT)) {
+-		switch (boot_params.secure_boot) {
+-		case efi_secureboot_mode_disabled:
+-			pr_info("Secure boot disabled\n");
+-			break;
+-		case efi_secureboot_mode_enabled:
+-			pr_info("Secure boot enabled\n");
+-			break;
+-		default:
+-			pr_info("Secure boot could not be determined\n");
+-			break;
+-		}
+-	}
++	efi_set_secure_boot(boot_params.secure_boot);
+ 
+ 	reserve_initrd();
+ 
+diff --git a/drivers/firmware/efi/Makefile b/drivers/firmware/efi/Makefile
+index c02ff25dd477..d860f8eb9a81 100644
+--- a/drivers/firmware/efi/Makefile
++++ b/drivers/firmware/efi/Makefile
+@@ -28,6 +28,7 @@ obj-$(CONFIG_EFI_FAKE_MEMMAP)		+= fake_map.o
+ obj-$(CONFIG_EFI_BOOTLOADER_CONTROL)	+= efibc.o
+ obj-$(CONFIG_EFI_TEST)			+= test/
+ obj-$(CONFIG_EFI_DEV_PATH_PARSER)	+= dev-path-parser.o
++obj-$(CONFIG_EFI)			+= secureboot.o
+ obj-$(CONFIG_APPLE_PROPERTIES)		+= apple-properties.o
+ obj-$(CONFIG_EFI_RCI2_TABLE)		+= rci2-table.o
+ obj-$(CONFIG_EFI_EMBEDDED_FIRMWARE)	+= embedded-firmware.o
+diff --git a/drivers/firmware/efi/secureboot.c b/drivers/firmware/efi/secureboot.c
+new file mode 100644
+index 000000000000..de0a3714a5d4
+--- /dev/null
++++ b/drivers/firmware/efi/secureboot.c
+@@ -0,0 +1,38 @@
++/* Core kernel secure boot support.
++ *
++ * Copyright (C) 2017 Red Hat, Inc. All Rights Reserved.
++ * Written by David Howells (dhowells@redhat.com)
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public Licence
++ * as published by the Free Software Foundation; either version
++ * 2 of the Licence, or (at your option) any later version.
++ */
++
++#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
++
++#include <linux/efi.h>
++#include <linux/kernel.h>
++#include <linux/printk.h>
++
++/*
++ * Decide what to do when UEFI secure boot mode is enabled.
++ */
++void __init efi_set_secure_boot(enum efi_secureboot_mode mode)
++{
++	if (efi_enabled(EFI_BOOT)) {
++		switch (mode) {
++		case efi_secureboot_mode_disabled:
++			pr_info("Secure boot disabled\n");
++			break;
++		case efi_secureboot_mode_enabled:
++			set_bit(EFI_SECURE_BOOT, &efi.flags);
++			pr_info("Secure boot enabled\n");
++			break;
++		default:
++			pr_warn("Secure boot could not be determined (mode %u)\n",
++				   mode);
++			break;
++		}
++	}
++}
+diff --git a/include/linux/efi.h b/include/linux/efi.h
+index cbac8a7db3bd..fd4a5d66a9d0 100644
+--- a/include/linux/efi.h
++++ b/include/linux/efi.h
+@@ -784,6 +784,14 @@ extern int __init efi_setup_pcdp_console(char *);
+ #define EFI_MEM_ATTR		10	/* Did firmware publish an EFI_MEMORY_ATTRIBUTES table? */
+ #define EFI_MEM_NO_SOFT_RESERVE	11	/* Is the kernel configured to ignore soft reservations? */
+ #define EFI_PRESERVE_BS_REGIONS	12	/* Are EFI boot-services memory segments available? */
++#define EFI_SECURE_BOOT		13	/* Are we in Secure Boot mode? */
++
++enum efi_secureboot_mode {
++	efi_secureboot_mode_unset,
++	efi_secureboot_mode_unknown,
++	efi_secureboot_mode_disabled,
++	efi_secureboot_mode_enabled,
++};
+ 
+ #ifdef CONFIG_EFI
+ /*
+@@ -795,6 +803,8 @@ static inline bool efi_enabled(int feature)
+ }
+ extern void efi_reboot(enum reboot_mode reboot_mode, const char *__unused);
+ 
++extern void __init efi_set_secure_boot(enum efi_secureboot_mode mode);
++
+ bool __pure __efi_soft_reserve_enabled(void);
+ 
+ static inline bool __pure efi_soft_reserve_enabled(void)
+@@ -815,6 +825,8 @@ static inline bool efi_enabled(int feature)
+ static inline void
+ efi_reboot(enum reboot_mode reboot_mode, const char *__unused) {}
+ 
++static inline void efi_set_secure_boot(enum efi_secureboot_mode mode) {}
++
+ static inline bool efi_soft_reserve_enabled(void)
+ {
+ 	return false;
+@@ -1080,13 +1092,6 @@ static inline bool efi_runtime_disabled(void) { return true; }
+ extern void efi_call_virt_check_flags(unsigned long flags, const char *call);
+ extern unsigned long efi_call_virt_save_flags(void);
+ 
+-enum efi_secureboot_mode {
+-	efi_secureboot_mode_unset,
+-	efi_secureboot_mode_unknown,
+-	efi_secureboot_mode_disabled,
+-	efi_secureboot_mode_enabled,
+-};
+-
+ static inline
+ enum efi_secureboot_mode efi_get_secureboot_mode(efi_get_variable_t *get_var)
+ {
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: David Howells <dhowells@redhat.com>
+Date: Mon, 30 Sep 2019 21:28:16 +0000
+Subject: [PATCH 15/32] efi: Lock down the kernel if booted in secure boot mode
+
+UEFI Secure Boot provides a mechanism for ensuring that the firmware
+will only load signed bootloaders and kernels.  Certain use cases may
+also require that all kernel modules also be signed.  Add a
+configuration option that to lock down the kernel - which includes
+requiring validly signed modules - if the kernel is secure-booted.
+
+Upstream Status: RHEL only
+Signed-off-by: David Howells <dhowells@redhat.com>
+Signed-off-by: Jeremy Cline <jcline@redhat.com>
+---
+ arch/x86/kernel/setup.c   |  8 ++++++++
+ security/lockdown/Kconfig | 13 +++++++++++++
+ 2 files changed, 21 insertions(+)
+
+diff --git a/arch/x86/kernel/setup.c b/arch/x86/kernel/setup.c
+index da9c2e03a179..5f7b1c67ddcc 100644
+--- a/arch/x86/kernel/setup.c
++++ b/arch/x86/kernel/setup.c
+@@ -20,6 +20,7 @@
+ #include <linux/root_dev.h>
+ #include <linux/hugetlb.h>
+ #include <linux/tboot.h>
++#include <linux/security.h>
+ #include <linux/usb/xhci-dbgp.h>
+ #include <linux/static_call.h>
+ #include <linux/swiotlb.h>
+@@ -941,6 +942,13 @@ void __init setup_arch(char **cmdline_p)
+ 	if (efi_enabled(EFI_BOOT))
+ 		efi_init();
+ 
++	efi_set_secure_boot(boot_params.secure_boot);
++
++#ifdef CONFIG_LOCK_DOWN_IN_EFI_SECURE_BOOT
++	if (efi_enabled(EFI_SECURE_BOOT))
++		security_lock_kernel_down("EFI Secure Boot mode", LOCKDOWN_INTEGRITY_MAX);
++#endif
++
+ 	dmi_setup();
+ 
+ 	/*
+diff --git a/security/lockdown/Kconfig b/security/lockdown/Kconfig
+index e84ddf484010..d0501353a4b9 100644
+--- a/security/lockdown/Kconfig
++++ b/security/lockdown/Kconfig
+@@ -16,6 +16,19 @@ config SECURITY_LOCKDOWN_LSM_EARLY
+ 	  subsystem is fully initialised. If enabled, lockdown will
+ 	  unconditionally be called before any other LSMs.
+ 
++config LOCK_DOWN_IN_EFI_SECURE_BOOT
++	bool "Lock down the kernel in EFI Secure Boot mode"
++	default n
++	depends on EFI && SECURITY_LOCKDOWN_LSM_EARLY
++	help
++	  UEFI Secure Boot provides a mechanism for ensuring that the firmware
++	  will only load signed bootloaders and kernels.  Secure boot mode may
++	  be determined from EFI variables provided by the system firmware if
++	  not indicated by the boot parameters.
++
++	  Enabling this option results in kernel lockdown being triggered if
++	  EFI Secure Boot is set.
++
+ choice
+ 	prompt "Kernel default lockdown mode"
+ 	default LOCK_DOWN_KERNEL_FORCE_NONE
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jeremy Cline <jcline@redhat.com>
+Date: Wed, 30 Oct 2019 14:37:49 +0000
+Subject: [PATCH 16/32] s390: Lock down the kernel when the IPL secure flag is
+ set
+
+Automatically lock down the kernel to LOCKDOWN_CONFIDENTIALITY_MAX if
+the IPL secure flag is set.
+
+Upstream Status: RHEL only
+Suggested-by: Philipp Rudo <prudo@redhat.com>
+Signed-off-by: Jeremy Cline <jcline@redhat.com>
+---
+ arch/s390/include/asm/ipl.h | 1 +
+ arch/s390/kernel/ipl.c      | 5 +++++
+ arch/s390/kernel/setup.c    | 4 ++++
+ 3 files changed, 10 insertions(+)
+
+diff --git a/arch/s390/include/asm/ipl.h b/arch/s390/include/asm/ipl.h
+index 3f8ee257f9aa..3ab92feb6241 100644
+--- a/arch/s390/include/asm/ipl.h
++++ b/arch/s390/include/asm/ipl.h
+@@ -128,6 +128,7 @@ int ipl_report_add_component(struct ipl_report *report, struct kexec_buf *kbuf,
+ 			     unsigned char flags, unsigned short cert);
+ int ipl_report_add_certificate(struct ipl_report *report, void *key,
+ 			       unsigned long addr, unsigned long len);
++bool ipl_get_secureboot(void);
+ 
+ /*
+  * DIAG 308 support
+diff --git a/arch/s390/kernel/ipl.c b/arch/s390/kernel/ipl.c
+index 5ad1dde23dc5..b6192d58eed3 100644
+--- a/arch/s390/kernel/ipl.c
++++ b/arch/s390/kernel/ipl.c
+@@ -2216,3 +2216,8 @@ int ipl_report_free(struct ipl_report *report)
+ }
+ 
+ #endif
++
++bool ipl_get_secureboot(void)
++{
++	return !!ipl_secure_flag;
++}
+diff --git a/arch/s390/kernel/setup.c b/arch/s390/kernel/setup.c
+index ee67215a678a..931955a9ceca 100644
+--- a/arch/s390/kernel/setup.c
++++ b/arch/s390/kernel/setup.c
+@@ -49,6 +49,7 @@
+ #include <linux/memory.h>
+ #include <linux/compat.h>
+ #include <linux/start_kernel.h>
++#include <linux/security.h>
+ #include <linux/hugetlb.h>
+ #include <linux/kmemleak.h>
+ 
+@@ -970,6 +971,9 @@ void __init setup_arch(char **cmdline_p)
+ 
+ 	log_component_list();
+ 
++	if (ipl_get_secureboot())
++		security_lock_kernel_down("Secure IPL mode", LOCKDOWN_INTEGRITY_MAX);
++
+ 	/* Have one command line that is parsed and saved in /proc/cmdline */
+ 	/* boot_command_line has been already set up in early.c */
+ 	*cmdline_p = boot_command_line;
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Peter Robinson <pbrobinson@gmail.com>
+Date: Wed, 26 Feb 2020 13:38:40 -0500
+Subject: [PATCH 17/32] Add option of 13 for FORCE_MAX_ZONEORDER
+
+This is a hack, but it's what the other distros currently use
+for aarch64 with 4K pages so we'll do the same while upstream
+decides what the best outcome is (which isn't this).
+
+Upstream Status: RHEL only
+Signed-off-by: Peter Robinson <pbrobinson@gmail.com>
+[Add a dependency on RHEL_DIFFERENCES]
+Signed-off-by: Jeremy Cline <jcline@redhat.com>
+---
+ arch/arm64/Kconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
+index c987f305f429..e14e8636574e 100644
+--- a/arch/arm64/Kconfig
++++ b/arch/arm64/Kconfig
+@@ -1152,6 +1152,7 @@ config XEN
+ config FORCE_MAX_ZONEORDER
+ 	int
+ 	default "14" if ARM64_64K_PAGES
++	default "13" if (ARCH_THUNDER && !ARM64_64K_PAGES && !RHEL_DIFFERENCES)
+ 	default "12" if ARM64_16K_PAGES
+ 	default "11"
+ 	help
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jon Masters <jcm@redhat.com>
+Date: Thu, 18 Jul 2019 15:47:26 -0400
+Subject: [PATCH 18/32] arm: make CONFIG_HIGHPTE optional without CONFIG_EXPERT
+
+We will use this to force CONFIG_HIGHPTE off on LPAE for now
+
+Signed-off-by: Jon Masters <jcm@redhat.com>
+---
+ arch/arm/Kconfig | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
+index 4ebd512043be..6743668b7b33 100644
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -1471,9 +1471,9 @@ config HIGHMEM
+ 	  If unsure, say n.
+ 
+ config HIGHPTE
+-	bool "Allocate 2nd-level pagetables from highmem" if EXPERT
++	bool "Allocate 2nd-level pagetables from highmem"
+ 	depends on HIGHMEM
+-	default y
++	default n
+ 	help
+ 	  The VM uses one page of physical memory for each page table.
+ 	  For systems with a lot of processes, this can use a lot of
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Peter Robinson <pbrobinson@gmail.com>
+Date: Thu, 3 May 2012 20:27:11 +0100
+Subject: [PATCH 19/32] ARM: tegra: usb no reset
+
+Patch for disconnect issues with storage attached to a
+ tegra-ehci controller
+---
+ drivers/usb/core/hub.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/usb/core/hub.c b/drivers/usb/core/hub.c
+index 00070a8a6507..e9e0ffa990cd 100644
+--- a/drivers/usb/core/hub.c
++++ b/drivers/usb/core/hub.c
+@@ -5666,6 +5666,13 @@ static void hub_event(struct work_struct *work)
+ 			(u16) hub->change_bits[0],
+ 			(u16) hub->event_bits[0]);
+ 
++	/* Don't disconnect USB-SATA on TrimSlice */
++	if (strcmp(dev_name(hdev->bus->controller), "tegra-ehci.0") == 0) {
++		if ((hdev->state == 7) && (hub->change_bits[0] == 0) &&
++				(hub->event_bits[0] == 0x2))
++			hub->event_bits[0] = 0;
++	}
++
+ 	/* Lock the device, then check to see if we were
+ 	 * disconnected while waiting for the lock to succeed. */
+ 	usb_lock_device(hdev);
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Benjamin Tissoires <benjamin.tissoires@redhat.com>
+Date: Mon, 3 Apr 2017 18:18:21 +0200
+Subject: [PATCH 20/32] Input: rmi4 - remove the need for artificial IRQ in
+ case of HID
+
+The IRQ from rmi4 may interfere with the one we currently use on i2c-hid.
+Given that there is already a need for an external API from rmi4 to
+forward the attention data, we can, in this particular case rely on a
+separate workqueue to prevent cursor jumps.
+
+Reported-by: Cameron Gutman <aicommander@gmail.com>
+Reported-by: Thorsten Leemhuis <linux@leemhuis.info>
+Reported-by: Jason Ekstrand <jason@jlekstrand.net>
+Tested-by: Andrew Duggan <aduggan@synaptics.com>
+Signed-off-by: Benjamin Tissoires <benjamin.tissoires@redhat.com>
+Signed-off-by: Lyude <lyude@redhat.com>
+---
+ drivers/hid/hid-rmi.c           |  64 -----------------
+ drivers/input/rmi4/rmi_driver.c | 124 +++++++++++++++++++-------------
+ include/linux/rmi.h             |   1 +
+ 3 files changed, 75 insertions(+), 114 deletions(-)
+
+diff --git a/drivers/hid/hid-rmi.c b/drivers/hid/hid-rmi.c
+index 311eee599ce9..2460c6bd46f8 100644
+--- a/drivers/hid/hid-rmi.c
++++ b/drivers/hid/hid-rmi.c
+@@ -322,19 +322,12 @@ static int rmi_input_event(struct hid_device *hdev, u8 *data, int size)
+ {
+ 	struct rmi_data *hdata = hid_get_drvdata(hdev);
+ 	struct rmi_device *rmi_dev = hdata->xport.rmi_dev;
+-	unsigned long flags;
+ 
+ 	if (!(test_bit(RMI_STARTED, &hdata->flags)))
+ 		return 0;
+ 
+-	local_irq_save(flags);
+-
+ 	rmi_set_attn_data(rmi_dev, data[1], &data[2], size - 2);
+ 
+-	generic_handle_irq(hdata->rmi_irq);
+-
+-	local_irq_restore(flags);
+-
+ 	return 1;
+ }
+ 
+@@ -591,56 +584,6 @@ static const struct rmi_transport_ops hid_rmi_ops = {
+ 	.reset		= rmi_hid_reset,
+ };
+ 
+-static void rmi_irq_teardown(void *data)
+-{
+-	struct rmi_data *hdata = data;
+-	struct irq_domain *domain = hdata->domain;
+-
+-	if (!domain)
+-		return;
+-
+-	irq_dispose_mapping(irq_find_mapping(domain, 0));
+-
+-	irq_domain_remove(domain);
+-	hdata->domain = NULL;
+-	hdata->rmi_irq = 0;
+-}
+-
+-static int rmi_irq_map(struct irq_domain *h, unsigned int virq,
+-		       irq_hw_number_t hw_irq_num)
+-{
+-	irq_set_chip_and_handler(virq, &dummy_irq_chip, handle_simple_irq);
+-
+-	return 0;
+-}
+-
+-static const struct irq_domain_ops rmi_irq_ops = {
+-	.map = rmi_irq_map,
+-};
+-
+-static int rmi_setup_irq_domain(struct hid_device *hdev)
+-{
+-	struct rmi_data *hdata = hid_get_drvdata(hdev);
+-	int ret;
+-
+-	hdata->domain = irq_domain_create_linear(hdev->dev.fwnode, 1,
+-						 &rmi_irq_ops, hdata);
+-	if (!hdata->domain)
+-		return -ENOMEM;
+-
+-	ret = devm_add_action_or_reset(&hdev->dev, &rmi_irq_teardown, hdata);
+-	if (ret)
+-		return ret;
+-
+-	hdata->rmi_irq = irq_create_mapping(hdata->domain, 0);
+-	if (hdata->rmi_irq <= 0) {
+-		hid_err(hdev, "Can't allocate an IRQ\n");
+-		return hdata->rmi_irq < 0 ? hdata->rmi_irq : -ENXIO;
+-	}
+-
+-	return 0;
+-}
+-
+ static int rmi_probe(struct hid_device *hdev, const struct hid_device_id *id)
+ {
+ 	struct rmi_data *data = NULL;
+@@ -713,18 +656,11 @@ static int rmi_probe(struct hid_device *hdev, const struct hid_device_id *id)
+ 
+ 	mutex_init(&data->page_mutex);
+ 
+-	ret = rmi_setup_irq_domain(hdev);
+-	if (ret) {
+-		hid_err(hdev, "failed to allocate IRQ domain\n");
+-		return ret;
+-	}
+-
+ 	if (data->device_flags & RMI_DEVICE_HAS_PHYS_BUTTONS)
+ 		rmi_hid_pdata.gpio_data.disable = true;
+ 
+ 	data->xport.dev = hdev->dev.parent;
+ 	data->xport.pdata = rmi_hid_pdata;
+-	data->xport.pdata.irq = data->rmi_irq;
+ 	data->xport.proto_name = "hid";
+ 	data->xport.ops = &hid_rmi_ops;
+ 
+diff --git a/drivers/input/rmi4/rmi_driver.c b/drivers/input/rmi4/rmi_driver.c
+index 258d5fe3d395..f7298e3dc8f3 100644
+--- a/drivers/input/rmi4/rmi_driver.c
++++ b/drivers/input/rmi4/rmi_driver.c
+@@ -182,34 +182,47 @@ void rmi_set_attn_data(struct rmi_device *rmi_dev, unsigned long irq_status,
+ 	attn_data.data = fifo_data;
+ 
+ 	kfifo_put(&drvdata->attn_fifo, attn_data);
++
++	schedule_work(&drvdata->attn_work);
+ }
+ EXPORT_SYMBOL_GPL(rmi_set_attn_data);
+ 
+-static irqreturn_t rmi_irq_fn(int irq, void *dev_id)
++static void attn_callback(struct work_struct *work)
+ {
+-	struct rmi_device *rmi_dev = dev_id;
+-	struct rmi_driver_data *drvdata = dev_get_drvdata(&rmi_dev->dev);
++	struct rmi_driver_data *drvdata = container_of(work,
++							struct rmi_driver_data,
++							attn_work);
+ 	struct rmi4_attn_data attn_data = {0};
+ 	int ret, count;
+ 
+ 	count = kfifo_get(&drvdata->attn_fifo, &attn_data);
+-	if (count) {
+-		*(drvdata->irq_status) = attn_data.irq_status;
+-		drvdata->attn_data = attn_data;
+-	}
++	if (!count)
++		return;
+ 
+-	ret = rmi_process_interrupt_requests(rmi_dev);
++	*(drvdata->irq_status) = attn_data.irq_status;
++	drvdata->attn_data = attn_data;
++
++	ret = rmi_process_interrupt_requests(drvdata->rmi_dev);
+ 	if (ret)
+-		rmi_dbg(RMI_DEBUG_CORE, &rmi_dev->dev,
++		rmi_dbg(RMI_DEBUG_CORE, &drvdata->rmi_dev->dev,
+ 			"Failed to process interrupt request: %d\n", ret);
+ 
+-	if (count) {
+-		kfree(attn_data.data);
+-		drvdata->attn_data.data = NULL;
+-	}
++	kfree(attn_data.data);
++	drvdata->attn_data.data = NULL;
+ 
+ 	if (!kfifo_is_empty(&drvdata->attn_fifo))
+-		return rmi_irq_fn(irq, dev_id);
++		schedule_work(&drvdata->attn_work);
++}
++
++static irqreturn_t rmi_irq_fn(int irq, void *dev_id)
++{
++	struct rmi_device *rmi_dev = dev_id;
++	int ret;
++
++	ret = rmi_process_interrupt_requests(rmi_dev);
++	if (ret)
++		rmi_dbg(RMI_DEBUG_CORE, &rmi_dev->dev,
++			"Failed to process interrupt request: %d\n", ret);
+ 
+ 	return IRQ_HANDLED;
+ }
+@@ -217,7 +230,6 @@ static irqreturn_t rmi_irq_fn(int irq, void *dev_id)
+ static int rmi_irq_init(struct rmi_device *rmi_dev)
+ {
+ 	struct rmi_device_platform_data *pdata = rmi_get_platform_data(rmi_dev);
+-	struct rmi_driver_data *data = dev_get_drvdata(&rmi_dev->dev);
+ 	int irq_flags = irq_get_trigger_type(pdata->irq);
+ 	int ret;
+ 
+@@ -235,8 +247,6 @@ static int rmi_irq_init(struct rmi_device *rmi_dev)
+ 		return ret;
+ 	}
+ 
+-	data->enabled = true;
+-
+ 	return 0;
+ }
+ 
+@@ -886,23 +896,27 @@ void rmi_enable_irq(struct rmi_device *rmi_dev, bool clear_wake)
+ 	if (data->enabled)
+ 		goto out;
+ 
+-	enable_irq(irq);
+-	data->enabled = true;
+-	if (clear_wake && device_may_wakeup(rmi_dev->xport->dev)) {
+-		retval = disable_irq_wake(irq);
+-		if (retval)
+-			dev_warn(&rmi_dev->dev,
+-				 "Failed to disable irq for wake: %d\n",
+-				 retval);
+-	}
++	if (irq) {
++		enable_irq(irq);
++		data->enabled = true;
++		if (clear_wake && device_may_wakeup(rmi_dev->xport->dev)) {
++			retval = disable_irq_wake(irq);
++			if (retval)
++				dev_warn(&rmi_dev->dev,
++					 "Failed to disable irq for wake: %d\n",
++					 retval);
++		}
+ 
+-	/*
+-	 * Call rmi_process_interrupt_requests() after enabling irq,
+-	 * otherwise we may lose interrupt on edge-triggered systems.
+-	 */
+-	irq_flags = irq_get_trigger_type(pdata->irq);
+-	if (irq_flags & IRQ_TYPE_EDGE_BOTH)
+-		rmi_process_interrupt_requests(rmi_dev);
++		/*
++		 * Call rmi_process_interrupt_requests() after enabling irq,
++		 * otherwise we may lose interrupt on edge-triggered systems.
++		 */
++		irq_flags = irq_get_trigger_type(pdata->irq);
++		if (irq_flags & IRQ_TYPE_EDGE_BOTH)
++			rmi_process_interrupt_requests(rmi_dev);
++	} else {
++		data->enabled = true;
++	}
+ 
+ out:
+ 	mutex_unlock(&data->enabled_mutex);
+@@ -922,20 +936,22 @@ void rmi_disable_irq(struct rmi_device *rmi_dev, bool enable_wake)
+ 		goto out;
+ 
+ 	data->enabled = false;
+-	disable_irq(irq);
+-	if (enable_wake && device_may_wakeup(rmi_dev->xport->dev)) {
+-		retval = enable_irq_wake(irq);
+-		if (retval)
+-			dev_warn(&rmi_dev->dev,
+-				 "Failed to enable irq for wake: %d\n",
+-				 retval);
+-	}
+-
+-	/* make sure the fifo is clean */
+-	while (!kfifo_is_empty(&data->attn_fifo)) {
+-		count = kfifo_get(&data->attn_fifo, &attn_data);
+-		if (count)
+-			kfree(attn_data.data);
++	if (irq) {
++		disable_irq(irq);
++		if (enable_wake && device_may_wakeup(rmi_dev->xport->dev)) {
++			retval = enable_irq_wake(irq);
++			if (retval)
++				dev_warn(&rmi_dev->dev,
++					 "Failed to enable irq for wake: %d\n",
++					 retval);
++		}
++	} else {
++		/* make sure the fifo is clean */
++		while (!kfifo_is_empty(&data->attn_fifo)) {
++			count = kfifo_get(&data->attn_fifo, &attn_data);
++			if (count)
++				kfree(attn_data.data);
++		}
+ 	}
+ 
+ out:
+@@ -981,6 +997,8 @@ static int rmi_driver_remove(struct device *dev)
+ 	irq_domain_remove(data->irqdomain);
+ 	data->irqdomain = NULL;
+ 
++	cancel_work_sync(&data->attn_work);
++
+ 	rmi_f34_remove_sysfs(rmi_dev);
+ 	rmi_free_function_list(rmi_dev);
+ 
+@@ -1219,9 +1237,15 @@ static int rmi_driver_probe(struct device *dev)
+ 		}
+ 	}
+ 
+-	retval = rmi_irq_init(rmi_dev);
+-	if (retval < 0)
+-		goto err_destroy_functions;
++	if (pdata->irq) {
++		retval = rmi_irq_init(rmi_dev);
++		if (retval < 0)
++			goto err_destroy_functions;
++	}
++
++	data->enabled = true;
++
++	INIT_WORK(&data->attn_work, attn_callback);
+ 
+ 	if (data->f01_container->dev.driver) {
+ 		/* Driver already bound, so enable ATTN now. */
+diff --git a/include/linux/rmi.h b/include/linux/rmi.h
+index ab7eea01ab42..fff7c5f737fc 100644
+--- a/include/linux/rmi.h
++++ b/include/linux/rmi.h
+@@ -364,6 +364,7 @@ struct rmi_driver_data {
+ 
+ 	struct rmi4_attn_data attn_data;
+ 	DECLARE_KFIFO(attn_fifo, struct rmi4_attn_data, 16);
++	struct work_struct attn_work;
+ };
+ 
+ int rmi_register_transport_device(struct rmi_transport_dev *xport);
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Robert Holmes <robeholmes@gmail.com>
+Date: Tue, 23 Apr 2019 07:39:29 +0000
+Subject: [PATCH 21/32] KEYS: Make use of platform keyring for module signature
+ verify
+
+This patch completes commit 278311e417be ("kexec, KEYS: Make use of
+platform keyring for signature verify") which, while adding the
+platform keyring for bzImage verification, neglected to also add
+this keyring for module verification.
+
+As such, kernel modules signed with keys from the MokList variable
+were not successfully verified.
+
+Signed-off-by: Robert Holmes <robeholmes@gmail.com>
+Signed-off-by: Jeremy Cline <jcline@redhat.com>
+---
+ kernel/module_signing.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/module_signing.c b/kernel/module_signing.c
+index 8723ae70ea1f..fb2d773498c2 100644
+--- a/kernel/module_signing.c
++++ b/kernel/module_signing.c
+@@ -38,8 +38,15 @@ int mod_verify_sig(const void *mod, struct load_info *info)
+ 	modlen -= sig_len + sizeof(ms);
+ 	info->len = modlen;
+ 
+-	return verify_pkcs7_signature(mod, modlen, mod + modlen, sig_len,
++	ret = verify_pkcs7_signature(mod, modlen, mod + modlen, sig_len,
+ 				      VERIFY_USE_SECONDARY_KEYRING,
+ 				      VERIFYING_MODULE_SIGNATURE,
+ 				      NULL, NULL);
++	if (ret == -ENOKEY && IS_ENABLED(CONFIG_INTEGRITY_PLATFORM_KEYRING)) {
++		ret = verify_pkcs7_signature(mod, modlen, mod + modlen, sig_len,
++				VERIFY_USE_PLATFORM_KEYRING,
++				VERIFYING_MODULE_SIGNATURE,
++				NULL, NULL);
++	}
++	return ret;
+ }
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jeremy Linton <jeremy.linton@arm.com>
+Date: Thu, 11 Mar 2021 22:15:13 -0600
+Subject: [PATCH 22/32] REDHAT: coresight: etm4x: Disable coresight on HPE
+ Apollo 70
+
+bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1918888
+
+The coresight tables on the latest Apollo 70, appear to be
+damaged sufficiently to throw a few hundred lines of back-traces
+during boot, lets disable it until we can get a firmware fix.
+
+Signed-off-by: Jeremy Linton <jeremy.linton@arm.com>
+cc: Peter Robinson <pbrobinson@redhat.com>
+cc: Justin M. Forbes <jforbes@fedoraproject.org>
+cc: Al Stone <ahs3@redhat.com>
+---
+ .../coresight/coresight-etm4x-core.c          | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/drivers/hwtracing/coresight/coresight-etm4x-core.c b/drivers/hwtracing/coresight/coresight-etm4x-core.c
+index e24252eaf8e4..368d64adeee8 100644
+--- a/drivers/hwtracing/coresight/coresight-etm4x-core.c
++++ b/drivers/hwtracing/coresight/coresight-etm4x-core.c
+@@ -9,6 +9,7 @@
+ #include <linux/init.h>
+ #include <linux/types.h>
+ #include <linux/device.h>
++#include <linux/dmi.h>
+ #include <linux/io.h>
+ #include <linux/err.h>
+ #include <linux/fs.h>
+@@ -2105,6 +2106,16 @@ static const struct amba_id etm4_ids[] = {
+ 	{},
+ };
+ 
++static const struct dmi_system_id broken_coresight[] = {
++	{
++		.matches = {
++			DMI_MATCH(DMI_SYS_VENDOR, "HPE"),
++			DMI_MATCH(DMI_PRODUCT_NAME, "Apollo 70"),
++		},
++	},
++	{ }	/* terminating entry */
++};
++
+ MODULE_DEVICE_TABLE(amba, etm4_ids);
+ 
+ static struct amba_driver etm4x_amba_driver = {
+@@ -2138,6 +2149,11 @@ static int __init etm4x_init(void)
+ {
+ 	int ret;
+ 
++	if (dmi_check_system(broken_coresight)) {
++		pr_info("ETM4 disabled due to firmware bug\n");
++		return 0;
++	}
++
+ 	ret = etm4_pm_setup();
+ 
+ 	/* etm4_pm_setup() does its own cleanup - exit on error */
+@@ -2164,6 +2180,9 @@ static int __init etm4x_init(void)
+ 
+ static void __exit etm4x_exit(void)
+ {
++	if (dmi_check_system(broken_coresight))
++		return;
++
+ 	amba_driver_unregister(&etm4x_amba_driver);
+ 	platform_driver_unregister(&etm4_platform_driver);
+ 	etm4_pm_clear();
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mike Snitzer <snitzer@redhat.com>
+Date: Tue, 13 Apr 2021 13:09:36 -0400
+Subject: [PATCH 23/32] nvme: Return BLK_STS_TARGET if the DNR bit is set
+
+BZ: 1948690
+Upstream Status: RHEL-only
+
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+
+rhel-8.git commit ef4ab90c12db5e0e50800ec323736b95be7a6ff5
+Author: Mike Snitzer <snitzer@redhat.com>
+Date:   Tue Aug 25 21:52:45 2020 -0400
+
+    [nvme] nvme: Return BLK_STS_TARGET if the DNR bit is set
+
+    Message-id: <20200825215248.2291-8-snitzer@redhat.com>
+    Patchwork-id: 325178
+    Patchwork-instance: patchwork
+    O-Subject: [RHEL8.3 PATCH 07/10] nvme: Return BLK_STS_TARGET if the DNR bit is set
+    Bugzilla: 1843515
+    RH-Acked-by: David Milburn <dmilburn@redhat.com>
+    RH-Acked-by: Gopal Tiwari <gtiwari@redhat.com>
+    RH-Acked-by: Ewan Milne <emilne@redhat.com>
+
+    BZ: 1843515
+    Upstream Status: RHEL-only
+
+    If the DNR bit is set we should not retry the command, even if
+    the standard status evaluation indicates so.
+
+    SUSE is carrying this patch in their kernel:
+    https://lwn.net/Articles/800370/
+
+    Based on patch posted for upstream inclusion but rejected:
+    v1: https://lore.kernel.org/linux-nvme/20190806111036.113233-1-hare@suse.de/
+    v2: https://lore.kernel.org/linux-nvme/20190807071208.101882-1-hare@suse.de/
+    v2-keith: https://lore.kernel.org/linux-nvme/20190807144725.GB25621@localhost.localdomain/
+    v3: https://lore.kernel.org/linux-nvme/20190812075147.79598-1-hare@suse.de/
+    v3-keith: https://lore.kernel.org/linux-nvme/20190813141510.GB32686@localhost.localdomain/
+
+    This commit's change is basically "v3-keith".
+
+    Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+    Signed-off-by: Frantisek Hrbata <fhrbata@redhat.com>
+---
+ drivers/nvme/host/core.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
+index f8dd664b2eda..8c2d88526b1d 100644
+--- a/drivers/nvme/host/core.c
++++ b/drivers/nvme/host/core.c
+@@ -262,6 +262,9 @@ static void nvme_delete_ctrl_sync(struct nvme_ctrl *ctrl)
+ 
+ static blk_status_t nvme_error_status(u16 status)
+ {
++	if (unlikely(status & NVME_SC_DNR))
++		return BLK_STS_TARGET;
++
+ 	switch (status & 0x7ff) {
+ 	case NVME_SC_SUCCESS:
+ 		return BLK_STS_OK;
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mike Snitzer <snitzer@redhat.com>
+Date: Tue, 13 Apr 2021 13:09:36 -0400
+Subject: [PATCH 24/32] nvme: allow local retry and proper failover for
+ REQ_FAILFAST_TRANSPORT
+
+BZ: 1948690
+Upstream Status: RHEL-only
+
+This commit offers a more minimalist version of these 2 rhel-8.git commits:
+f8fb6ea1226e2 [nvme] nvme: update failover handling to work with REQ_FAILFAST_TRANSPORT
+7dadadb072515 [nvme] nvme: allow retry for requests with REQ_FAILFAST_TRANSPORT set
+
+REQ_FAILFAST_TRANSPORT is set by upper layer software that handles
+multipathing. Unlike SCSI, NVMe's error handling was specifically
+designed to handle local retry for non-path errors. As such, allow
+NVMe's local retry mechanism to be used for requests marked with
+REQ_FAILFAST_TRANSPORT.
+
+In this way, the mechanism of NVMe multipath or other multipath are
+now equivalent. The mechanism is: non path related error will be
+retried locally, path related error is handled by multipath.
+
+Also, introduce FAILUP handling for REQ_FAILFAST_TRANSPORT. Update
+NVMe to allow failover of requests marked with either REQ_NVME_MPATH
+or REQ_FAILFAST_TRANSPORT. This allows such requests to be given a
+disposition of either FAILOVER or FAILUP respectively.
+
+nvme_complete_rq() is updated to call nvme_failup_req() if
+nvme_decide_disposition() returns FAILUP. nvme_failup_req() ensures
+the request is completed with a retryable path error.
+
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+---
+ drivers/nvme/host/core.c | 17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
+index 8c2d88526b1d..f68e6d796be1 100644
+--- a/drivers/nvme/host/core.c
++++ b/drivers/nvme/host/core.c
+@@ -324,6 +324,7 @@ enum nvme_disposition {
+ 	COMPLETE,
+ 	RETRY,
+ 	FAILOVER,
++	FAILUP,
+ };
+ 
+ static inline enum nvme_disposition nvme_decide_disposition(struct request *req)
+@@ -331,15 +332,16 @@ static inline enum nvme_disposition nvme_decide_disposition(struct request *req)
+ 	if (likely(nvme_req(req)->status == 0))
+ 		return COMPLETE;
+ 
+-	if (blk_noretry_request(req) ||
++	if ((req->cmd_flags & (REQ_FAILFAST_DEV | REQ_FAILFAST_DRIVER)) ||
+ 	    (nvme_req(req)->status & NVME_SC_DNR) ||
+ 	    nvme_req(req)->retries >= nvme_max_retries)
+ 		return COMPLETE;
+ 
+-	if (req->cmd_flags & REQ_NVME_MPATH) {
++	if (req->cmd_flags & (REQ_NVME_MPATH | REQ_FAILFAST_TRANSPORT)) {
+ 		if (nvme_is_path_error(nvme_req(req)->status) ||
+ 		    blk_queue_dying(req->q))
+-			return FAILOVER;
++			return (req->cmd_flags & REQ_NVME_MPATH) ?
++				FAILOVER : FAILUP;
+ 	} else {
+ 		if (blk_queue_dying(req->q))
+ 			return COMPLETE;
+@@ -361,6 +363,12 @@ static inline void nvme_end_req(struct request *req)
+ 	blk_mq_end_request(req, status);
+ }
+ 
++static inline void nvme_failup_req(struct request *req)
++{
++	nvme_req(req)->status = NVME_SC_HOST_PATH_ERROR;
++	nvme_end_req(req);
++}
++
+ void nvme_complete_rq(struct request *req)
+ {
+ 	trace_nvme_complete_rq(req);
+@@ -379,6 +387,9 @@ void nvme_complete_rq(struct request *req)
+ 	case FAILOVER:
+ 		nvme_failover_req(req);
+ 		return;
++	case FAILUP:
++		nvme_failup_req(req);
++		return;
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(nvme_complete_rq);
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mike Snitzer <snitzer@redhat.com>
+Date: Tue, 13 Apr 2021 13:09:37 -0400
+Subject: [PATCH 25/32] nvme: decouple basic ANA log page re-read support from
+ native multipathing
+
+BZ: 1948690
+Upstream Status: RHEL-only
+
+This commit offers a more refined version of this rhel-8.git commit:
+b904f4b8e0f90 [nvme] nvme: decouple basic ANA log page re-read support from native multipathing
+
+Whether or not ANA is present is a choice of the target implementation;
+the host (and whether it supports multipathing) has _zero_ influence on
+this. If the target declares a path as 'inaccessible' the path _is_
+inaccessible to the host. As such, ANA support should be functional
+even if native multipathing is not.
+
+Introduce ability to always re-read ANA log page as required due to ANA
+error and make current ANA state available via sysfs -- even if native
+multipathing is disabled on the host (e.g. nvme_core.multipath=N).
+This is achieved by factoring out nvme_update_ana() and calling it in
+nvme_complete_rq() for all FAILOVER requests.
+
+This affords userspace access to the current ANA state independent of
+which layer might be doing multipathing. This makes 'nvme list-subsys'
+show ANA state for all NVMe subsystems with multiple controllers. It
+also allows userspace multipath-tools to rely on the NVMe driver for
+ANA support while dm-multipath takes care of multipathing.
+
+And as always, if embedded NVMe users do not want any performance
+overhead associated with ANA or native NVMe multipathing they can
+disable CONFIG_NVME_MULTIPATH.
+
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+---
+ drivers/nvme/host/core.c      |  2 ++
+ drivers/nvme/host/multipath.c | 16 +++++++++++-----
+ drivers/nvme/host/nvme.h      |  4 ++++
+ 3 files changed, 17 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
+index f68e6d796be1..0ff9ea8340e4 100644
+--- a/drivers/nvme/host/core.c
++++ b/drivers/nvme/host/core.c
+@@ -365,6 +365,8 @@ static inline void nvme_end_req(struct request *req)
+ 
+ static inline void nvme_failup_req(struct request *req)
+ {
++	nvme_update_ana(req);
++
+ 	nvme_req(req)->status = NVME_SC_HOST_PATH_ERROR;
+ 	nvme_end_req(req);
+ }
+diff --git a/drivers/nvme/host/multipath.c b/drivers/nvme/host/multipath.c
+index 2f76969408b2..4c7d12e2fe70 100644
+--- a/drivers/nvme/host/multipath.c
++++ b/drivers/nvme/host/multipath.c
+@@ -65,14 +65,10 @@ bool nvme_mpath_set_disk_name(struct nvme_ns *ns, char *disk_name, int *flags)
+ 	return true;
+ }
+ 
+-void nvme_failover_req(struct request *req)
++void nvme_update_ana(struct request *req)
+ {
+ 	struct nvme_ns *ns = req->q->queuedata;
+ 	u16 status = nvme_req(req)->status & 0x7ff;
+-	unsigned long flags;
+-	struct bio *bio;
+-
+-	nvme_mpath_clear_current_path(ns);
+ 
+ 	/*
+ 	 * If we got back an ANA error, we know the controller is alive but not
+@@ -83,6 +79,16 @@ void nvme_failover_req(struct request *req)
+ 		set_bit(NVME_NS_ANA_PENDING, &ns->flags);
+ 		queue_work(nvme_wq, &ns->ctrl->ana_work);
+ 	}
++}
++
++void nvme_failover_req(struct request *req)
++{
++	struct nvme_ns *ns = req->q->queuedata;
++	unsigned long flags;
++	struct bio *bio;
++
++	nvme_mpath_clear_current_path(ns);
++	nvme_update_ana(req);
+ 
+ 	spin_lock_irqsave(&ns->head->requeue_lock, flags);
+ 	for (bio = req->bio; bio; bio = bio->bi_next)
+diff --git a/drivers/nvme/host/nvme.h b/drivers/nvme/host/nvme.h
+index ed79a6c7e804..961dc67d7261 100644
+--- a/drivers/nvme/host/nvme.h
++++ b/drivers/nvme/host/nvme.h
+@@ -746,6 +746,7 @@ void nvme_mpath_wait_freeze(struct nvme_subsystem *subsys);
+ void nvme_mpath_start_freeze(struct nvme_subsystem *subsys);
+ bool nvme_mpath_set_disk_name(struct nvme_ns *ns, char *disk_name, int *flags);
+ void nvme_failover_req(struct request *req);
++void nvme_update_ana(struct request *req);
+ void nvme_kick_requeue_lists(struct nvme_ctrl *ctrl);
+ int nvme_mpath_alloc_disk(struct nvme_ctrl *ctrl,struct nvme_ns_head *head);
+ void nvme_mpath_add_disk(struct nvme_ns *ns, struct nvme_id_ns *id);
+@@ -784,6 +785,9 @@ static inline bool nvme_mpath_set_disk_name(struct nvme_ns *ns, char *disk_name,
+ static inline void nvme_failover_req(struct request *req)
+ {
+ }
++static inline void nvme_update_ana(struct request *req)
++{
++}
+ static inline void nvme_kick_requeue_lists(struct nvme_ctrl *ctrl)
+ {
+ }
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mike Snitzer <snitzer@redhat.com>
+Date: Tue, 25 May 2021 12:36:06 -0400
+Subject: [PATCH 26/32] nvme: nvme_mpath_init remove multipath check
+
+BZ: 1948690
+Upstream Status: RHEL-only
+
+Signed-off-by: Mike Snitzer <snitzer@redhat.com>
+
+rhel-8.git commit f027c2e4045d02d103c7a545181b6df0b6162ee7
+Author: David Milburn <dmilburn@redhat.com>
+Date:   Wed Jan 29 15:29:37 2020 -0500
+
+    [nvme] nvme: nvme_mpath_init remove multipath check
+
+    Message-id: <1580311777-9193-1-git-send-email-dmilburn@redhat.com>
+    Patchwork-id: 294254
+    Patchwork-instance: patchwork
+    O-Subject: [RHEL8.2 PATCH] nvme: nvme_mpath_init remove multipath check
+    Bugzilla: 1790958
+    RH-Acked-by: Gopal Tiwari <gtiwari@redhat.com>
+    RH-Acked-by: Ewan Milne <emilne@redhat.com>
+
+    Marco Patalano found missing NVMe optimized/inaccessible paths when
+    executing "nvme list-subsys" command with native multipathing disabled.
+    He was able to git bisect this back to 6d0f426e ("nvme: fix multipath
+    crash when ANA is deactivated"). The problem is the check for multipath,
+    removing this is similar to RHEL commit 158eef2e ("nvme: allow ANA support
+    to be independent of native multipathing"), I did leave the existing
+    comment in place for future back ports and as a reminder to watch for
+    these changes in the future.
+
+    Bugzilla: 1790958
+    Build info: https://brewweb.engineering.redhat.com/brew/taskinfo?taskID=26061480
+    Upstream: RHEL only
+    Test: QE verified "nvme list-subsys" command and did sanity check with native
+    multipathing disabled.
+
+    Fixes: 6d0f426e ("nvme: fix multipath crash when ANA is deactivated")
+    Signed-off-by: David Milburn <dmilburn@redhat.com>
+    Signed-off-by: Bruno Meneguele <bmeneg@redhat.com>
+---
+ drivers/nvme/host/multipath.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/drivers/nvme/host/multipath.c b/drivers/nvme/host/multipath.c
+index 4c7d12e2fe70..021a4176b321 100644
+--- a/drivers/nvme/host/multipath.c
++++ b/drivers/nvme/host/multipath.c
+@@ -819,8 +819,7 @@ int nvme_mpath_init_identify(struct nvme_ctrl *ctrl, struct nvme_id_ctrl *id)
+ 	int error = 0;
+ 
+ 	/* check if multipath is enabled and we have the capability */
+-	if (!multipath || !ctrl->subsys ||
+-	    !(ctrl->subsys->cmic & NVME_CTRL_CMIC_ANA))
++	if (!ctrl->subsys || !(ctrl->subsys->cmic & NVME_CTRL_CMIC_ANA))
+ 		return 0;
+ 
+ 	if (!ctrl->max_namespaces ||
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Herbert Xu <herbert.xu@redhat.com>
+Date: Tue, 10 Aug 2021 17:54:28 +0800
+Subject: [PATCH 27/32] random: Add hook to override device reads and
+ getrandom(2)
+
+Upstream: RHEL only
+Bugzilla: 1984784
+
+This patch introduces a hook mechanism to drivers/char/random
+to allow the reads on /dev/*random as well as getrandom(2) to
+be overridden by an external RNG.
+
+This will be used to override drivers/char/random with a FIPS
+RNG in a subsequent patch.
+
+Signed-off-by: Herbert Xu <herbert.xu@redhat.com>
+---
+ drivers/char/random.c  | 115 +++++++++++++++++++++++++++++++++++++++++
+ include/linux/random.h |   7 +++
+ 2 files changed, 122 insertions(+)
+
+diff --git a/drivers/char/random.c b/drivers/char/random.c
+index 605969ed0f96..4d51f1c67675 100644
+--- a/drivers/char/random.c
++++ b/drivers/char/random.c
+@@ -335,6 +335,7 @@
+ #include <linux/syscalls.h>
+ #include <linux/completion.h>
+ #include <linux/uuid.h>
++#include <linux/rcupdate.h>
+ #include <crypto/chacha.h>
+ #include <crypto/sha1.h>
+ 
+@@ -349,6 +350,11 @@
+ 
+ /* #define ADD_INTERRUPT_BENCH */
+ 
++/*
++ * Hook for external RNG.
++ */
++static const struct random_extrng __rcu *extrng;
++
+ /*
+  * Configuration information
+  */
+@@ -481,6 +487,9 @@ static int ratelimit_disable __read_mostly;
+ module_param_named(ratelimit_disable, ratelimit_disable, int, 0644);
+ MODULE_PARM_DESC(ratelimit_disable, "Disable random ratelimit suppression");
+ 
++static const struct file_operations extrng_random_fops;
++static const struct file_operations extrng_urandom_fops;
++
+ /**********************************************************************
+  *
+  * OS independent entropy store.   Here are the functions which handle
+@@ -1858,6 +1867,13 @@ random_poll(struct file *file, poll_table * wait)
+ 	return mask;
+ }
+ 
++static __poll_t
++extrng_poll(struct file *file, poll_table * wait)
++{
++	/* extrng pool is always full, always read, no writes */
++	return EPOLLIN | EPOLLRDNORM;
++}
++
+ static int
+ write_pool(struct entropy_store *r, const char __user *buffer, size_t count)
+ {
+@@ -1961,7 +1977,58 @@ static int random_fasync(int fd, struct file *filp, int on)
+ 	return fasync_helper(fd, filp, on, &fasync);
+ }
+ 
++static int random_open(struct inode *inode, struct file *filp)
++{
++	const struct random_extrng *rng;
++
++	rcu_read_lock();
++	rng = rcu_dereference(extrng);
++	if (rng && !try_module_get(rng->owner))
++		rng = NULL;
++	rcu_read_unlock();
++
++	if (!rng)
++		return 0;
++
++	filp->f_op = &extrng_random_fops;
++	filp->private_data = rng->owner;
++
++	return 0;
++}
++
++static int urandom_open(struct inode *inode, struct file *filp)
++{
++	const struct random_extrng *rng;
++
++	rcu_read_lock();
++	rng = rcu_dereference(extrng);
++	if (rng && !try_module_get(rng->owner))
++		rng = NULL;
++	rcu_read_unlock();
++
++	if (!rng)
++		return 0;
++
++	filp->f_op = &extrng_urandom_fops;
++	filp->private_data = rng->owner;
++
++	return 0;
++}
++
++static int extrng_release(struct inode *inode, struct file *filp)
++{
++	module_put(filp->private_data);
++	return 0;
++}
++
++static ssize_t
++extrng_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
++{
++	return rcu_dereference_raw(extrng)->extrng_read(buf, nbytes);
++}
++
+ const struct file_operations random_fops = {
++	.open  = random_open,
+ 	.read  = random_read,
+ 	.write = random_write,
+ 	.poll  = random_poll,
+@@ -1972,6 +2039,7 @@ const struct file_operations random_fops = {
+ };
+ 
+ const struct file_operations urandom_fops = {
++	.open  = urandom_open,
+ 	.read  = urandom_read,
+ 	.write = random_write,
+ 	.unlocked_ioctl = random_ioctl,
+@@ -1980,9 +2048,31 @@ const struct file_operations urandom_fops = {
+ 	.llseek = noop_llseek,
+ };
+ 
++static const struct file_operations extrng_random_fops = {
++	.open  = random_open,
++	.read  = extrng_read,
++	.write = random_write,
++	.poll  = extrng_poll,
++	.unlocked_ioctl = random_ioctl,
++	.fasync = random_fasync,
++	.llseek = noop_llseek,
++	.release = extrng_release,
++};
++
++static const struct file_operations extrng_urandom_fops = {
++	.open  = urandom_open,
++	.read  = extrng_read,
++	.write = random_write,
++	.unlocked_ioctl = random_ioctl,
++	.fasync = random_fasync,
++	.llseek = noop_llseek,
++	.release = extrng_release,
++};
++
+ SYSCALL_DEFINE3(getrandom, char __user *, buf, size_t, count,
+ 		unsigned int, flags)
+ {
++	const struct random_extrng *rng;
+ 	int ret;
+ 
+ 	if (flags & ~(GRND_NONBLOCK|GRND_RANDOM|GRND_INSECURE))
+@@ -1998,6 +2088,18 @@ SYSCALL_DEFINE3(getrandom, char __user *, buf, size_t, count,
+ 	if (count > INT_MAX)
+ 		count = INT_MAX;
+ 
++	rcu_read_lock();
++	rng = rcu_dereference(extrng);
++	if (rng && !try_module_get(rng->owner))
++		rng = NULL;
++	rcu_read_unlock();
++
++	if (rng) {
++		ret = rng->extrng_read(buf, count);
++		module_put(rng->owner);
++		return ret;
++	}
++
+ 	if (!(flags & GRND_INSECURE) && !crng_ready()) {
+ 		if (flags & GRND_NONBLOCK)
+ 			return -EAGAIN;
+@@ -2303,3 +2405,16 @@ void add_bootloader_randomness(const void *buf, unsigned int size)
+ 		add_device_randomness(buf, size);
+ }
+ EXPORT_SYMBOL_GPL(add_bootloader_randomness);
++
++void random_register_extrng(const struct random_extrng *rng)
++{
++	rcu_assign_pointer(extrng, rng);
++}
++EXPORT_SYMBOL_GPL(random_register_extrng);
++
++void random_unregister_extrng(void)
++{
++	RCU_INIT_POINTER(extrng, NULL);
++	synchronize_rcu();
++}
++EXPORT_SYMBOL_GPL(random_unregister_extrng);
+diff --git a/include/linux/random.h b/include/linux/random.h
+index f45b8be3e3c4..7ccdec68b789 100644
+--- a/include/linux/random.h
++++ b/include/linux/random.h
+@@ -14,6 +14,11 @@
+ 
+ #include <uapi/linux/random.h>
+ 
++struct random_extrng {
++	ssize_t (*extrng_read)(void __user *buf, size_t buflen);
++	struct module *owner;
++};
++
+ struct random_ready_callback {
+ 	struct list_head list;
+ 	void (*func)(struct random_ready_callback *rdy);
+@@ -44,6 +49,8 @@ extern bool rng_is_initialized(void);
+ extern int add_random_ready_callback(struct random_ready_callback *rdy);
+ extern void del_random_ready_callback(struct random_ready_callback *rdy);
+ extern int __must_check get_random_bytes_arch(void *buf, int nbytes);
++void random_register_extrng(const struct random_extrng *rng);
++void random_unregister_extrng(void);
+ 
+ #ifndef MODULE
+ extern const struct file_operations random_fops, urandom_fops;
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Herbert Xu <herbert.xu@redhat.com>
+Date: Tue, 10 Aug 2021 17:56:42 +0800
+Subject: [PATCH 28/32] crypto: rng - Override drivers/char/random in FIPS mode
+
+Upstream: RHEL only
+Bugzilla: 1984784
+
+This patch overrides the drivers/char/random RNGs with the FIPS
+RNG from Crypto API when FIPS mode is enabled.
+
+Signed-off-by: Herbert Xu <herbert.xu@redhat.com>
+---
+ crypto/rng.c | 73 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 72 insertions(+), 1 deletion(-)
+
+diff --git a/crypto/rng.c b/crypto/rng.c
+index fea082b25fe4..50a9d040bed1 100644
+--- a/crypto/rng.c
++++ b/crypto/rng.c
+@@ -11,14 +11,17 @@
+ #include <linux/atomic.h>
+ #include <crypto/internal/rng.h>
+ #include <linux/err.h>
++#include <linux/fips.h>
++#include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/random.h>
+ #include <linux/seq_file.h>
++#include <linux/sched.h>
++#include <linux/sched/signal.h>
+ #include <linux/slab.h>
+ #include <linux/string.h>
+ #include <linux/cryptouser.h>
+-#include <linux/compiler.h>
+ #include <net/netlink.h>
+ 
+ #include "internal.h"
+@@ -224,5 +227,73 @@ void crypto_unregister_rngs(struct rng_alg *algs, int count)
+ }
+ EXPORT_SYMBOL_GPL(crypto_unregister_rngs);
+ 
++static ssize_t crypto_devrandom_read(void __user *buf, size_t buflen)
++{
++	u8 tmp[256];
++	ssize_t ret;
++
++	if (!buflen)
++		return 0;
++
++	ret = crypto_get_default_rng();
++	if (ret)
++		return ret;
++
++	for (;;) {
++		int err;
++		int i;
++
++		i = min_t(int, buflen, sizeof(tmp));
++		err = crypto_rng_get_bytes(crypto_default_rng, tmp, i);
++		if (err) {
++			ret = err;
++			break;
++		}
++
++		if (copy_to_user(buf, tmp, i)) {
++			ret = -EFAULT;
++			break;
++		}
++
++		buflen -= i;
++		buf += i;
++		ret += i;
++
++		if (!buflen)
++			break;
++
++		if (need_resched()) {
++			if (signal_pending(current))
++				break;
++			schedule();
++		}
++	}
++
++	crypto_put_default_rng();
++	memzero_explicit(tmp, sizeof(tmp));
++
++	return ret;
++}
++
++static const struct random_extrng crypto_devrandom_rng = {
++	.extrng_read = crypto_devrandom_read,
++	.owner = THIS_MODULE,
++};
++
++static int __init crypto_rng_init(void)
++{
++	if (fips_enabled)
++		random_register_extrng(&crypto_devrandom_rng);
++	return 0;
++}
++
++static void __exit crypto_rng_exit(void)
++{
++	random_unregister_extrng();
++}
++
++late_initcall(crypto_rng_init);
++module_exit(crypto_rng_exit);
++
+ MODULE_LICENSE("GPL");
+ MODULE_DESCRIPTION("Random Number Generator");
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Dan Johansen <strit@manjaro.org>
+Date: Fri, 6 Aug 2021 00:04:27 +0200
+Subject: [PATCH 29/32] arm64: dts: rockchip: Setup USB typec port as datarole
+ on
+
+Some chargers try to put the charged device into device data
+role. Before this commit this condition caused the tcpm state machine to
+issue a hard reset due to a capability missmatch.
+
+Signed-off-by: Dan Johansen <strit@manjaro.org>
+---
+ arch/arm64/boot/dts/rockchip/rk3399-pinebook-pro.dts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3399-pinebook-pro.dts b/arch/arm64/boot/dts/rockchip/rk3399-pinebook-pro.dts
+index 9e5d07f5712e..dae8c252bc2b 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3399-pinebook-pro.dts
++++ b/arch/arm64/boot/dts/rockchip/rk3399-pinebook-pro.dts
+@@ -707,7 +707,7 @@ fusb0: fusb30x@22 {
+ 
+ 		connector {
+ 			compatible = "usb-c-connector";
+-			data-role = "host";
++			data-role = "dual";
+ 			label = "USB-C";
+ 			op-sink-microwatt = <1000000>;
+ 			power-role = "dual";
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Hans de Goede <hdegoede@redhat.com>
+Date: Thu, 14 Oct 2021 20:39:42 +0200
+Subject: [PATCH 30/32] x86/PCI: Ignore E820 reservations for bridge windows on
+ newer systems
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Some BIOS-es contain a bug where they add addresses which map to system
+RAM in the PCI host bridge window returned by the ACPI _CRS method, see
+commit 4dc2287c1805 ("x86: avoid E820 regions when allocating address
+space").
+
+To work around this bug Linux excludes E820 reserved addresses when
+allocating addresses from the PCI host bridge window since 2010.
+
+Recently (2020) some systems have shown-up with E820 reservations which
+cover the entire _CRS returned PCI bridge memory window, causing all
+attempts to assign memory to PCI BARs which have not been setup by the
+BIOS to fail. For example here are the relevant dmesg bits from a
+Lenovo IdeaPad 3 15IIL 81WE:
+
+ [mem 0x000000004bc50000-0x00000000cfffffff] reserved
+ pci_bus 0000:00: root bus resource [mem 0x65400000-0xbfffffff window]
+
+The ACPI specifications appear to allow this new behavior:
+
+The relationship between E820 and ACPI _CRS is not really very clear.
+ACPI v6.3, sec 15, table 15-374, says AddressRangeReserved means:
+
+  This range of addresses is in use or reserved by the system and is
+  not to be included in the allocatable memory pool of the operating
+  system's memory manager.
+
+and it may be used when:
+
+  The address range is in use by a memory-mapped system device.
+
+Furthermore, sec 15.2 says:
+
+  Address ranges defined for baseboard memory-mapped I/O devices, such
+  as APICs, are returned as reserved.
+
+A PCI host bridge qualifies as a baseboard memory-mapped I/O device,
+and its apertures are in use and certainly should not be included in
+the general allocatable pool, so the fact that some BIOS-es reports
+the PCI aperture as "reserved" in E820 doesn't seem like a BIOS bug.
+
+So it seems that the excluding of E820 reserved addresses is a mistake.
+
+Ideally Linux would fully stop excluding E820 reserved addresses,
+but then the old systems this was added for will regress.
+Instead keep the old behavior for old systems, while ignoring
+the E820 reservations for any systems from now on.
+
+Old systems are defined here as BIOS year < 2018, this was chosen to
+make sure that pci_use_e820 will not be set on the currently affected
+systems, while at the same time also taking into account that the
+systems for which the E820 checking was originally added may have
+received BIOS updates for quite a while (esp. CVE related ones),
+giving them a more recent BIOS year then 2010.
+
+Also add pci=no_e820 and pci=use_e820 options to allow overriding
+the BIOS year heuristic.
+
+BugLink: https://bugzilla.kernel.org/show_bug.cgi?id=206459
+BugLink: https://bugzilla.redhat.com/show_bug.cgi?id=1868899
+BugLink: https://bugzilla.redhat.com/show_bug.cgi?id=1871793
+BugLink: https://bugs.launchpad.net/bugs/1878279
+BugLink: https://bugs.launchpad.net/bugs/1931715
+BugLink: https://bugs.launchpad.net/bugs/1932069
+BugLink: https://bugs.launchpad.net/bugs/1921649
+Cc: Benoit Grégoire <benoitg@coeus.ca>
+Cc: Hui Wang <hui.wang@canonical.com>
+Cc: stable@vger.kernel.org
+Reviewed-by: Mika Westerberg <mika.westerberg@linux.intel.com>
+Acked-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Signed-off-by: Hans de Goede <hdegoede@redhat.com>
+Acked-by: Bjorn Helgaas <bhelgaas@google.com>
+---
+ .../admin-guide/kernel-parameters.txt         |  9 ++++++
+ arch/x86/include/asm/pci_x86.h                | 10 +++++++
+ arch/x86/kernel/resource.c                    |  4 +++
+ arch/x86/pci/acpi.c                           | 28 +++++++++++++++++++
+ arch/x86/pci/common.c                         |  6 ++++
+ 5 files changed, 57 insertions(+)
+
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index 1396fd2d9031..4bc97128cee8 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -3949,6 +3949,15 @@
+ 				please report a bug.
+ 		nocrs		[X86] Ignore PCI host bridge windows from ACPI.
+ 				If you need to use this, please report a bug.
++		use_e820	[X86] Use E820 reservations to exclude parts of
++				PCI host bridge windows. This is a workaround
++				for BIOS defects in host bridge _CRS methods.
++				If you need to use this, please report a bug to
++				<linux-pci@vger.kernel.org>.
++		no_e820		[X86] Ignore E820 reservations for PCI host
++				bridge windows. This is the default on modern
++				hardware. If you need to use this, please report
++				a bug to <linux-pci@vger.kernel.org>.
+ 		routeirq	Do IRQ routing for all PCI devices.
+ 				This is normally done in pci_enable_device(),
+ 				so this option is a temporary workaround
+diff --git a/arch/x86/include/asm/pci_x86.h b/arch/x86/include/asm/pci_x86.h
+index 490411dba438..0bb4e7dd0ffc 100644
+--- a/arch/x86/include/asm/pci_x86.h
++++ b/arch/x86/include/asm/pci_x86.h
+@@ -39,6 +39,8 @@ do {						\
+ #define PCI_ROOT_NO_CRS		0x100000
+ #define PCI_NOASSIGN_BARS	0x200000
+ #define PCI_BIG_ROOT_WINDOW	0x400000
++#define PCI_USE_E820		0x800000
++#define PCI_NO_E820		0x1000000
+ 
+ extern unsigned int pci_probe;
+ extern unsigned long pirq_table_addr;
+@@ -64,6 +66,8 @@ void pcibios_scan_specific_bus(int busn);
+ 
+ /* pci-irq.c */
+ 
++struct pci_dev;
++
+ struct irq_info {
+ 	u8 bus, devfn;			/* Bus, device and function */
+ 	struct {
+@@ -232,3 +236,9 @@ static inline void mmio_config_writel(void __iomem *pos, u32 val)
+ # define x86_default_pci_init_irq	NULL
+ # define x86_default_pci_fixup_irqs	NULL
+ #endif
++
++#if defined(CONFIG_PCI) && defined(CONFIG_ACPI)
++extern bool pci_use_e820;
++#else
++#define pci_use_e820 false
++#endif
+diff --git a/arch/x86/kernel/resource.c b/arch/x86/kernel/resource.c
+index 9b9fb7882c20..e8dc9bc327bd 100644
+--- a/arch/x86/kernel/resource.c
++++ b/arch/x86/kernel/resource.c
+@@ -1,6 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0
+ #include <linux/ioport.h>
+ #include <asm/e820/api.h>
++#include <asm/pci_x86.h>
+ 
+ static void resource_clip(struct resource *res, resource_size_t start,
+ 			  resource_size_t end)
+@@ -28,6 +29,9 @@ static void remove_e820_regions(struct resource *avail)
+ 	int i;
+ 	struct e820_entry *entry;
+ 
++	if (!pci_use_e820)
++		return;
++
+ 	for (i = 0; i < e820_table->nr_entries; i++) {
+ 		entry = &e820_table->entries[i];
+ 
+diff --git a/arch/x86/pci/acpi.c b/arch/x86/pci/acpi.c
+index 948656069cdd..72d473054262 100644
+--- a/arch/x86/pci/acpi.c
++++ b/arch/x86/pci/acpi.c
+@@ -21,6 +21,8 @@ struct pci_root_info {
+ 
+ static bool pci_use_crs = true;
+ static bool pci_ignore_seg = false;
++/* Consumed in arch/x86/kernel/resource.c */
++bool pci_use_e820 = false;
+ 
+ static int __init set_use_crs(const struct dmi_system_id *id)
+ {
+@@ -160,6 +162,32 @@ void __init pci_acpi_crs_quirks(void)
+ 	       "if necessary, use \"pci=%s\" and report a bug\n",
+ 	       pci_use_crs ? "Using" : "Ignoring",
+ 	       pci_use_crs ? "nocrs" : "use_crs");
++
++	/*
++	 * Some BIOS-es contain a bug where they add addresses which map to
++	 * system RAM in the PCI host bridge window returned by the ACPI _CRS
++	 * method, see commit 4dc2287c1805 ("x86: avoid E820 regions when
++	 * allocating address space"). To avoid this Linux by default excludes
++	 * E820 reservations when allocating addresses since 2010.
++	 * In 2020 some systems have shown-up with E820 reservations which cover
++	 * the entire _CRS returned PCI host bridge window, causing all attempts
++	 * to assign memory to PCI BARs to fail if Linux uses E820 reservations.
++	 *
++	 * Ideally Linux would fully stop using E820 reservations, but then
++	 * the old systems this was added for will regress.
++	 * Instead keep the old behavior for old systems, while ignoring the
++	 * E820 reservations for any systems from now on.
++	 */
++	if (year >= 0 && year < 2018)
++		pci_use_e820 = true;
++
++	if (pci_probe & PCI_NO_E820)
++		pci_use_e820 = false;
++	else if (pci_probe & PCI_USE_E820)
++		pci_use_e820 = true;
++
++	printk(KERN_INFO "PCI: %s E820 reservations for host bridge windows\n",
++	       pci_use_e820 ? "Using" : "Ignoring");
+ }
+ 
+ #ifdef	CONFIG_PCI_MMCONFIG
+diff --git a/arch/x86/pci/common.c b/arch/x86/pci/common.c
+index 3507f456fcd0..091ec7e94fcb 100644
+--- a/arch/x86/pci/common.c
++++ b/arch/x86/pci/common.c
+@@ -595,6 +595,12 @@ char *__init pcibios_setup(char *str)
+ 	} else if (!strcmp(str, "nocrs")) {
+ 		pci_probe |= PCI_ROOT_NO_CRS;
+ 		return NULL;
++	} else if (!strcmp(str, "use_e820")) {
++		pci_probe |= PCI_USE_E820;
++		return NULL;
++	} else if (!strcmp(str, "no_e820")) {
++		pci_probe |= PCI_NO_E820;
++		return NULL;
+ #ifdef CONFIG_PHYS_ADDR_T_64BIT
+ 	} else if (!strcmp(str, "big_root_window")) {
+ 		pci_probe |= PCI_BIG_ROOT_WINDOW;
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Hans de Goede <hdegoede@redhat.com>
+Date: Thu, 14 Oct 2021 20:39:43 +0200
+Subject: [PATCH 31/32] x86/PCI/ACPI: Replace printk calls with pr_info/pr_warn
+ calls
+
+The direct use of printk is deprecated, replace the printk calls
+in arch/x86/pci/acpi.c with pr_info/pr_warn calls.
+
+Acked-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Signed-off-by: Hans de Goede <hdegoede@redhat.com>
+---
+ arch/x86/pci/acpi.c | 25 +++++++++++++------------
+ 1 file changed, 13 insertions(+), 12 deletions(-)
+
+diff --git a/arch/x86/pci/acpi.c b/arch/x86/pci/acpi.c
+index 72d473054262..f357dac92610 100644
+--- a/arch/x86/pci/acpi.c
++++ b/arch/x86/pci/acpi.c
+@@ -1,4 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0
++
++#define pr_fmt(fmt) "PCI: " fmt
++
+ #include <linux/pci.h>
+ #include <linux/acpi.h>
+ #include <linux/init.h>
+@@ -38,7 +41,7 @@ static int __init set_nouse_crs(const struct dmi_system_id *id)
+ 
+ static int __init set_ignore_seg(const struct dmi_system_id *id)
+ {
+-	printk(KERN_INFO "PCI: %s detected: ignoring ACPI _SEG\n", id->ident);
++	pr_info("%s detected: ignoring ACPI _SEG\n", id->ident);
+ 	pci_ignore_seg = true;
+ 	return 0;
+ }
+@@ -158,10 +161,9 @@ void __init pci_acpi_crs_quirks(void)
+ 	else if (pci_probe & PCI_USE__CRS)
+ 		pci_use_crs = true;
+ 
+-	printk(KERN_INFO "PCI: %s host bridge windows from ACPI; "
+-	       "if necessary, use \"pci=%s\" and report a bug\n",
+-	       pci_use_crs ? "Using" : "Ignoring",
+-	       pci_use_crs ? "nocrs" : "use_crs");
++	pr_info("%s host bridge windows from ACPI; if necessary, use \"pci=%s\" and report a bug\n",
++		pci_use_crs ? "Using" : "Ignoring",
++		pci_use_crs ? "nocrs" : "use_crs");
+ 
+ 	/*
+ 	 * Some BIOS-es contain a bug where they add addresses which map to
+@@ -186,8 +188,8 @@ void __init pci_acpi_crs_quirks(void)
+ 	else if (pci_probe & PCI_USE_E820)
+ 		pci_use_e820 = true;
+ 
+-	printk(KERN_INFO "PCI: %s E820 reservations for host bridge windows\n",
+-	       pci_use_e820 ? "Using" : "Ignoring");
++	pr_info("%s E820 reservations for host bridge windows\n",
++		pci_use_e820 ? "Using" : "Ignoring");
+ }
+ 
+ #ifdef	CONFIG_PCI_MMCONFIG
+@@ -362,9 +364,8 @@ struct pci_bus *pci_acpi_scan_root(struct acpi_pci_root *root)
+ 		root->segment = domain = 0;
+ 
+ 	if (domain && !pci_domains_supported) {
+-		printk(KERN_WARNING "pci_bus %04x:%02x: "
+-		       "ignored (multiple domains not supported)\n",
+-		       domain, busnum);
++		pr_warn("pci_bus %04x:%02x: ignored (multiple domains not supported)\n",
++			domain, busnum);
+ 		return NULL;
+ 	}
+ 
+@@ -432,7 +433,7 @@ int __init pci_acpi_init(void)
+ 	if (acpi_noirq)
+ 		return -ENODEV;
+ 
+-	printk(KERN_INFO "PCI: Using ACPI for IRQ routing\n");
++	pr_info("Using ACPI for IRQ routing\n");
+ 	acpi_irq_penalty_init();
+ 	pcibios_enable_irq = acpi_pci_irq_enable;
+ 	pcibios_disable_irq = acpi_pci_irq_disable;
+@@ -444,7 +445,7 @@ int __init pci_acpi_init(void)
+ 		 * also do it here in case there are still broken drivers that
+ 		 * don't use pci_enable_device().
+ 		 */
+-		printk(KERN_INFO "PCI: Routing PCI interrupts for all devices because \"pci=routeirq\" specified\n");
++		pr_info("Routing PCI interrupts for all devices because \"pci=routeirq\" specified\n");
+ 		for_each_pci_dev(dev)
+ 			acpi_pci_irq_enable(dev);
+ 	}
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Zekun Shen <bruceshenzk@gmail.com>
+Date: Sat, 30 Oct 2021 22:42:50 -0400
+Subject: [PATCH 32/32] mwifiex_usb: Fix skb_over_panic in mwifiex_usb_recv
+
+Currently, with an unknown recv_type, mwifiex_usb_recv
+just return -1 without restoring the skb. Next time
+mwifiex_usb_rx_complete is invoked with the same skb,
+calling skb_put causes skb_over_panic.
+
+The bug is triggerable with a compromised/malfunctioning
+usb device. After applying the patch, skb_over_panic
+no longer shows up with the same input.
+
+Attached is the panic report from fuzzing.
+skbuff: skb_over_panic: text:000000003bf1b5fa
+ len:2048 put:4 head:00000000dd6a115b data:000000000a9445d8
+ tail:0x844 end:0x840 dev:<NULL>
+kernel BUG at net/core/skbuff.c:109!
+invalid opcode: 0000 [#1] SMP KASAN NOPTI
+CPU: 0 PID: 198 Comm: in:imklog Not tainted 5.6.0 #60
+RIP: 0010:skb_panic+0x15f/0x161
+Call Trace:
+ <IRQ>
+ ? mwifiex_usb_rx_complete+0x26b/0xfcd [mwifiex_usb]
+ skb_put.cold+0x24/0x24
+ mwifiex_usb_rx_complete+0x26b/0xfcd [mwifiex_usb]
+ __usb_hcd_giveback_urb+0x1e4/0x380
+ usb_giveback_urb_bh+0x241/0x4f0
+ ? __hrtimer_run_queues+0x316/0x740
+ ? __usb_hcd_giveback_urb+0x380/0x380
+ tasklet_action_common.isra.0+0x135/0x330
+ __do_softirq+0x18c/0x634
+ irq_exit+0x114/0x140
+ smp_apic_timer_interrupt+0xde/0x380
+ apic_timer_interrupt+0xf/0x20
+ </IRQ>
+
+Reported-by: Zekun Shen <bruceshenzk@gmail.com>
+Reported-by: Brendan Dolan-Gavitt <brendandg@nyu.edu>
+Signed-off-by: Zekun Shen <bruceshenzk@gmail.com>
+---
+ drivers/net/wireless/marvell/mwifiex/usb.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/marvell/mwifiex/usb.c b/drivers/net/wireless/marvell/mwifiex/usb.c
+index 9736aa0ab7fd..8f01fcbe9396 100644
+--- a/drivers/net/wireless/marvell/mwifiex/usb.c
++++ b/drivers/net/wireless/marvell/mwifiex/usb.c
+@@ -130,7 +130,8 @@ static int mwifiex_usb_recv(struct mwifiex_adapter *adapter,
+ 		default:
+ 			mwifiex_dbg(adapter, ERROR,
+ 				    "unknown recv_type %#x\n", recv_type);
+-			return -1;
++			ret = -1;
++			goto exit_restore_skb;
+ 		}
+ 		break;
+ 	case MWIFIEX_USB_EP_DATA:
+-- 
+2.31.1
+
