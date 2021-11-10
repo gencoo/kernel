@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 13
+%global distro_build 14
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 13.el9
+%define pkgrelease 14.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 13%{?buildid}%{?dist}
+%define specrelease 14%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-13.el9.tar.xz
+Source0: linux-5.14.0-14.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -785,6 +785,7 @@ Source72: filter-s390x.sh.fedora
 Source73: filter-modules.sh.fedora
 %endif
 
+Source75: partial-kgcov-snip.config
 Source80: generate_all_configs.sh
 Source81: process_configs.sh
 
@@ -1360,8 +1361,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-13.el9 -c
-mv linux-5.14.0-13.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-14.el9 -c
+mv linux-5.14.0-14.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -1425,15 +1426,13 @@ for i in %{all_arch_configs}
 do
   mv $i $i.tmp
   ./merge.pl %{SOURCE3001} $i.tmp > $i
-  rm $i.tmp
-done
-%endif
-
-# enable GCOV kernel config options if gcov is on
 %if %{with_gcov}
-for i in *.config
-do
-  sed -i 's/# CONFIG_GCOV_KERNEL is not set/CONFIG_GCOV_KERNEL=y\nCONFIG_GCOV_PROFILE_ALL=y\n/' $i
+  echo "Merging with gcov options"
+  cat %{SOURCE75}
+  mv $i $i.tmp
+  ./merge.pl %{SOURCE75} $i.tmp > $i
+%endif
+  rm $i.tmp
 done
 %endif
 
@@ -2854,7 +2853,7 @@ fi
 %endif
 
 %if %{with_gcov}
-%ifarch x86_64 s390x ppc64le aarch64
+%ifnarch %nobuildarches noarch
 %files gcov
 %{_builddir}
 %endif
@@ -2952,6 +2951,21 @@ fi
 #
 #
 %changelog
+* Wed Nov 10 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-14.el9]
+- evm: mark evm_fixmode as __ro_after_init (Bruno Meneguele) [2017160]
+- IMA: remove -Wmissing-prototypes warning (Bruno Meneguele) [2017160]
+- perf flamegraph: flamegraph.py script improvements (Michael Petlan) [2010271]
+- redhat/configs/evaluate_configs: insert EMPTY tags at correct place (Jan Stancek) [2015082]
+- redhat/configs/evaluate_configs: walk cfgvariants line by line (Jan Stancek) [2015082]
+- redhat/configs: create a separate config for gcov options (Jan Stancek) [2015082]
+- redhat/kernel.spec.template: don't hardcode gcov arches (Jan Stancek) [2015082]
+- i40e: fix endless loop under rtnl (Stefan Assmann) [1992939]
+- selftests/bpf: Use nanosleep tracepoint in perf buffer test (Jiri Olsa) [2006310]
+- selftests/bpf: Fix possible/online index mismatch in perf_buffer test (Jiri Olsa) [2006310]
+- selftests/bpf: Fix perf_buffer test on system with offline cpus (Jiri Olsa) [2006310]
+- KVM: x86: Fix stack-out-of-bounds memory access from ioapic_write_indirect() (Vitaly Kuznetsov) [1965145]
+- selftest/bpf: Switch recursion test to use htab_map_delete_elem (Jiri Olsa) [2006313]
+
 * Mon Nov 08 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-13.el9]
 - futex: Remove unused variable 'vpid' in futex_proxy_trylock_atomic() (Waiman Long) [2007032]
 - futex: Prevent inconsistent state and exit race (Waiman Long) [2007032]
