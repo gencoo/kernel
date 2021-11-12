@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 15
+%global distro_build 16
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 15.el9
+%define pkgrelease 16.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 15%{?buildid}%{?dist}
+%define specrelease 16%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-15.el9.tar.xz
+Source0: linux-5.14.0-16.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1361,8 +1361,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-15.el9 -c
-mv linux-5.14.0-15.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-16.el9 -c
+mv linux-5.14.0-16.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2951,6 +2951,39 @@ fi
 #
 #
 %changelog
+* Fri Nov 12 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-16.el9]
+- CI: Add template for baseline gcov build for RHEL (Israel Santana Aleman)
+- redhat/configs: Enable Nitro Enclaves on Aarch64 (Vitaly Kuznetsov) [2001582]
+- nitro_enclaves: Add fixes for checkpatch blank line reports (Vitaly Kuznetsov) [2001582]
+- nitro_enclaves: Add fixes for checkpatch spell check reports (Vitaly Kuznetsov) [2001582]
+- nitro_enclaves: Add fixes for checkpatch match open parenthesis reports (Vitaly Kuznetsov) [2001582]
+- nitro_enclaves: Update copyright statement to include 2021 (Vitaly Kuznetsov) [2001582]
+- nitro_enclaves: Add fix for the kernel-doc report (Vitaly Kuznetsov) [2001582]
+- nitro_enclaves: Update documentation for Arm64 support (Vitaly Kuznetsov) [2001582]
+- nitro_enclaves: Enable Arm64 support (Vitaly Kuznetsov) [2001582]
+- redhat/configs: Enable Hyper-V support on ARM (Vitaly Kuznetsov) [1949613]
+- redhat/configs: enable CONFIG_INPUT_KEYBOARD for AARCH64 (Vitaly Kuznetsov) [1949613]
+- Drivers: hv: Enable Hyper-V code to be built on ARM64 (Vitaly Kuznetsov) [1949613]
+- arm64: efi: Export screen_info (Vitaly Kuznetsov) [1949613]
+- arm64: hyperv: Initialize hypervisor on boot (Vitaly Kuznetsov) [1949613]
+- arm64: hyperv: Add panic handler (Vitaly Kuznetsov) [1949613]
+- arm64: hyperv: Add Hyper-V hypercall and register access utilities (Vitaly Kuznetsov) [1949613]
+- PCI: hv: Turn on the host bridge probing on ARM64 (Vitaly Kuznetsov) [1949613]
+- PCI: hv: Set up MSI domain at bridge probing time (Vitaly Kuznetsov) [1949613]
+- PCI: hv: Set ->domain_nr of pci_host_bridge at probing time (Vitaly Kuznetsov) [1949613]
+- PCI: hv: Generify PCI probing (Vitaly Kuznetsov) [1949613]
+- arm64: PCI: Support root bridge preparation for Hyper-V (Vitaly Kuznetsov) [1949613]
+- arm64: PCI: Restructure pcibios_root_bridge_prepare() (Vitaly Kuznetsov) [1949613]
+- PCI: Support populating MSI domains of root buses via bridges (Vitaly Kuznetsov) [1949613]
+- PCI: Introduce domain_nr in pci_host_bridge (Vitaly Kuznetsov) [1949613]
+- drivers: hv: Decouple Hyper-V clock/timer code from VMbus drivers (Vitaly Kuznetsov) [1949613]
+- Drivers: hv: Move Hyper-V misc functionality to arch-neutral code (Vitaly Kuznetsov) [1949613]
+- Drivers: hv: Add arch independent default functions for some Hyper-V handlers (Vitaly Kuznetsov) [1949613]
+- Drivers: hv: Make portions of Hyper-V init code be arch neutral (Vitaly Kuznetsov) [1949613]
+- asm-generic/hyperv: Add missing #include of nmi.h (Vitaly Kuznetsov) [1949613]
+- PCI: hv: Support for create interrupt v3 (Vitaly Kuznetsov) [1949613]
+- x86_64: Enable Elkhart Lake Quadrature Encoder Peripheral support (Prarit Bhargava) [1874997]
+
 * Thu Nov 11 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-15.el9]
 - scsi: lpfc: Fix memory overwrite during FC-GS I/O abort handling (Dick Kennedy) [1879528]
 - scsi: lpfc: Fix gcc -Wstringop-overread warning, again (Dick Kennedy) [1879528]
