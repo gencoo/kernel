@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 16
+%global distro_build 17
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 16.el9
+%define pkgrelease 17.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 16%{?buildid}%{?dist}
+%define specrelease 17%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-16.el9.tar.xz
+Source0: linux-5.14.0-17.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1361,8 +1361,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-16.el9 -c
-mv linux-5.14.0-16.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-17.el9 -c
+mv linux-5.14.0-17.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2951,6 +2951,34 @@ fi
 #
 #
 %changelog
+* Tue Nov 16 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-17.el9]
+- net: mana: Support hibernation and kexec (Mohammed Gamal) [2011883]
+- net: mana: Improve the HWC error handling (Mohammed Gamal) [2011883]
+- net: mana: Report OS info to the PF driver (Mohammed Gamal) [2011883]
+- net: mana: Fix the netdev_err()'s vPort argument in mana_init_port() (Mohammed Gamal) [2011883]
+- net: mana: Allow setting the number of queues while the NIC is down (Mohammed Gamal) [2011883]
+- net: mana: Fix error handling in mana_create_rxq() (Mohammed Gamal) [2011883]
+- net: mana: Use kcalloc() instead of kzalloc() (Mohammed Gamal) [2011883]
+- net: mana: Prefer struct_size over open coded arithmetic (Mohammed Gamal) [2011883]
+- net: mana: Add WARN_ON_ONCE in case of CQE read overflow (Mohammed Gamal) [2011883]
+- net: mana: Add support for EQ sharing (Mohammed Gamal) [2011883]
+- net: mana: Move NAPI from EQ to CQ (Mohammed Gamal) [2011883]
+- PCI: hv: Fix sleep while in non-sleep context when removing child devices from the bus (Mohammed Gamal) [2008571]
+- objtool: Remove redundant 'len' field from struct section (C. Erastus Toe) [2002440]
+- objtool: Make .altinstructions section entry size consistent (C. Erastus Toe) [2002440]
+- s390/topology: fix topology information when calling cpu hotplug notifiers (Phil Auld) [2003998]
+- fs: remove leftover comments from mandatory locking removal (Jeffrey Layton) [2017438]
+- locks: remove changelog comments (Jeffrey Layton) [2017438]
+- docs: fs: locks.rst: update comment about mandatory file locking (Jeffrey Layton) [2017438]
+- Documentation: remove reference to now removed mandatory-locking doc (Jeffrey Layton) [2017438]
+- locks: remove LOCK_MAND flock lock support (Jeffrey Layton) [2017438]
+- fs: clean up after mandatory file locking support removal (Jeffrey Layton) [2017438]
+- fs: remove mandatory file locking support (Jeffrey Layton) [2017438]
+- fcntl: fix potential deadlock for &fasync_struct.fa_lock (Jeffrey Layton) [2017438]
+- fcntl: fix potential deadlocks for &fown_struct.lock (Jeffrey Layton) [2017438]
+- KVM: s390: Enable specification exception interpretation (Thomas Huth) [2001770]
+- redhat/configs: enable CONFIG_BCMGENET as module (Joel Savitz) [2011025]
+
 * Fri Nov 12 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-16.el9]
 - CI: Add template for baseline gcov build for RHEL (Israel Santana Aleman)
 - redhat/configs: Enable Nitro Enclaves on Aarch64 (Vitaly Kuznetsov) [2001582]
