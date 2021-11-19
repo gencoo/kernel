@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 18
+%global distro_build 19
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 18.el9
+%define pkgrelease 19.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 18%{?buildid}%{?dist}
+%define specrelease 19%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-18.el9.tar.xz
+Source0: linux-5.14.0-19.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1361,8 +1361,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-18.el9 -c
-mv linux-5.14.0-18.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-19.el9 -c
+mv linux-5.14.0-19.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2951,6 +2951,49 @@ fi
 #
 #
 %changelog
+* Fri Nov 19 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-19.el9]
+- net: core: don't call SIOCBRADD/DELIF for non-bridge devices (Ivan Vecera) [2008927]
+- net: bridge: fix ioctl old_deviceless bridge argument (Ivan Vecera) [2008927]
+- net: bridge: fix ioctl locking (Ivan Vecera) [2008927]
+- ethtool: Fix rxnfc copy to user buffer overflow (Ivan Vecera) [2008927]
+- net: bonding: move ioctl handling to private ndo operation (Ivan Vecera) [2008927]
+- net: bridge: move bridge ioctls out of .ndo_do_ioctl (Ivan Vecera) [2008927]
+- net: socket: return changed ifreq from SIOCDEVPRIVATE (Ivan Vecera) [2008927]
+- net: split out ndo_siowandev ioctl (Ivan Vecera) [2008927]
+- dev_ioctl: split out ndo_eth_ioctl (Ivan Vecera) [2008927]
+- dev_ioctl: pass SIOCDEVPRIVATE data separately (Ivan Vecera) [2008927]
+- wan: cosa: remove dead cosa_net_ioctl() function (Ivan Vecera) [2008927]
+- wan: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- ppp: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- sb1000: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- hippi: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- ip_tunnel: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- airo: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- hamradio: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- cxgb3: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- qeth: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- slip/plip: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- net: usb: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- fddi: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- eql: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- tehuti: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- hamachi: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- appletalk: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- bonding: use siocdevprivate (Ivan Vecera) [2008927]
+- tulip: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- phonet: use siocdevprivate (Ivan Vecera) [2008927]
+- bridge: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- hostap: use ndo_siocdevprivate (Ivan Vecera) [2008927]
+- staging: wlan-ng: use siocdevprivate (Ivan Vecera) [2008927]
+- staging: rtlwifi: use siocdevprivate (Ivan Vecera) [2008927]
+- net: split out SIOCDEVPRIVATE handling from dev_ioctl (Ivan Vecera) [2008927]
+- net: socket: rework compat_ifreq_ioctl() (Ivan Vecera) [2008927]
+- net: socket: simplify dev_ifconf handling (Ivan Vecera) [2008927]
+- net: socket: remove register_gifconf (Ivan Vecera) [2008927]
+- net: socket: rework SIOC?IFMAP ioctls (Ivan Vecera) [2008927]
+- ethtool: improve compat ioctl handling (Ivan Vecera) [2008927]
+- compat: make linux/compat.h available everywhere (Ivan Vecera) [2008927]
+
 * Thu Nov 18 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-18.el9]
 - CI: Add template for baseline gcov build (c9s repos) (Michael Hofmann)
 - PCI: vmd: depend on !UML (Myron Stowe) [1994932]
