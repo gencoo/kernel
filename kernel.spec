@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 20
+%global distro_build 21
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 20.el9
+%define pkgrelease 21.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 20%{?buildid}%{?dist}
+%define specrelease 21%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-20.el9.tar.xz
+Source0: linux-5.14.0-21.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1361,8 +1361,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-20.el9 -c
-mv linux-5.14.0-20.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-21.el9 -c
+mv linux-5.14.0-21.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2249,7 +2249,7 @@ for dir in bpf bpf/no_alu32 bpf/progs; do
 	test -d $dir || continue
 	mkdir -p %{buildroot}%{_libexecdir}/kselftests/$dir
 	find $dir -maxdepth 1 -type f \( -executable -o -name '*.py' -o -name settings -o \
-		-name 'btf_dump_test_case_*.c' -o \
+		-name 'btf_dump_test_case_*.c' -o -name '*.ko' -o \
 		-name '*.o' -exec sh -c 'readelf -h "{}" | grep -q "^  Machine:.*BPF"' \; \) -print0 | \
 	xargs -0 cp -t %{buildroot}%{_libexecdir}/kselftests/$dir || true
 done
@@ -2951,6 +2951,34 @@ fi
 #
 #
 %changelog
+* Thu Nov 25 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-21.el9]
+- clocksource: Increase WATCHDOG_MAX_SKEW (Waiman Long) [2017164]
+- x86/hpet: Use another crystalball to evaluate HPET usability (Waiman Long) [2017164]
+- scsi: target: Fix the pgr/alua_support_store functions (Maurizio Lombardi) [2023439]
+- redhat: fix typo and make the output more silent for dist-git sync (Herton R. Krzesinski)
+- x86: ACPI: cstate: Optimize C3 entry on AMD CPUs (David Arcari) [1998526]
+- scsi: lpfc: Update lpfc version to 14.0.0.3 (Dick Kennedy) [2021327]
+- scsi: lpfc: Allow fabric node recovery if recovery is in progress before devloss (Dick Kennedy) [2021327]
+- scsi: lpfc: Fix link down processing to address NULL pointer dereference (Dick Kennedy) [2021327]
+- scsi: lpfc: Allow PLOGI retry if previous PLOGI was aborted (Dick Kennedy) [2021327]
+- scsi: lpfc: Fix use-after-free in lpfc_unreg_rpi() routine (Dick Kennedy) [2021327]
+- scsi: lpfc: Correct sysfs reporting of loop support after SFP status change (Dick Kennedy) [2021327]
+- scsi: lpfc: Wait for successful restart of SLI3 adapter during host sg_reset (Dick Kennedy) [2021327]
+- scsi: lpfc: Revert LOG_TRACE_EVENT back to LOG_INIT prior to driver_resource_setup() (Dick Kennedy) [2021327]
+- x86/Kconfig: Do not enable AMD_MEM_ENCRYPT_ACTIVE_BY_DEFAULT automatically (Prarit Bhargava) [2021200]
+- ucounts: Move get_ucounts from cred_alloc_blank to key_change_session_keyring (Alexey Gladkov) [2018142]
+- ucounts: Proper error handling in set_cred_ucounts (Alexey Gladkov) [2018142]
+- ucounts: Pair inc_rlimit_ucounts with dec_rlimit_ucoutns in commit_creds (Alexey Gladkov) [2018142]
+- ucounts: Fix signal ucount refcounting (Alexey Gladkov) [2018142]
+- x86/cpu: Fix migration safety with X86_BUG_NULL_SEL (Vitaly Kuznetsov) [2016959]
+- ip6_gre: Revert "ip6_gre: add validation for csum_start" (Guillaume Nault) [2014993]
+- ip_gre: validate csum_start only on pull (Guillaume Nault) [2014993]
+- redhat/configs: enable KEXEC_IMAGE_VERIFY_SIG for RHEL (Coiby Xu) [1994858]
+- redhat/configs: enable KEXEC_SIG for aarch64 RHEL (Coiby Xu) [1994858]
+- kernel.spec: add bpf_testmod.ko to kselftests/bpf (Viktor Malik) [2006318 2006319]
+- netfilter: Add deprecation notices for xtables (Phil Sutter) [1945179]
+- redhat: Add mark_driver_deprecated() (Phil Sutter) [1945179]
+
 * Tue Nov 23 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-20.el9]
 - powerpc/svm: Don't issue ultracalls if !mem_encrypt_active() (Herton R. Krzesinski) [2025186]
 
