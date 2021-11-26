@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 21
+%global distro_build 22
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 21.el9
+%define pkgrelease 22.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 21%{?buildid}%{?dist}
+%define specrelease 22%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-21.el9.tar.xz
+Source0: linux-5.14.0-22.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1361,8 +1361,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-21.el9 -c
-mv linux-5.14.0-21.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-22.el9 -c
+mv linux-5.14.0-22.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2951,6 +2951,41 @@ fi
 #
 #
 %changelog
+* Fri Nov 26 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-22.el9]
+- Add automotive CI jobs (Michael Hofmann)
+- sched/scs: Reset the shadow stack when idle_task_exit (Phil Auld) [1992256]
+- sched/fair: Null terminate buffer when updating tunable_scaling (Phil Auld) [1992256]
+- sched/fair: Add ancestors of unthrottled undecayed cfs_rq (Phil Auld) [1981743 1992256]
+- cpufreq: schedutil: Destroy mutex before kobject_put() frees the memory (Phil Auld) [1992256]
+- sched/idle: Make the idle timer expire in hard interrupt context (Phil Auld) [1992256]
+- sched: Prevent balance_push() on remote runqueues (Phil Auld) [1992256]
+- sched/fair: Mark tg_is_idle() an inline in the !CONFIG_FAIR_GROUP_SCHED case (Phil Auld) [1992256]
+- sched/topology: Skip updating masks for non-online nodes (Phil Auld) [1992256]
+- sched: Skip priority checks with SCHED_FLAG_KEEP_PARAMS (Phil Auld) [1992256]
+- sched: Fix UCLAMP_FLAG_IDLE setting (Phil Auld) [1992256]
+- cpufreq: schedutil: Use kobject release() method to free sugov_tunables (Phil Auld) [1992256]
+- sched/deadline: Fix missing clock update in migrate_task_rq_dl() (Phil Auld) [1992256]
+- sched/fair: Avoid a second scan of target in select_idle_cpu (Phil Auld) [1992256]
+- sched/fair: Use prev instead of new target as recent_used_cpu (Phil Auld) [1992256]
+- sched: Replace deprecated CPU-hotplug functions. (Phil Auld) [1992256]
+- sched: Introduce dl_task_check_affinity() to check proposed affinity (Phil Auld) [1992256]
+- sched: Allow task CPU affinity to be restricted on asymmetric systems (Phil Auld) [1992256]
+- sched: Split the guts of sched_setaffinity() into a helper function (Phil Auld) [1992256]
+- sched: Introduce task_struct::user_cpus_ptr to track requested affinity (Phil Auld) [1992256]
+- sched: Reject CPU affinity changes based on task_cpu_possible_mask() (Phil Auld) [1992256]
+- cpuset: Cleanup cpuset_cpus_allowed_fallback() use in select_fallback_rq() (Phil Auld) [1992256]
+- cpuset: Honour task_cpu_possible_mask() in guarantee_online_cpus() (Phil Auld) [1992256]
+- cpuset: Don't use the cpu_possible_mask as a last resort for cgroup v1 (Phil Auld) [1992256]
+- sched: Introduce task_cpu_possible_mask() to limit fallback rq selection (Phil Auld) [1992256]
+- sched: Cgroup SCHED_IDLE support (Phil Auld) [1992256]
+- sched: Don't report SCHED_FLAG_SUGOV in sched_getattr() (Phil Auld) [1992256]
+- sched/deadline: Fix reset_on_fork reporting of DL tasks (Phil Auld) [1992256]
+- sched/numa: Fix is_core_idle() (Phil Auld) [1992256]
+- sched: remove redundant on_rq status change (Phil Auld) [1992256]
+- sched: Optimize housekeeping_cpumask() in for_each_cpu_and() (Phil Auld) [1992256]
+- sched/sysctl: Move extern sysctl declarations to sched.h (Phil Auld) [1992256]
+- sched/debug: Don't update sched_domain debug directories before sched_debug_init() (Phil Auld) [1992256]
+
 * Thu Nov 25 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-21.el9]
 - clocksource: Increase WATCHDOG_MAX_SKEW (Waiman Long) [2017164]
 - x86/hpet: Use another crystalball to evaluate HPET usability (Waiman Long) [2017164]
