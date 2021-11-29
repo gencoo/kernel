@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 22
+%global distro_build 23
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 22.el9
+%define pkgrelease 23.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 22%{?buildid}%{?dist}
+%define specrelease 23%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-22.el9.tar.xz
+Source0: linux-5.14.0-23.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1361,8 +1361,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-22.el9 -c
-mv linux-5.14.0-22.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-23.el9 -c
+mv linux-5.14.0-23.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2951,6 +2951,51 @@ fi
 #
 #
 %changelog
+* Mon Nov 29 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-23.el9]
+- PCI/VPD: Defer VPD sizing until first access (Myron Stowe) [2021298]
+- PCI/VPD: Use unaligned access helpers (Myron Stowe) [2021298]
+- PCI/VPD: Clean up public VPD defines and inline functions (Myron Stowe) [2021298]
+- cxgb4: Use pci_vpd_find_id_string() to find VPD ID string (Myron Stowe) [2021298]
+- PCI/VPD: Add pci_vpd_find_id_string() (Myron Stowe) [2021298]
+- PCI/VPD: Include post-processing in pci_vpd_find_tag() (Myron Stowe) [2021298]
+- PCI/VPD: Stop exporting pci_vpd_find_info_keyword() (Myron Stowe) [2021298]
+- PCI/VPD: Stop exporting pci_vpd_find_tag() (Myron Stowe) [2021298]
+- scsi: cxlflash: Search VPD with pci_vpd_find_ro_info_keyword() (Myron Stowe) [2021298]
+- cxgb4: Search VPD with pci_vpd_find_ro_info_keyword() (Myron Stowe) [2021298]
+- cxgb4: Remove unused vpd_param member ec (Myron Stowe) [2021298]
+- cxgb4: Validate VPD checksum with pci_vpd_check_csum() (Myron Stowe) [2021298]
+- bnxt: Search VPD with pci_vpd_find_ro_info_keyword() (Myron Stowe) [2021298]
+- bnxt: Read VPD with pci_vpd_alloc() (Myron Stowe) [2021298]
+- bnx2x: Search VPD with pci_vpd_find_ro_info_keyword() (Myron Stowe) [2021298]
+- bnx2x: Read VPD with pci_vpd_alloc() (Myron Stowe) [2021298]
+- bnx2: Replace open-coded byte swapping with swab32s() (Myron Stowe) [2021298]
+- bnx2: Search VPD with pci_vpd_find_ro_info_keyword() (Myron Stowe) [2021298]
+- sfc: falcon: Search VPD with pci_vpd_find_ro_info_keyword() (Myron Stowe) [2021298]
+- sfc: falcon: Read VPD with pci_vpd_alloc() (Myron Stowe) [2021298]
+- tg3: Search VPD with pci_vpd_find_ro_info_keyword() (Myron Stowe) [2021298]
+- tg3: Validate VPD checksum with pci_vpd_check_csum() (Myron Stowe) [2021298]
+- tg3: Read VPD with pci_vpd_alloc() (Myron Stowe) [2021298]
+- sfc: Search VPD with pci_vpd_find_ro_info_keyword() (Myron Stowe) [2021298]
+- sfc: Read VPD with pci_vpd_alloc() (Myron Stowe) [2021298]
+- PCI/VPD: Add pci_vpd_check_csum() (Myron Stowe) [2021298]
+- PCI/VPD: Add pci_vpd_find_ro_info_keyword() (Myron Stowe) [2021298]
+- PCI/VPD: Add pci_vpd_alloc() (Myron Stowe) [2021298]
+- PCI/VPD: Treat invalid VPD like missing VPD capability (Myron Stowe) [2021298]
+- PCI/VPD: Determine VPD size in pci_vpd_init() (Myron Stowe) [2021298]
+- PCI/VPD: Embed struct pci_vpd in struct pci_dev (Myron Stowe) [2021298]
+- PCI/VPD: Remove struct pci_vpd.valid member (Myron Stowe) [2021298]
+- PCI/VPD: Remove struct pci_vpd_ops (Myron Stowe) [2021298]
+- PCI/VPD: Reorder pci_read_vpd(), pci_write_vpd() (Myron Stowe) [2021298]
+- PCI/VPD: Remove struct pci_vpd.flag (Myron Stowe) [2021298]
+- PCI/VPD: Make pci_vpd_wait() uninterruptible (Myron Stowe) [2021298]
+- PCI/VPD: Remove pci_vpd_size() old_size argument (Myron Stowe) [2021298]
+- PCI/VPD: Allow access to valid parts of VPD if some is invalid (Myron Stowe) [2021298]
+- PCI/VPD: Don't check Large Resource Item Names for validity (Myron Stowe) [2021298]
+- PCI/VPD: Reject resource tags with invalid size (Myron Stowe) [2021298]
+- PCI/VPD: Treat initial 0xff as missing EEPROM (Myron Stowe) [2021298]
+- PCI/VPD: Check Resource Item Names against those valid for type (Myron Stowe) [2021298]
+- PCI/VPD: Correct diagnostic for VPD read failure (Myron Stowe) [2021298]
+
 * Fri Nov 26 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-22.el9]
 - Add automotive CI jobs (Michael Hofmann)
 - sched/scs: Reset the shadow stack when idle_task_exit (Phil Auld) [1992256]
