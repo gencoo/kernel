@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 23
+%global distro_build 24
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 23.el9
+%define pkgrelease 24.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 23%{?buildid}%{?dist}
+%define specrelease 24%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-23.el9.tar.xz
+Source0: linux-5.14.0-24.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1361,8 +1361,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-23.el9 -c
-mv linux-5.14.0-23.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-24.el9 -c
+mv linux-5.14.0-24.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2163,7 +2163,7 @@ InitBuildVars
 %global perf_build_extra_opts CORESIGHT=1
 %endif
 %global perf_make \
-  %{__make} %{?make_opts} EXTRA_CFLAGS="${RPM_OPT_FLAGS}" LDFLAGS="%{__global_ldflags}" %{?cross_opts} -C tools/perf V=1 NO_PERF_READ_VDSO32=1 NO_PERF_READ_VDSOX32=1 WERROR=0 NO_LIBUNWIND=1 HAVE_CPLUS_DEMANGLE=1 NO_GTK2=1 NO_STRLCPY=1 NO_BIONIC=1 LIBBPF_DYNAMIC=1 LIBTRACEEVENT_DYNAMIC=1 %{?perf_build_extra_opts} prefix=%{_prefix} PYTHON=%{__python3}
+  %{__make} %{?make_opts} EXTRA_CFLAGS="${RPM_OPT_FLAGS}" LDFLAGS="%{__global_ldflags} -Wl,-E" %{?cross_opts} -C tools/perf V=1 NO_PERF_READ_VDSO32=1 NO_PERF_READ_VDSOX32=1 WERROR=0 NO_LIBUNWIND=1 HAVE_CPLUS_DEMANGLE=1 NO_GTK2=1 NO_STRLCPY=1 NO_BIONIC=1 LIBBPF_DYNAMIC=1 LIBTRACEEVENT_DYNAMIC=1 %{?perf_build_extra_opts} prefix=%{_prefix} PYTHON=%{__python3}
 %if %{with_perf}
 # perf
 # make sure check-headers.sh is executable
@@ -2951,6 +2951,48 @@ fi
 #
 #
 %changelog
+* Wed Dec 01 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-24.el9]
+- perf test: Handle fd gaps in test__dso_data_reopen (Michael Petlan) [1937209]
+- perf tests vmlinux-kallsyms: Ignore hidden symbols (Michael Petlan) [1975103]
+- perf script: Fix PERF_SAMPLE_WEIGHT_STRUCT support (Michael Petlan) [2009378]
+- redhat/kernel.spec.template: Link perf with --export-dynamic (Michael Petlan) [2006775]
+- xfs: fix I_DONTCACHE (Carlos Maiolino) [2022435]
+- virtio: write back F_VERSION_1 before validate (Thomas Huth) [2008401]
+- net/tls: Fix flipped sign in tls_err_abort() calls (Sabrina Dubroca) [2022006]
+- net/tls: Fix flipped sign in async_wait.err assignment (Sabrina Dubroca) [2022006]
+- hyper-v: Replace uuid.h with types.h (Mohammed Gamal) [2008572]
+- Drivers: hv: vmbus: Remove unused code to check for subchannels (Mohammed Gamal) [2008572]
+- hv: hyperv.h: Remove unused inline functions (Mohammed Gamal) [2008572]
+- asm-generic/hyperv: provide cpumask_to_vpset_noself (Mohammed Gamal) [2008572]
+- asm-generic/hyperv: Add missing #include of nmi.h (Mohammed Gamal) [2008572]
+- x86/hyperv: Avoid erroneously sending IPI to 'self' (Mohammed Gamal) [2008572]
+- x86/hyperv: remove on-stack cpumask from hv_send_ipi_mask_allbutself (Mohammed Gamal) [2008572]
+- [s390] net/smc: improved fix wait on already cleared link (Mete Durlu) [1869652]
+- [s390] net/smc: fix 'workqueue leaked lock' in smc_conn_abort_work (Mete Durlu) [1869652]
+- [s390] net/smc: add missing error check in smc_clc_prfx_set() (Mete Durlu) [1869652]
+- cifs: enable SMB_DIRECT in RHEL9 (Ronnie Sahlberg) [1965209]
+- scsi: mpt3sas: Clean up some inconsistent indenting (Tomas Henzl) [1876119]
+- scsi: mpt3sas: Call cpu_relax() before calling udelay() (Tomas Henzl) [1876119]
+- scsi: mpt3sas: Introduce sas_ncq_prio_supported sysfs sttribute (Tomas Henzl) [1876119]
+- scsi: mpt3sas: Update driver version to 39.100.00.00 (Tomas Henzl) [1876119]
+- scsi: mpt3sas: Use firmware recommended queue depth (Tomas Henzl) [1876119]
+- scsi: mpt3sas: Bump driver version to 38.100.00.00 (Tomas Henzl) [1876119]
+- scsi: mpt3sas: Add io_uring iopoll support (Tomas Henzl) [1876119]
+- serial: 8250_lpss: Extract dw8250_do_set_termios() for common use (David Arcari) [1880032]
+- serial: 8250_lpss: Enable DMA on Intel Elkhart Lake (David Arcari) [1880032]
+- dmaengine: dw: Convert members to u32 in platform data (David Arcari) [1880032]
+- dmaengine: dw: Simplify DT property parser (David Arcari) [1880032]
+- dmaengine: dw: Remove error message from DT parsing code (David Arcari) [1880032]
+- dmaengine: dw: Program xBAR hardware for Elkhart Lake (David Arcari) [1880032]
+- vmxnet3: switch from 'pci_' to 'dma_' API (Kamal Heib) [2003297]
+- vmxnet3: update to version 6 (Kamal Heib) [2003297]
+- vmxnet3: increase maximum configurable mtu to 9190 (Kamal Heib) [2003297]
+- vmxnet3: set correct hash type based on rss information (Kamal Heib) [2003297]
+- vmxnet3: add support for ESP IPv6 RSS (Kamal Heib) [2003297]
+- vmxnet3: remove power of 2 limitation on the queues (Kamal Heib) [2003297]
+- vmxnet3: add support for 32 Tx/Rx queues (Kamal Heib) [2003297]
+- vmxnet3: prepare for version 6 changes (Kamal Heib) [2003297]
+
 * Mon Nov 29 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-23.el9]
 - PCI/VPD: Defer VPD sizing until first access (Myron Stowe) [2021298]
 - PCI/VPD: Use unaligned access helpers (Myron Stowe) [2021298]
