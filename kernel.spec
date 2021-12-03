@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 24
+%global distro_build 25
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 24.el9
+%define pkgrelease 25.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 24%{?buildid}%{?dist}
+%define specrelease 25%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-24.el9.tar.xz
+Source0: linux-5.14.0-25.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1361,8 +1361,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-24.el9 -c
-mv linux-5.14.0-24.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-25.el9 -c
+mv linux-5.14.0-25.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2951,6 +2951,42 @@ fi
 #
 #
 %changelog
+* Fri Dec 03 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-25.el9]
+- x86: Pin task-stack in __get_wchan() (Chris von Recklinghausen) [2022169]
+- x86: Fix __get_wchan() for !STACKTRACE (Chris von Recklinghausen) [2022169]
+- sched: Add wrapper for get_wchan() to keep task blocked (Chris von Recklinghausen) [2022169]
+- x86: Fix get_wchan() to support the ORC unwinder (Chris von Recklinghausen) [2022169]
+- proc: Use task_is_running() for wchan in /proc/$pid/stat (Chris von Recklinghausen) [2022169]
+- leaking_addresses: Always print a trailing newline (Chris von Recklinghausen) [2022169]
+- Revert "proc/wchan: use printk format instead of lookup_symbol_name()" (Chris von Recklinghausen) [2022169]
+- sched: Fill unconditional hole induced by sched_entity (Chris von Recklinghausen) [2022169]
+- powerpc/bpf: Fix write protecting JIT code (Jiri Olsa) [2023618]
+- vfs: check fd has read access in kernel_read_file_from_fd() (Carlos Maiolino) [2022893]
+- Disable idmapped mounts (Alexey Gladkov) [2018141]
+- KVM: s390: Fix handle_sske page fault handling (Thomas Huth) [1870686]
+- KVM: s390: Simplify SIGP Set Arch handling (Thomas Huth) [1870686]
+- KVM: s390: pv: avoid stalls when making pages secure (Thomas Huth) [1870686]
+- KVM: s390: pv: avoid stalls for kvm_s390_pv_init_vm (Thomas Huth) [1870686]
+- KVM: s390: pv: avoid double free of sida page (Thomas Huth) [1870686]
+- KVM: s390: pv: add macros for UVC CC values (Thomas Huth) [1870686]
+- s390/uv: fully validate the VMA before calling follow_page() (Thomas Huth) [1870686]
+- s390/gmap: don't unconditionally call pte_unmap_unlock() in __gmap_zap() (Thomas Huth) [1870686]
+- s390/gmap: validate VMA in __gmap_zap() (Thomas Huth) [1870686]
+- KVM: s390: preserve deliverable_mask in __airqs_kick_single_vcpu (Thomas Huth) [1870686]
+- KVM: s390: index kvm->arch.idle_mask by vcpu_idx (Thomas Huth) [1870686]
+- KVM: s390: clear kicked_mask before sleeping again (Thomas Huth) [1870686]
+- KVM: s390: Function documentation fixes (Thomas Huth) [1870686]
+- s390/mm: fix kernel doc comments (Thomas Huth) [1870686]
+- KVM: s390: generate kvm hypercall functions (Thomas Huth) [1870686]
+- s390/vfio-ap: replace open coded locks for VFIO_GROUP_NOTIFY_SET_KVM notification (Thomas Huth) [1870686]
+- s390/vfio-ap: r/w lock for PQAP interception handler function pointer (Thomas Huth) [1870686]
+- KVM: Rename lru_slot to last_used_slot (Thomas Huth) [1870686]
+- s390/uv: de-duplicate checks for Protected Host Virtualization (Thomas Huth) [1870686]
+- s390/boot: disable Secure Execution in dump mode (Thomas Huth) [1870686]
+- s390/boot: move uv function declarations to boot/uv.h (Thomas Huth) [1870686]
+- s390/boot: move all linker symbol declarations from c to h files (Thomas Huth) [1870686]
+- redhat/configs: Remove CONFIG_INFINIBAND_I40IW (Kamal Heib) [1920720]
+
 * Wed Dec 01 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-24.el9]
 - perf test: Handle fd gaps in test__dso_data_reopen (Michael Petlan) [1937209]
 - perf tests vmlinux-kallsyms: Ignore hidden symbols (Michael Petlan) [1975103]
