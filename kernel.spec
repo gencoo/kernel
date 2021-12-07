@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 26
+%global distro_build 27
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 26.el9
+%define pkgrelease 27.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 26%{?buildid}%{?dist}
+%define specrelease 27%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-26.el9.tar.xz
+Source0: linux-5.14.0-27.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1361,8 +1361,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-26.el9 -c
-mv linux-5.14.0-26.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-27.el9 -c
+mv linux-5.14.0-27.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2951,6 +2951,34 @@ fi
 #
 #
 %changelog
+* Tue Dec 07 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-27.el9]
+- x86: change default to spec_store_bypass_disable=prctl spectre_v2_user=prctl (Wander Lairson Costa) [2002637]
+- Enable PREEMPT_DYNAMIC for all but s390x (Phil Auld) [2019472]
+- preempt: Restore preemption model selection configs (Phil Auld) [2019472]
+- sched: Provide Kconfig support for default dynamic preempt mode (Phil Auld) [2019472]
+- x86/sgx: Add TAINT_TECH_PREVIEW for virtual EPC (Wander Lairson Costa) [2025959]
+- x86/sgx: mark tech preview (Wander Lairson Costa) [2025959]
+- ipv6: When forwarding count rx stats on the orig netdev (Hangbin Liu) [2025457]
+- ipv6: make exception cache less predictible (Hangbin Liu) [2025457]
+- icmp: fix icmp_ext_echo_iio parsing in icmp_build_probe (Guillaume Nault) [2024572]
+- net: prefer socket bound to interface when not in VRF (Guillaume Nault) [2024572]
+- net: ipv4: Fix rtnexthop len when RTA_FLOW is present (Guillaume Nault) [2024572]
+- nexthop: Fix memory leaks in nexthop notification chain listeners (Guillaume Nault) [2024572]
+- nexthop: Fix division by zero while replacing a resilient group (Guillaume Nault) [2024572]
+- ipv4: fix endianness issue in inet_rtm_getroute_build_skb() (Guillaume Nault) [2024572]
+- crypto: ccp - Make use of the helper macro kthread_run() (Vladis Dronov) [1997595]
+- crypto: ccp - Fix whitespace in sev_cmd_buffer_len() (Vladis Dronov) [1997595]
+- crypto: ccp - fix resource leaks in ccp_run_aes_gcm_cmd() (Vladis Dronov) [1997595] {CVE-2021-3744 CVE-2021-3764}
+- net/l2tp: Fix reference count leak in l2tp_udp_recv_core (Guillaume Nault) [2023271]
+- scsi: megaraid: Clean up some inconsistent indenting (Tomas Henzl) [1879402]
+- scsi: megaraid: Fix Coccinelle warning (Tomas Henzl) [1879402]
+- scsi: megaraid_sas: Driver version update to 07.719.03.00-rc1 (Tomas Henzl) [1879402]
+- scsi: megaraid_sas: Add helper functions for irq_context (Tomas Henzl) [1879402]
+- scsi: megaraid_sas: Fix concurrent access to ISR between IRQ polling and real interrupt (Tomas Henzl) [1879402]
+- tpm: ibmvtpm: Avoid error message when process gets signal while waiting (Štěpán Horáček) [1983089]
+- char: tpm: cr50_i2c: convert to new probe interface (Štěpán Horáček) [1983089]
+- char: tpm: Kconfig: remove bad i2c cr50 select (Štěpán Horáček) [1983089]
+
 * Mon Dec 06 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-26.el9]
 - redhat/configs: enable CONFIG_CEPH_FSCACHE (Jeffrey Layton) [2017798]
 - ceph: add a new metric to keep track of remote object copies (Jeffrey Layton) [2017798]
