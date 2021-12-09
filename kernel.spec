@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 28
+%global distro_build 29
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 28.el9
+%define pkgrelease 29.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 28%{?buildid}%{?dist}
+%define specrelease 29%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-28.el9.tar.xz
+Source0: linux-5.14.0-29.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1361,8 +1361,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-28.el9 -c
-mv linux-5.14.0-28.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-29.el9 -c
+mv linux-5.14.0-29.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2951,6 +2951,29 @@ fi
 #
 #
 %changelog
+* Thu Dec 09 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-29.el9]
+- posix-cpu-timers: Prevent spuriously armed 0-value itimer (Phil Auld) [2022896]
+- hrtimer: Unbreak hrtimer_force_reprogram() (Phil Auld) [2022896]
+- hrtimer: Use raw_cpu_ptr() in clock_was_set() (Phil Auld) [2022896]
+- clocksource: Make clocksource watchdog test safe for slow-HZ systems (Phil Auld) [2022896]
+- posix-cpu-timers: Recalc next expiration when timer_settime() ends up not queueing (Phil Auld) [2022896]
+- posix-cpu-timers: Consolidate timer base accessor (Phil Auld) [2022896]
+- posix-cpu-timers: Remove confusing return value override (Phil Auld) [2022896]
+- posix-cpu-timers: Force next expiration recalc after itimer reset (Phil Auld) [2022896]
+- posix-cpu-timers: Force next_expiration recalc after timer deletion (Phil Auld) [2022896]
+- posix-cpu-timers: Assert task sighand is locked while starting cputime counter (Phil Auld) [2022896]
+- posix-timers: Remove redundant initialization of variable ret (Phil Auld) [2022896]
+- hrtimer: Avoid more SMP function calls in clock_was_set() (Phil Auld) [2022896]
+- hrtimer: Avoid unnecessary SMP function calls in clock_was_set() (Phil Auld) [2022896]
+- hrtimer: Add bases argument to clock_was_set() (Phil Auld) [2022896]
+- time/timekeeping: Avoid invoking clock_was_set() twice (Phil Auld) [2022896]
+- timekeeping: Distangle resume and clock-was-set events (Phil Auld) [2022896]
+- timerfd: Provide timerfd_resume() (Phil Auld) [2022896]
+- hrtimer: Force clock_was_set() handling for the HIGHRES=n, NOHZ=y case (Phil Auld) [2022896]
+- hrtimer: Ensure timerfd notification for HIGHRES=n (Phil Auld) [2022896]
+- hrtimer: Consolidate reprogramming code (Phil Auld) [2022896]
+- hrtimer: Avoid double reprogramming in __hrtimer_start_range_ns() (Phil Auld) [2022896]
+
 * Wed Dec 08 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-28.el9]
 - rcu: Fix rcu_dynticks_curr_cpu_in_eqs() vs noinstr (Waiman Long) [2022806]
 - efi: Change down_interruptible() in virt_efi_reset_system() to down_trylock() (Waiman Long) [2022806]
