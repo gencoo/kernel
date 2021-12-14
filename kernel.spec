@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 30
+%global distro_build 31
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 30.el9
+%define pkgrelease 31.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 30%{?buildid}%{?dist}
+%define specrelease 31%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -572,6 +572,7 @@ BuildRequires: net-tools, hostname, bc, elfutils-devel
 BuildRequires: dwarves
 BuildRequires: python3-devel
 BuildRequires: gcc-plugin-devel
+BuildRequires: kernel-rpm-macros >= 185-9
 %ifnarch %{nobuildarches} noarch
 BuildRequires: bpftool
 %endif
@@ -676,7 +677,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-30.el9.tar.xz
+Source0: linux-5.14.0-31.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1361,8 +1362,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-30.el9 -c
-mv linux-5.14.0-30.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-31.el9 -c
+mv linux-5.14.0-31.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2951,6 +2952,31 @@ fi
 #
 #
 %changelog
+* Tue Dec 14 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-31.el9]
+- Disable CONFIG_DEBUG_PREEMPT to restore performance (Phil Auld) [2030877]
+- tcp: seq_file: Avoid skipping sk during tcp_seek_last_pos (Paolo Abeni) [2028279]
+- tcp: fix tp->undo_retrans accounting in tcp_sacktag_one() (Paolo Abeni) [2028279]
+- tcp: md5: Fix overlap between vrf and non-vrf keys (Paolo Abeni) [2028279]
+- tcp: don't free a FIN sk_buff in tcp_remove_empty_skb() (Paolo Abeni) [2028279]
+- tcp: Fix uninitialized access in skb frags array for Rx 0cp. (Paolo Abeni) [2028279]
+- tcp_cubic: fix spurious Hystart ACK train detections for not-cwnd-limited flows (Paolo Abeni) [2028279]
+- Revert "ibmvnic: check failover_pending in login response" (Steve Best) [2010612]
+- ibmvnic: check failover_pending in login response (Steve Best) [2010612]
+- ibmvnic: check failover_pending in login response (Steve Best) [2010612]
+- kernfs: don't create a negative dentry if inactive node exists (Ian Kent) [2004858]
+- kernfs: also call kernfs_set_rev() for positive dentry (Ian Kent) [2004858]
+- kernfs: dont call d_splice_alias() under kernfs node lock (Ian Kent) [2004858]
+- kernfs: use i_lock to protect concurrent inode updates (Ian Kent) [2004858]
+- kernfs: switch kernfs to use an rwsem (Ian Kent) [2004858]
+- kernfs: use VFS negative dentry caching (Ian Kent) [2004858]
+- kernfs: add a revision to identify directory node changes (Ian Kent) [2004858]
+- drm/hyperv: Fix double mouse pointers (Vitaly Kuznetsov) [1999697]
+- Revert "watchdog: iTCO_wdt: Account for rebooting on second timeout" (Frantisek Sumsal) [2020918]
+- watchdog: iTCO_wdt: Fix detection of SMI-off case (Frantisek Sumsal) [2020918]
+- redhat/kernel.spec.template: enable dependencies generation (Eugene Syromiatnikov) [1975927]
+- redhat: configs: Update configs for vmware (Kamal Heib) [1991676 2009344]
+- redhat/configs: Enable CONFIG_DRM_VMWGFX on aarch64 (Michel Dänzer) [1992253]
+
 * Mon Dec 13 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-30.el9]
 - selftests: KVM: avoid failures due to reserved HyperTransport region (Vitaly Kuznetsov) [2009338]
 - KVM: X86: Fix when shadow_root_level=5 && guest root_level<4 (Vitaly Kuznetsov) [2009338]
