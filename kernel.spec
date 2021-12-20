@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 34
+%global distro_build 35
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 34.el9
+%define pkgrelease 35.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 34%{?buildid}%{?dist}
+%define specrelease 35%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -677,7 +677,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-34.el9.tar.xz
+Source0: linux-5.14.0-35.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1362,8 +1362,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-34.el9 -c
-mv linux-5.14.0-34.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-35.el9 -c
+mv linux-5.14.0-35.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2952,6 +2952,51 @@ fi
 #
 #
 %changelog
+* Mon Dec 20 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-35.el9]
+- drm/hyperv: Fix device removal on Gen1 VMs (Mohammed Gamal) [2018067]
+- wireguard: device: reset peer src endpoint when netns exits (Hangbin Liu) [1967796]
+- nvmet: use IOCB_NOWAIT only if the filesystem supports it (Chris Leech) [2022054]
+- nvmet-tcp: fix incomplete data digest send (Chris Leech) [2022054]
+- nvmet-tcp: fix memory leak when performing a controller reset (Chris Leech) [2022054]
+- nvmet-tcp: add an helper to free the cmd buffers (Chris Leech) [2022054]
+- nvmet-tcp: fix a race condition between release_queue and io_work (Chris Leech) [2022054]
+- nvmet-tcp: fix use-after-free when a port is removed (Chris Leech) [2022054]
+- nvmet-rdma: fix use-after-free when a port is removed (Chris Leech) [2022054]
+- nvmet: fix use-after-free when a port is removed (Chris Leech) [2022054]
+- nvmet-tcp: fix header digest verification (Chris Leech) [2022054]
+- nvmet-tcp: fix data digest pointer calculation (Chris Leech) [2022054]
+- nvmet-tcp: fix a memory leak when releasing a queue (Chris Leech) [2022054]
+- nvmet: fix a width vs precision bug in nvmet_subsys_attr_serial_show() (Chris Leech) [2022054]
+- nvmet: fixup buffer overrun in nvmet_subsys_attr_serial() (Chris Leech) [2022054]
+- nvmet: return bool from nvmet_passthru_ctrl and nvmet_is_passthru_req (Chris Leech) [2022054]
+- nvmet: looks at the passthrough controller when initializing CAP (Chris Leech) [2022054]
+- nvmet: check that host sqsize does not exceed ctrl MQES (Chris Leech) [2022054]
+- nvmet: avoid duplicate qid in connect cmd (Chris Leech) [2022054]
+- nvmet: pass back cntlid on successful completion (Chris Leech) [2022054]
+- nvmet: remove redundant assignments of variable status (Chris Leech) [2022054]
+- nvme-fabrics: ignore invalid fast_io_fail_tmo values (Chris Leech) [2022054]
+- nvme-tcp: fix memory leak when freeing a queue (Chris Leech) [2022054]
+- nvme-tcp: validate R2T PDU in nvme_tcp_handle_r2t() (Chris Leech) [2022054]
+- nvme-tcp: fix data digest pointer calculation (Chris Leech) [2022054]
+- nvme-tcp: fix possible req->offset corruption (Chris Leech) [2022054]
+- nvme-tcp: fix H2CData PDU send accounting (again) (Chris Leech) [2022054]
+- nvme: fix per-namespace chardev deletion (Chris Leech) [2022054]
+- nvme: keep ctrl->namespaces ordered (Chris Leech) [2022054]
+- nvme-tcp: fix incorrect h2cdata pdu offset accounting (Chris Leech) [2022054]
+- nvme-tcp: fix io_work priority inversion (Chris Leech) [2022054]
+- nvme-multipath: fix ANA state updates when a namespace is not present (Chris Leech) [2022054]
+- nvme: update keep alive interval when kato is modified (Chris Leech) [2022054]
+- nvme-tcp: Do not reset transport on data digest errors (Chris Leech) [2022054]
+- nvme-rdma: don't update queue count when failing to set io queues (Chris Leech) [2022054]
+- nvme-tcp: don't update queue count when failing to set io queues (Chris Leech) [2022054]
+- nvme-tcp: pair send_mutex init with destroy (Chris Leech) [2022054]
+- nvme-tcp: don't check blk_mq_tag_to_rq when receiving pdu data (Chris Leech) [2022054]
+- ovl: fix missing negative dentry check in ovl_rename() (Miklos Szeredi) [2011181]
+- selftests/bpf/xdp_redirect_multi: Limit the tests in netns (Hangbin Liu) [2008895]
+- selftests/bpf/xdp_redirect_multi: Give tcpdump a chance to terminate cleanly (Hangbin Liu) [2008895]
+- selftests/bpf/xdp_redirect_multi: Use arping to accurate the arp number (Hangbin Liu) [2008895]
+- selftests/bpf/xdp_redirect_multi: Put the logs to tmp folder (Hangbin Liu) [2008895]
+
 * Sat Dec 18 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-34.el9]
 - nvdimm/pmem: cleanup the disk if pmem_release_disk() is yet assigned (Ming Lei) [2018403]
 - nvdimm/pmem: stop using q_usage_count as external pgmap refcount (Ming Lei) [2018403]
