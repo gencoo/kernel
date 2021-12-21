@@ -97,7 +97,7 @@ Summary: The Linux kernel
 %if 0%{?released_kernel}
 
 # Do we have a -stable update to apply?
-%define stable_update 8
+%define stable_update 10
 # Set rpm version accordingly
 %if 0%{?stable_update}
 %define stablerev %{stable_update}
@@ -854,6 +854,7 @@ Patch104: 0001-brcm-rpi4-fix-usb-numeration.patch
 
 # RPi-4 and wifi issues
 #Patch105: arm-dts-rpi-4-disable-wifi-frequencies.patch
+Patch10000: linux-honeycomb-5.15.y.patch
 
 # END OF PATCH DEFINITIONS
 
@@ -3005,6 +3006,10 @@ fi
 #
 #
 %changelog
+* Tue Dec 21 2021 Pablo Greco <pgreco@centosproject.org> - 5.15.10-200
+- Linux v5.15.10
+- Add Honeycomb support
+
 * Wed Dec 15 2021 Pablo Greco <pgreco@centosproject.org> - 5.15.8-200
 - Linux v5.15.8
 

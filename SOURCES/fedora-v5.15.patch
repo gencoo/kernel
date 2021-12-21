@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Al Stone <ahs3@redhat.com>
 Date: Tue, 27 Feb 2018 00:21:23 -0500
-Subject: [PATCH 01/32] ACPI: APEI: arm64: Ignore broken HPE moonshot APEI
+Subject: [PATCH 01/33] ACPI: APEI: arm64: Ignore broken HPE moonshot APEI
  support
 
 Message-id: <20180227002123.21608-1-ahs3@redhat.com>
@@ -74,7 +74,7 @@ index 277f00b288d1..adbce15c273d 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Mark Salter <msalter@redhat.com>
 Date: Thu, 10 May 2018 17:38:43 -0400
-Subject: [PATCH 02/32] ACPI / irq: Workaround firmware issue on X-Gene based
+Subject: [PATCH 02/33] ACPI / irq: Workaround firmware issue on X-Gene based
  m400
 
 Message-id: <20180510173844.29580-3-msalter@redhat.com>
@@ -151,7 +151,7 @@ index c68e694fca26..146cba5ae5bc 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Mark Salter <msalter@redhat.com>
 Date: Thu, 10 May 2018 17:38:44 -0400
-Subject: [PATCH 03/32] aarch64: acpi scan: Fix regression related to X-Gene
+Subject: [PATCH 03/33] aarch64: acpi scan: Fix regression related to X-Gene
  UARTs
 
 Message-id: <20180510173844.29580-4-msalter@redhat.com>
@@ -205,7 +205,7 @@ index 5b54c80b9d32..86c314f8d8a0 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Mark Salter <msalter@redhat.com>
 Date: Fri, 11 May 2018 21:01:17 -0400
-Subject: [PATCH 04/32] acpi: prefer booting with ACPI over DTS
+Subject: [PATCH 04/33] acpi: prefer booting with ACPI over DTS
 
 Message-id: <20180511210117.10457-1-msalter@redhat.com>
 Patchwork-id: 214708
@@ -260,64 +260,9 @@ index f3851724fe35..cac21da49455 100644
 
 
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Jeremy Cline <jcline@redhat.com>
-Date: Tue, 23 Jul 2019 15:26:09 +0000
-Subject: [PATCH 05/32] tags.sh: Ignore redhat/rpm
-
-Rebased for v5.3-rc1. Commit 95fd3f87bfbe ("kbuild: add a flag to force
-absolute path for srctree") changed the context.
-
-    Message-id: <20180529180112.28376-1-prarit@redhat.com>
-    Patchwork-id: 8101
-    O-Subject: [kernel team] [RHEL8.0 BZ 1582586] scripts/tags.sh: Ignore redhat/rpm
-    Bugzilla: 1582586
-    RH-Acked-by: Tony Camuso <tcamuso@redhat.com>
-    RH-Acked-by: Jarod Wilson <jarod@redhat.com>
-    RH-Acked-by: Neil Horman <nhorman@redhat.com>
-
-    Bugzilla: http://bugzilla.redhat.com/1582586
-    Brew: https://brewweb.devel.redhat.com/taskinfo?taskID=16502319
-
-    RHEL_only.
-
-    If 'make cscope' is run on a tree which has had 'make rh-rpm',
-    'make rh-cross-*', etc., on it, the tags information contains entries
-    from the redhat/rpm/ directories.
-
-    Ignore the tags search in redhat/rpm.
-
-    Backport of RHEL7 464ad7779507 ("[scripts] tags.sh: ignore redhat/rpm").
-
-    Signed-off-by: Prarit Bhargava <prarit@redhat.com>
-    Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
-
-Upstream Status: RHEL only
-Signed-off-by: Jeremy Cline <jcline@redhat.com>
----
- scripts/tags.sh | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/scripts/tags.sh b/scripts/tags.sh
-index db8ba411860a..2294fb0f17a9 100755
---- a/scripts/tags.sh
-+++ b/scripts/tags.sh
-@@ -16,6 +16,8 @@ fi
- ignore="$(echo "$RCS_FIND_IGNORE" | sed 's|\\||g' )"
- # tags and cscope files should also ignore MODVERSION *.mod.c files
- ignore="$ignore ( -name *.mod.c ) -prune -o"
-+# RHEL tags and cscope should also ignore redhat/rpm
-+ignore="$ignore ( -path redhat/rpm ) -prune -o"
- 
- # Use make KBUILD_ABS_SRCTREE=1 {tags|cscope}
- # to force full paths for a non-O= build
--- 
-2.31.1
-
-
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Robert Richter <rrichter@redhat.com>
 Date: Thu, 7 Jun 2018 22:59:32 -0400
-Subject: [PATCH 06/32] Vulcan: AHCI PCI bar fix for Broadcom Vulcan early
+Subject: [PATCH 05/33] Vulcan: AHCI PCI bar fix for Broadcom Vulcan early
  silicon
 
 Message-id: <1528412373-19128-2-git-send-email-rrichter@redhat.com>
@@ -394,7 +339,7 @@ index 208fa03acdda..88cfaa8ac3b3 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Robert Richter <rrichter@redhat.com>
 Date: Thu, 7 Jun 2018 22:59:33 -0400
-Subject: [PATCH 07/32] ahci: thunderx2: Fix for errata that affects stop
+Subject: [PATCH 06/33] ahci: thunderx2: Fix for errata that affects stop
  engine
 
 Message-id: <1528412373-19128-3-git-send-email-rrichter@redhat.com>
@@ -485,7 +430,7 @@ index 395772fa3943..35aa1b420262 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Laura Abbott <labbott@redhat.com>
 Date: Sun, 10 Feb 2019 01:27:54 +0000
-Subject: [PATCH 08/32] ipmi: do not configure ipmi for HPE m400
+Subject: [PATCH 07/33] ipmi: do not configure ipmi for HPE m400
 
 Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1670017
 Brew: https://brewweb.engineering.redhat.com/brew/taskinfo?taskID=20147017
@@ -609,7 +554,7 @@ index b404cc46cbda..c74d611bcb79 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Laura Abbott <labbott@redhat.com>
 Date: Mon, 20 May 2019 22:21:02 -0400
-Subject: [PATCH 09/32] iommu/arm-smmu: workaround DMA mode issues
+Subject: [PATCH 08/33] iommu/arm-smmu: workaround DMA mode issues
 
 Message-id: <20190520222102.19488-1-labbott@redhat.com>
 Patchwork-id: 259215
@@ -711,7 +656,7 @@ index 3303d707bab4..372edaaafaa1 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jeremy Cline <jcline@redhat.com>
 Date: Tue, 1 Oct 2019 15:51:23 +0000
-Subject: [PATCH 10/32] arm: aarch64: Drop the EXPERT setting from
+Subject: [PATCH 09/33] arm: aarch64: Drop the EXPERT setting from
  ARM64_FORCE_52BIT
 
 Message-id: <20191001181256.22935-1-jcline@redhat.com>
@@ -751,7 +696,7 @@ index fee914c716aa..c987f305f429 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Peter Jones <pjones@redhat.com>
 Date: Mon, 2 Oct 2017 18:22:13 -0400
-Subject: [PATCH 11/32] Add efi_status_to_str() and rework efi_status_to_err().
+Subject: [PATCH 10/33] Add efi_status_to_str() and rework efi_status_to_err().
 
 This adds efi_status_to_str() for use when printing efi_status_t
 messages, and reworks efi_status_to_err() so that the two use a common
@@ -937,7 +882,7 @@ index 6b5d36babfcc..cbac8a7db3bd 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Peter Jones <pjones@redhat.com>
 Date: Mon, 2 Oct 2017 18:18:30 -0400
-Subject: [PATCH 12/32] Make get_cert_list() use efi_status_to_str() to print
+Subject: [PATCH 11/33] Make get_cert_list() use efi_status_to_str() to print
  error messages.
 
 Upstream Status: RHEL only
@@ -978,7 +923,7 @@ index f290f78c3f30..d3e7ae04f5be 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jeremy Cline <jcline@redhat.com>
 Date: Mon, 30 Sep 2019 21:22:47 +0000
-Subject: [PATCH 13/32] security: lockdown: expose a hook to lock the kernel
+Subject: [PATCH 12/33] security: lockdown: expose a hook to lock the kernel
  down
 
 In order to automatically lock down kernels running on UEFI machines
@@ -1083,7 +1028,7 @@ index 67264cb08fb3..85a0227bfac1 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: David Howells <dhowells@redhat.com>
 Date: Tue, 27 Feb 2018 10:04:55 +0000
-Subject: [PATCH 14/32] efi: Add an EFI_SECURE_BOOT flag to indicate secure
+Subject: [PATCH 13/33] efi: Add an EFI_SECURE_BOOT flag to indicate secure
  boot mode
 
 UEFI machines can be booted in Secure Boot mode.  Add an EFI_SECURE_BOOT
@@ -1247,7 +1192,7 @@ index cbac8a7db3bd..fd4a5d66a9d0 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: David Howells <dhowells@redhat.com>
 Date: Mon, 30 Sep 2019 21:28:16 +0000
-Subject: [PATCH 15/32] efi: Lock down the kernel if booted in secure boot mode
+Subject: [PATCH 14/33] efi: Lock down the kernel if booted in secure boot mode
 
 UEFI Secure Boot provides a mechanism for ensuring that the firmware
 will only load signed bootloaders and kernels.  Certain use cases may
@@ -1320,7 +1265,7 @@ index e84ddf484010..d0501353a4b9 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jeremy Cline <jcline@redhat.com>
 Date: Wed, 30 Oct 2019 14:37:49 +0000
-Subject: [PATCH 16/32] s390: Lock down the kernel when the IPL secure flag is
+Subject: [PATCH 15/33] s390: Lock down the kernel when the IPL secure flag is
  set
 
 Automatically lock down the kernel to LOCKDOWN_CONFIDENTIALITY_MAX if
@@ -1389,7 +1334,7 @@ index ee67215a678a..931955a9ceca 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Peter Robinson <pbrobinson@gmail.com>
 Date: Wed, 26 Feb 2020 13:38:40 -0500
-Subject: [PATCH 17/32] Add option of 13 for FORCE_MAX_ZONEORDER
+Subject: [PATCH 16/33] Add option of 13 for FORCE_MAX_ZONEORDER
 
 This is a hack, but it's what the other distros currently use
 for aarch64 with 4K pages so we'll do the same while upstream
@@ -1420,9 +1365,42 @@ index c987f305f429..e14e8636574e 100644
 
 
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Mark Salter <msalter@redhat.com>
+Date: Thu, 26 Aug 2021 10:59:23 -0400
+Subject: [PATCH 17/33] arm64: use common CONFIG_MAX_ZONEORDER for arm kernel
+
+Now that RHEL9 is using 4K pagesize, MAX_ZONEORDER is defaulting
+to 11. Fedora uses an out of tree patch to default to 13 when
+building for server class machines. RHEL9 should also be using 13,
+so make the MAX_ZONEORDER config and the out of tree patch common
+between RHEL9 and Fedora.
+
+Signed-off-by: Mark Salter <msalter@redhat.com>
+---
+ arch/arm64/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
+index e14e8636574e..99bb34aac703 100644
+--- a/arch/arm64/Kconfig
++++ b/arch/arm64/Kconfig
+@@ -1152,7 +1152,7 @@ config XEN
+ config FORCE_MAX_ZONEORDER
+ 	int
+ 	default "14" if ARM64_64K_PAGES
+-	default "13" if (ARCH_THUNDER && !ARM64_64K_PAGES && !RHEL_DIFFERENCES)
++	default "13" if (ARCH_THUNDER && !ARM64_64K_PAGES)
+ 	default "12" if ARM64_16K_PAGES
+ 	default "11"
+ 	help
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jon Masters <jcm@redhat.com>
 Date: Thu, 18 Jul 2019 15:47:26 -0400
-Subject: [PATCH 18/32] arm: make CONFIG_HIGHPTE optional without CONFIG_EXPERT
+Subject: [PATCH 18/33] arm: make CONFIG_HIGHPTE optional without CONFIG_EXPERT
 
 We will use this to force CONFIG_HIGHPTE off on LPAE for now
 
@@ -1454,7 +1432,7 @@ index 4ebd512043be..6743668b7b33 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Peter Robinson <pbrobinson@gmail.com>
 Date: Thu, 3 May 2012 20:27:11 +0100
-Subject: [PATCH 19/32] ARM: tegra: usb no reset
+Subject: [PATCH 19/33] ARM: tegra: usb no reset
 
 Patch for disconnect issues with storage attached to a
  tegra-ehci controller
@@ -1487,7 +1465,7 @@ index 00070a8a6507..e9e0ffa990cd 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Benjamin Tissoires <benjamin.tissoires@redhat.com>
 Date: Mon, 3 Apr 2017 18:18:21 +0200
-Subject: [PATCH 20/32] Input: rmi4 - remove the need for artificial IRQ in
+Subject: [PATCH 20/33] Input: rmi4 - remove the need for artificial IRQ in
  case of HID
 
 The IRQ from rmi4 may interfere with the one we currently use on i2c-hid.
@@ -1818,7 +1796,7 @@ index ab7eea01ab42..fff7c5f737fc 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Robert Holmes <robeholmes@gmail.com>
 Date: Tue, 23 Apr 2019 07:39:29 +0000
-Subject: [PATCH 21/32] KEYS: Make use of platform keyring for module signature
+Subject: [PATCH 21/33] KEYS: Make use of platform keyring for module signature
  verify
 
 This patch completes commit 278311e417be ("kexec, KEYS: Make use of
@@ -1863,7 +1841,7 @@ index 8723ae70ea1f..fb2d773498c2 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jeremy Linton <jeremy.linton@arm.com>
 Date: Thu, 11 Mar 2021 22:15:13 -0600
-Subject: [PATCH 22/32] REDHAT: coresight: etm4x: Disable coresight on HPE
+Subject: [PATCH 22/33] REDHAT: coresight: etm4x: Disable coresight on HPE
  Apollo 70
 
 bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1918888
@@ -1938,7 +1916,7 @@ index e24252eaf8e4..368d64adeee8 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Mike Snitzer <snitzer@redhat.com>
 Date: Tue, 13 Apr 2021 13:09:36 -0400
-Subject: [PATCH 23/32] nvme: Return BLK_STS_TARGET if the DNR bit is set
+Subject: [PATCH 23/33] nvme: Return BLK_STS_TARGET if the DNR bit is set
 
 BZ: 1948690
 Upstream Status: RHEL-only
@@ -2005,7 +1983,7 @@ index f8dd664b2eda..8c2d88526b1d 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Mike Snitzer <snitzer@redhat.com>
 Date: Tue, 13 Apr 2021 13:09:36 -0400
-Subject: [PATCH 24/32] nvme: allow local retry and proper failover for
+Subject: [PATCH 24/33] nvme: allow local retry and proper failover for
  REQ_FAILFAST_TRANSPORT
 
 BZ: 1948690
@@ -2101,7 +2079,7 @@ index 8c2d88526b1d..f68e6d796be1 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Mike Snitzer <snitzer@redhat.com>
 Date: Tue, 13 Apr 2021 13:09:37 -0400
-Subject: [PATCH 25/32] nvme: decouple basic ANA log page re-read support from
+Subject: [PATCH 25/33] nvme: decouple basic ANA log page re-read support from
  native multipathing
 
 BZ: 1948690
@@ -2218,7 +2196,7 @@ index ed79a6c7e804..961dc67d7261 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Mike Snitzer <snitzer@redhat.com>
 Date: Tue, 25 May 2021 12:36:06 -0400
-Subject: [PATCH 26/32] nvme: nvme_mpath_init remove multipath check
+Subject: [PATCH 26/33] nvme: nvme_mpath_init remove multipath check
 
 BZ: 1948690
 Upstream Status: RHEL-only
@@ -2282,7 +2260,7 @@ index 4c7d12e2fe70..021a4176b321 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Herbert Xu <herbert.xu@redhat.com>
 Date: Tue, 10 Aug 2021 17:54:28 +0800
-Subject: [PATCH 27/32] random: Add hook to override device reads and
+Subject: [PATCH 27/33] random: Add hook to override device reads and
  getrandom(2)
 
 Upstream: RHEL only
@@ -2516,7 +2494,7 @@ index f45b8be3e3c4..7ccdec68b789 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Herbert Xu <herbert.xu@redhat.com>
 Date: Tue, 10 Aug 2021 17:56:42 +0800
-Subject: [PATCH 28/32] crypto: rng - Override drivers/char/random in FIPS mode
+Subject: [PATCH 28/33] crypto: rng - Override drivers/char/random in FIPS mode
 
 Upstream: RHEL only
 Bugzilla: 1984784
@@ -2633,7 +2611,7 @@ index fea082b25fe4..50a9d040bed1 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Dan Johansen <strit@manjaro.org>
 Date: Fri, 6 Aug 2021 00:04:27 +0200
-Subject: [PATCH 29/32] arm64: dts: rockchip: Setup USB typec port as datarole
+Subject: [PATCH 29/33] arm64: dts: rockchip: Setup USB typec port as datarole
  on
 
 Some chargers try to put the charged device into device data
@@ -2665,7 +2643,7 @@ index 9e5d07f5712e..dae8c252bc2b 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Hans de Goede <hdegoede@redhat.com>
 Date: Thu, 14 Oct 2021 20:39:42 +0200
-Subject: [PATCH 30/32] x86/PCI: Ignore E820 reservations for bridge windows on
+Subject: [PATCH 30/33] x86/PCI: Ignore E820 reservations for bridge windows on
  newer systems
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -2894,7 +2872,7 @@ index 3507f456fcd0..091ec7e94fcb 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Hans de Goede <hdegoede@redhat.com>
 Date: Thu, 14 Oct 2021 20:39:43 +0200
-Subject: [PATCH 31/32] x86/PCI/ACPI: Replace printk calls with pr_info/pr_warn
+Subject: [PATCH 31/33] x86/PCI/ACPI: Replace printk calls with pr_info/pr_warn
  calls
 
 The direct use of printk is deprecated, replace the printk calls
@@ -2989,7 +2967,7 @@ index 72d473054262..f357dac92610 100644
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Zekun Shen <bruceshenzk@gmail.com>
 Date: Sat, 30 Oct 2021 22:42:50 -0400
-Subject: [PATCH 32/32] mwifiex_usb: Fix skb_over_panic in mwifiex_usb_recv
+Subject: [PATCH 32/33] mwifiex_usb: Fix skb_over_panic in mwifiex_usb_recv
 
 Currently, with an unknown recv_type, mwifiex_usb_recv
 just return -1 without restoring the skb. Next time
@@ -3045,6 +3023,51 @@ index 9736aa0ab7fd..8f01fcbe9396 100644
  		}
  		break;
  	case MWIFIEX_USB_EP_DATA:
+-- 
+2.31.1
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Hans de Goede <hdegoede@redhat.com>
+Date: Tue, 23 Nov 2021 22:05:24 +0100
+Subject: [PATCH 33/33] platform/x86: thinkpad_acpi: Add lid_logo_dot to the
+ list of safe LEDs
+
+There have been various bugs / forum threads about allowing control of
+the LED in the ThinkPad logo on the lid of various models.
+
+This seems to be something which users want to control and there really
+is no reason to require setting CONFIG_THINKPAD_ACPI_UNSAFE_LEDS for this.
+
+The lid-logo-dot is LED number 10, so change the name of the 10th led
+from unknown_led2 to lid_logo_dot and add it to the TPACPI_SAFE_LEDS mask.
+
+Link: https://www.reddit.com/r/thinkpad/comments/7n8eyu/thinkpad_led_control_under_gnulinux/
+BugLink: https://bugzilla.redhat.com/show_bug.cgi?id=1943318
+Signed-off-by: Hans de Goede <hdegoede@redhat.com>
+Link: https://lore.kernel.org/r/20211123210524.266705-2-hdegoede@redhat.com
+---
+ drivers/platform/x86/thinkpad_acpi.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/platform/x86/thinkpad_acpi.c b/drivers/platform/x86/thinkpad_acpi.c
+index 3dc055ce6e61..bb56640eb31f 100644
+--- a/drivers/platform/x86/thinkpad_acpi.c
++++ b/drivers/platform/x86/thinkpad_acpi.c
+@@ -5813,11 +5813,11 @@ static const char * const tpacpi_led_names[TPACPI_LED_NUMLEDS] = {
+ 	"tpacpi::standby",
+ 	"tpacpi::dock_status1",
+ 	"tpacpi::dock_status2",
+-	"tpacpi::unknown_led2",
++	"tpacpi::lid_logo_dot",
+ 	"tpacpi::unknown_led3",
+ 	"tpacpi::thinkvantage",
+ };
+-#define TPACPI_SAFE_LEDS	0x1081U
++#define TPACPI_SAFE_LEDS	0x1481U
+ 
+ static inline bool tpacpi_is_led_restricted(const unsigned int led)
+ {
 -- 
 2.31.1
 

@@ -1,0 +1,3143 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+Date: Thu, 5 Aug 2021 09:07:16 +0100
+Subject: [PATCH 01/24] iommu: Introduce a union to struct iommu_resv_region
+
+A union is introduced to struct iommu_resv_region to hold
+any firmware specific data. This is in preparation to add
+support for IORT RMR reserve regions and the union now holds
+the RMR specific information.
+
+Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+---
+ include/linux/iommu.h | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/include/linux/iommu.h b/include/linux/iommu.h
+index d2f3435e7d17..d5cfd0c6a217 100644
+--- a/include/linux/iommu.h
++++ b/include/linux/iommu.h
+@@ -126,6 +126,13 @@ enum iommu_resv_type {
+ 	IOMMU_RESV_SW_MSI,
+ };
+ 
++struct iommu_iort_rmr_data {
++#define IOMMU_RMR_REMAP_PERMITTED	(1 << 0)
++	u32 flags;
++	u32 sid;	/* Stream Id associated with RMR entry */
++	void *smmu;	/* Associated IORT SMMU node pointer */
++};
++
+ /**
+  * struct iommu_resv_region - descriptor for a reserved memory region
+  * @list: Linked list pointers
+@@ -133,6 +140,7 @@ enum iommu_resv_type {
+  * @length: Length of the region in bytes
+  * @prot: IOMMU Protection flags (READ/WRITE/...)
+  * @type: Type of the reserved region
++ * @rmr: ACPI IORT RMR specific data
+  */
+ struct iommu_resv_region {
+ 	struct list_head	list;
+@@ -140,6 +148,9 @@ struct iommu_resv_region {
+ 	size_t			length;
+ 	int			prot;
+ 	enum iommu_resv_type	type;
++	union {
++		struct iommu_iort_rmr_data rmr;
++	} fw_data;
+ };
+ 
+ /**
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+Date: Thu, 5 Aug 2021 09:07:17 +0100
+Subject: [PATCH 02/24] ACPI/IORT: Add support for RMR node parsing
+
+Add support for parsing RMR node information from ACPI.
+
+Find the associated streamid and smmu node info from the
+RMR node and populate a linked list with RMR memory
+descriptors.
+
+Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+---
+ drivers/acpi/arm64/iort.c | 134 +++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 133 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/acpi/arm64/iort.c b/drivers/acpi/arm64/iort.c
+index 3b23fb775ac4..d76ba46ebe67 100644
+--- a/drivers/acpi/arm64/iort.c
++++ b/drivers/acpi/arm64/iort.c
+@@ -40,6 +40,8 @@ struct iort_fwnode {
+ static LIST_HEAD(iort_fwnode_list);
+ static DEFINE_SPINLOCK(iort_fwnode_lock);
+ 
++static LIST_HEAD(iort_rmr_list);	/* list of RMR regions from ACPI */
++
+ /**
+  * iort_set_fwnode() - Create iort_fwnode and use it to register
+  *		       iommu data in the iort_fwnode_list
+@@ -393,7 +395,8 @@ static struct acpi_iort_node *iort_node_get_id(struct acpi_iort_node *node,
+ 		if (node->type == ACPI_IORT_NODE_NAMED_COMPONENT ||
+ 		    node->type == ACPI_IORT_NODE_PCI_ROOT_COMPLEX ||
+ 		    node->type == ACPI_IORT_NODE_SMMU_V3 ||
+-		    node->type == ACPI_IORT_NODE_PMCG) {
++		    node->type == ACPI_IORT_NODE_PMCG ||
++		    node->type == ACPI_IORT_NODE_RMR) {
+ 			*id_out = map->output_base;
+ 			return parent;
+ 		}
+@@ -1566,6 +1569,134 @@ static void __init iort_enable_acs(struct acpi_iort_node *iort_node)
+ #else
+ static inline void iort_enable_acs(struct acpi_iort_node *iort_node) { }
+ #endif
++static void iort_rmr_desc_check_overlap(struct acpi_iort_rmr_desc *desc, u32 count)
++{
++	int i, j;
++
++	for (i = 0; i < count; i++) {
++		u64 end, start = desc[i].base_address, length = desc[i].length;
++
++		end = start + length - 1;
++
++		/* Check for address overlap */
++		for (j = i + 1; j < count; j++) {
++			u64 e_start = desc[j].base_address;
++			u64 e_end = e_start + desc[j].length - 1;
++
++			if (start <= e_end && end >= e_start)
++				pr_err(FW_BUG "RMR descriptor[0x%llx - 0x%llx] overlaps, continue anyway\n",
++				       start, end);
++		}
++	}
++}
++
++static void __init iort_node_get_rmr_info(struct acpi_iort_node *iort_node)
++{
++	struct acpi_iort_node *smmu;
++	struct acpi_iort_rmr *rmr;
++	struct acpi_iort_rmr_desc *rmr_desc;
++	u32 map_count = iort_node->mapping_count;
++	u32 sid;
++	int i;
++
++	if (!iort_node->mapping_offset || map_count != 1) {
++		pr_err(FW_BUG "Invalid ID mapping, skipping RMR node %p\n",
++		       iort_node);
++		return;
++	}
++
++	/* Retrieve associated smmu and stream id */
++	smmu = iort_node_get_id(iort_node, &sid, 0);
++	if (!smmu) {
++		pr_err(FW_BUG "Invalid SMMU reference, skipping RMR node %p\n",
++		       iort_node);
++		return;
++	}
++
++	/* Retrieve RMR data */
++	rmr = (struct acpi_iort_rmr *)iort_node->node_data;
++	if (!rmr->rmr_offset || !rmr->rmr_count) {
++		pr_err(FW_BUG "Invalid RMR descriptor array, skipping RMR node %p\n",
++		       iort_node);
++		return;
++	}
++
++	rmr_desc = ACPI_ADD_PTR(struct acpi_iort_rmr_desc, iort_node,
++				rmr->rmr_offset);
++
++	iort_rmr_desc_check_overlap(rmr_desc, rmr->rmr_count);
++
++	for (i = 0; i < rmr->rmr_count; i++, rmr_desc++) {
++		struct iommu_resv_region *region;
++		enum iommu_resv_type type;
++		int prot = IOMMU_READ | IOMMU_WRITE;
++		u64 addr = rmr_desc->base_address, size = rmr_desc->length;
++
++		if (!IS_ALIGNED(addr, SZ_64K) || !IS_ALIGNED(size, SZ_64K)) {
++			/* PAGE align base addr and size */
++			addr &= PAGE_MASK;
++			size = PAGE_ALIGN(size + offset_in_page(rmr_desc->base_address));
++
++			pr_err(FW_BUG "RMR descriptor[0x%llx - 0x%llx] not aligned to 64K, continue with [0x%llx - 0x%llx]\n",
++			       rmr_desc->base_address,
++			       rmr_desc->base_address + rmr_desc->length - 1,
++			       addr, addr + size - 1);
++		}
++		if (rmr->flags & IOMMU_RMR_REMAP_PERMITTED) {
++			type = IOMMU_RESV_DIRECT_RELAXABLE;
++			/*
++			 * Set IOMMU_CACHE as IOMMU_RESV_DIRECT_RELAXABLE is
++			 * normally used for allocated system memory that is
++			 * then used for device specific reserved regions.
++			 */
++			prot |= IOMMU_CACHE;
++		} else {
++			type = IOMMU_RESV_DIRECT;
++			/*
++			 * Set IOMMU_MMIO as IOMMU_RESV_DIRECT is normally used
++			 * for device memory like MSI doorbell.
++			 */
++			prot |= IOMMU_MMIO;
++		}
++
++		region = iommu_alloc_resv_region(addr, size, prot, type);
++		if (region) {
++			region->fw_data.rmr.flags = rmr->flags;
++			region->fw_data.rmr.sid = sid;
++			region->fw_data.rmr.smmu = smmu;
++			list_add_tail(&region->list, &iort_rmr_list);
++		}
++	}
++}
++
++static void __init iort_parse_rmr(void)
++{
++	struct acpi_iort_node *iort_node, *iort_end;
++	struct acpi_table_iort *iort;
++	int i;
++
++	if (iort_table->revision < 3)
++		return;
++
++	iort = (struct acpi_table_iort *)iort_table;
++
++	iort_node = ACPI_ADD_PTR(struct acpi_iort_node, iort,
++				 iort->node_offset);
++	iort_end = ACPI_ADD_PTR(struct acpi_iort_node, iort,
++				iort_table->length);
++
++	for (i = 0; i < iort->node_count; i++) {
++		if (WARN_TAINT(iort_node >= iort_end, TAINT_FIRMWARE_WORKAROUND,
++			       "IORT node pointer overflows, bad table!\n"))
++			return;
++
++		if (iort_node->type == ACPI_IORT_NODE_RMR)
++			iort_node_get_rmr_info(iort_node);
++
++		iort_node = ACPI_ADD_PTR(struct acpi_iort_node, iort_node,
++					 iort_node->length);
++	}
++}
+ 
+ static void __init iort_init_platform_devices(void)
+ {
+@@ -1636,6 +1767,7 @@ void __init acpi_iort_init(void)
+ 	}
+ 
+ 	iort_init_platform_devices();
++	iort_parse_rmr();
+ }
+ 
+ #ifdef CONFIG_ZONE_DMA
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+Date: Thu, 5 Aug 2021 09:07:18 +0100
+Subject: [PATCH 03/24] iommu/dma: Introduce generic helper to retrieve RMR
+ info
+
+Reserved Memory Regions(RMR) associated with an IOMMU can be
+described through ACPI IORT tables in systems with devices
+that require a unity mapping or bypass for those
+regions.
+
+Introduce a generic interface so that IOMMU drivers can retrieve
+and set up necessary mappings.
+
+Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+---
+ drivers/iommu/dma-iommu.c | 29 +++++++++++++++++++++++++++++
+ include/linux/dma-iommu.h | 13 +++++++++++++
+ 2 files changed, 42 insertions(+)
+
+diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
+index 2d6021644000..b49651349efb 100644
+--- a/drivers/iommu/dma-iommu.c
++++ b/drivers/iommu/dma-iommu.c
+@@ -174,6 +174,35 @@ void iommu_put_dma_cookie(struct iommu_domain *domain)
+ }
+ EXPORT_SYMBOL(iommu_put_dma_cookie);
+ 
++/**
++ *
++ * iommu_dma_get_rmrs - Retrieve Reserved Memory Regions(RMRs) associated
++ *                      with a given IOMMU
++ * @iommu_fwnode: fwnode associated with IOMMU
++ * @list: RMR list to be populated
++ *
++ */
++int iommu_dma_get_rmrs(struct fwnode_handle *iommu_fwnode,
++		       struct list_head *list)
++{
++	return -EINVAL;
++}
++EXPORT_SYMBOL(iommu_dma_get_rmrs);
++
++/**
++ *
++ * iommu_dma_put_rmrs - Release Reserved Memory Regions(RMRs) associated
++ *                      with a given IOMMU
++ * @iommu_fwnode: fwnode associated with IOMMU
++ * @list: RMR list
++ *
++ */
++void iommu_dma_put_rmrs(struct fwnode_handle *iommu_fwnode,
++			struct list_head *list)
++{
++}
++EXPORT_SYMBOL(iommu_dma_put_rmrs);
++
+ /**
+  * iommu_dma_get_resv_regions - Reserved region driver helper
+  * @dev: Device from iommu_get_resv_regions()
+diff --git a/include/linux/dma-iommu.h b/include/linux/dma-iommu.h
+index 24607dc3c2ac..7579c014e274 100644
+--- a/include/linux/dma-iommu.h
++++ b/include/linux/dma-iommu.h
+@@ -43,12 +43,16 @@ void iommu_dma_free_cpu_cached_iovas(unsigned int cpu,
+ 
+ extern bool iommu_dma_forcedac;
+ 
++int iommu_dma_get_rmrs(struct fwnode_handle *iommu, struct list_head *list);
++void iommu_dma_put_rmrs(struct fwnode_handle *iommu, struct list_head *list);
++
+ #else /* CONFIG_IOMMU_DMA */
+ 
+ struct iommu_domain;
+ struct msi_desc;
+ struct msi_msg;
+ struct device;
++struct fwnode_handle;
+ 
+ static inline void iommu_setup_dma_ops(struct device *dev, u64 dma_base,
+ 				       u64 dma_limit)
+@@ -89,5 +93,14 @@ static inline void iommu_dma_get_resv_regions(struct device *dev, struct list_he
+ {
+ }
+ 
++static int iommu_dma_get_rmrs(struct fwnode_handle *iommu, struct list_head *list)
++{
++	return -ENODEV;
++}
++
++static void iommu_dma_put_rmrs(struct fwnode_handle *iommu, struct list_head *list)
++{
++}
++
+ #endif	/* CONFIG_IOMMU_DMA */
+ #endif	/* __DMA_IOMMU_H */
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+Date: Thu, 5 Aug 2021 09:07:19 +0100
+Subject: [PATCH 04/24] ACPI/IORT: Add a helper to retrieve RMR memory regions
+
+Add a helper function (iort_iommu_get_rmrs()) that retrieves RMR
+memory descriptors associated with a given IOMMU. This will be used
+by IOMMU drivers to setup necessary mappings.
+
+Invoke it from the generic helper iommu_dma_get_rmrs().
+
+Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+---
+ drivers/acpi/arm64/iort.c | 38 ++++++++++++++++++++++++++++++++++++++
+ drivers/iommu/dma-iommu.c |  4 ++++
+ include/linux/acpi_iort.h |  7 +++++++
+ 3 files changed, 49 insertions(+)
+
+diff --git a/drivers/acpi/arm64/iort.c b/drivers/acpi/arm64/iort.c
+index d76ba46ebe67..3c32d62e63b6 100644
+--- a/drivers/acpi/arm64/iort.c
++++ b/drivers/acpi/arm64/iort.c
+@@ -809,6 +809,42 @@ static struct acpi_iort_node *iort_get_msi_resv_iommu(struct device *dev)
+ 	return NULL;
+ }
+ 
++/**
++ * iort_iommu_get_rmrs() - Helper to retrieve RMR info associated with IOMMU
++ * @iommu_fwnode: fwnode for the IOMMU
++ * @head: RMR list head to be populated
++ *
++ * Returns: 0 on success, <0 failure. Please note, we will keep the already
++ *          allocated RMR reserve regions in case of a kmemdup()
++ *          failure.
++ */
++int iort_iommu_get_rmrs(struct fwnode_handle *iommu_fwnode,
++			struct list_head *head)
++{
++	struct iommu_resv_region *e;
++	struct acpi_iort_node *iommu;
++	int rmrs = 0;
++
++	iommu = iort_get_iort_node(iommu_fwnode);
++	if (!iommu || list_empty(&iort_rmr_list))
++		return -ENODEV;
++
++	list_for_each_entry(e, &iort_rmr_list, list) {
++		struct iommu_resv_region *region;
++
++		if (e->fw_data.rmr.smmu != iommu)
++			continue;
++
++		region = kmemdup(e, sizeof(*region), GFP_KERNEL);
++		if (region) {
++			list_add_tail(&region->list, head);
++			rmrs++;
++		}
++	}
++
++	return (rmrs == 0) ? -ENODEV : 0;
++}
++
+ /**
+  * iort_iommu_msi_get_resv_regions - Reserved region driver helper
+  * @dev: Device from iommu_get_resv_regions()
+@@ -1041,6 +1077,8 @@ int iort_iommu_msi_get_resv_regions(struct device *dev, struct list_head *head)
+ { return 0; }
+ int iort_iommu_configure_id(struct device *dev, const u32 *input_id)
+ { return -ENODEV; }
++int iort_iommu_get_rmrs(struct fwnode_handle *fwnode, struct list_head *head)
++{ return -ENODEV; }
+ #endif
+ 
+ static int nc_dma_get_range(struct device *dev, u64 *size)
+diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
+index b49651349efb..9e27978ce111 100644
+--- a/drivers/iommu/dma-iommu.c
++++ b/drivers/iommu/dma-iommu.c
+@@ -185,6 +185,9 @@ EXPORT_SYMBOL(iommu_put_dma_cookie);
+ int iommu_dma_get_rmrs(struct fwnode_handle *iommu_fwnode,
+ 		       struct list_head *list)
+ {
++	if (!is_of_node(iommu_fwnode))
++		return iort_iommu_get_rmrs(iommu_fwnode, list);
++
+ 	return -EINVAL;
+ }
+ EXPORT_SYMBOL(iommu_dma_get_rmrs);
+@@ -200,6 +203,7 @@ EXPORT_SYMBOL(iommu_dma_get_rmrs);
+ void iommu_dma_put_rmrs(struct fwnode_handle *iommu_fwnode,
+ 			struct list_head *list)
+ {
++	generic_iommu_put_resv_regions(iommu_fwnode->dev, list);
+ }
+ EXPORT_SYMBOL(iommu_dma_put_rmrs);
+ 
+diff --git a/include/linux/acpi_iort.h b/include/linux/acpi_iort.h
+index f1f0842a2cb2..d8c030c103f5 100644
+--- a/include/linux/acpi_iort.h
++++ b/include/linux/acpi_iort.h
+@@ -38,6 +38,8 @@ int iort_dma_get_ranges(struct device *dev, u64 *size);
+ int iort_iommu_configure_id(struct device *dev, const u32 *id_in);
+ int iort_iommu_msi_get_resv_regions(struct device *dev, struct list_head *head);
+ phys_addr_t acpi_iort_dma_get_max_cpu_address(void);
++int iort_iommu_get_rmrs(struct fwnode_handle *iommu_fwnode,
++			struct list_head *list);
+ #else
+ static inline void acpi_iort_init(void) { }
+ static inline u32 iort_msi_map_id(struct device *dev, u32 id)
+@@ -57,6 +59,11 @@ int iort_iommu_msi_get_resv_regions(struct device *dev, struct list_head *head)
+ 
+ static inline phys_addr_t acpi_iort_dma_get_max_cpu_address(void)
+ { return PHYS_ADDR_MAX; }
++
++static inline
++int iort_iommu_get_rmrs(struct fwnode_handle *iommu_fwnode,
++			struct list_head *list)
++{ return -ENODEV; }
+ #endif
+ 
+ #endif /* __ACPI_IORT_H__ */
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+Date: Thu, 5 Aug 2021 09:07:20 +0100
+Subject: [PATCH 05/24] iommu/arm-smmu-v3: Introduce strtab init helper
+
+Introduce a helper to check the sid range and to init the l2 strtab
+entries(bypass). This will be useful when we have to initialize the
+l2 strtab with bypass for RMR SIDs.
+
+Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+---
+ drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c | 28 +++++++++++----------
+ 1 file changed, 15 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
+index a388e318f86e..23acac6d89c7 100644
+--- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
++++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
+@@ -2529,6 +2529,19 @@ static bool arm_smmu_sid_in_range(struct arm_smmu_device *smmu, u32 sid)
+ 	return sid < limit;
+ }
+ 
++static int arm_smmu_init_sid_strtab(struct arm_smmu_device *smmu, u32 sid)
++{
++	/* Check the SIDs are in range of the SMMU and our stream table */
++	if (!arm_smmu_sid_in_range(smmu, sid))
++		return -ERANGE;
++
++	/* Ensure l2 strtab is initialised */
++	if (smmu->features & ARM_SMMU_FEAT_2_LVL_STRTAB)
++		return arm_smmu_init_l2_strtab(smmu, sid);
++
++	return 0;
++}
++
+ static int arm_smmu_insert_master(struct arm_smmu_device *smmu,
+ 				  struct arm_smmu_master *master)
+ {
+@@ -2552,20 +2565,9 @@ static int arm_smmu_insert_master(struct arm_smmu_device *smmu,
+ 		new_stream->id = sid;
+ 		new_stream->master = master;
+ 
+-		/*
+-		 * Check the SIDs are in range of the SMMU and our stream table
+-		 */
+-		if (!arm_smmu_sid_in_range(smmu, sid)) {
+-			ret = -ERANGE;
++		ret = arm_smmu_init_sid_strtab(smmu, sid);
++		if (ret)
+ 			break;
+-		}
+-
+-		/* Ensure l2 strtab is initialised */
+-		if (smmu->features & ARM_SMMU_FEAT_2_LVL_STRTAB) {
+-			ret = arm_smmu_init_l2_strtab(smmu, sid);
+-			if (ret)
+-				break;
+-		}
+ 
+ 		/* Insert into SID tree */
+ 		new_node = &(smmu->streams.rb_node);
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+Date: Thu, 5 Aug 2021 09:07:21 +0100
+Subject: [PATCH 06/24] =?UTF-8?q?iommu/arm-smmu-v3:=20Refactor=C2=A0arm=5F?=
+ =?UTF-8?q?smmu=5Finit=5Fbypass=5Fstes()=20to=20force=20bypass?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+By default, disable_bypass flag is set and any dev without
+an iommu domain installs STE with CFG_ABORT during
+arm_smmu_init_bypass_stes(). Introduce a "force" flag and
+move the STE update logic to arm_smmu_init_bypass_stes()
+so that we can force it to install CFG_BYPASS STE for specific
+SIDs.
+
+This will be useful in follow-up patch to install bypass
+for IORT RMR SIDs.
+
+Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+---
+ drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
+index 23acac6d89c7..12b5c9677df8 100644
+--- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
++++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
+@@ -1374,12 +1374,21 @@ static void arm_smmu_write_strtab_ent(struct arm_smmu_master *master, u32 sid,
+ 		arm_smmu_cmdq_issue_cmd(smmu, &prefetch_cmd);
+ }
+ 
+-static void arm_smmu_init_bypass_stes(__le64 *strtab, unsigned int nent)
++static void arm_smmu_init_bypass_stes(__le64 *strtab, unsigned int nent, bool force)
+ {
+ 	unsigned int i;
++	u64 val = STRTAB_STE_0_V;
++
++	if (disable_bypass && !force)
++		val |= FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_ABORT);
++	else
++		val |= FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_BYPASS);
+ 
+ 	for (i = 0; i < nent; ++i) {
+-		arm_smmu_write_strtab_ent(NULL, -1, strtab);
++		strtab[0] = cpu_to_le64(val);
++		strtab[1] = cpu_to_le64(FIELD_PREP(STRTAB_STE_1_SHCFG,
++						   STRTAB_STE_1_SHCFG_INCOMING));
++		strtab[2] = 0;
+ 		strtab += STRTAB_STE_DWORDS;
+ 	}
+ }
+@@ -1407,7 +1416,7 @@ static int arm_smmu_init_l2_strtab(struct arm_smmu_device *smmu, u32 sid)
+ 		return -ENOMEM;
+ 	}
+ 
+-	arm_smmu_init_bypass_stes(desc->l2ptr, 1 << STRTAB_SPLIT);
++	arm_smmu_init_bypass_stes(desc->l2ptr, 1 << STRTAB_SPLIT, false);
+ 	arm_smmu_write_strtab_l1_desc(strtab, desc);
+ 	return 0;
+ }
+@@ -3053,7 +3062,7 @@ static int arm_smmu_init_strtab_linear(struct arm_smmu_device *smmu)
+ 	reg |= FIELD_PREP(STRTAB_BASE_CFG_LOG2SIZE, smmu->sid_bits);
+ 	cfg->strtab_base_cfg = reg;
+ 
+-	arm_smmu_init_bypass_stes(strtab, cfg->num_l1_ents);
++	arm_smmu_init_bypass_stes(strtab, cfg->num_l1_ents, false);
+ 	return 0;
+ }
+ 
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+Date: Thu, 5 Aug 2021 09:07:22 +0100
+Subject: [PATCH 07/24] iommu/arm-smmu-v3: Get associated RMR info and install
+ bypass STE
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Check if there is any RMR info associated with the devices behind
+the SMMUv3 and if any, install bypass STEs for them. This is to
+keep any ongoing traffic associated with these devices alive
+when we enable/reset SMMUv3 during probe().
+
+Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+---
+ drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c | 31 +++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
+index 12b5c9677df8..22fa2900ad44 100644
+--- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
++++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
+@@ -3769,6 +3769,34 @@ static void __iomem *arm_smmu_ioremap(struct device *dev, resource_size_t start,
+ 	return devm_ioremap_resource(dev, &res);
+ }
+ 
++static void arm_smmu_rmr_install_bypass_ste(struct arm_smmu_device *smmu)
++{
++	struct list_head rmr_list;
++	struct iommu_resv_region *e;
++	int ret;
++
++	INIT_LIST_HEAD(&rmr_list);
++	if (iommu_dma_get_rmrs(dev_fwnode(smmu->dev), &rmr_list))
++		return;
++
++	list_for_each_entry(e, &rmr_list, list) {
++		__le64 *step;
++		u32 sid = e->fw_data.rmr.sid;
++
++		ret = arm_smmu_init_sid_strtab(smmu, sid);
++		if (ret) {
++			dev_err(smmu->dev, "RMR SID(0x%x) bypass failed\n",
++				sid);
++			continue;
++		}
++
++		step = arm_smmu_get_step_for_sid(smmu, sid);
++		arm_smmu_init_bypass_stes(step, 1, true);
++	}
++
++	iommu_dma_put_rmrs(dev_fwnode(smmu->dev), &rmr_list);
++}
++
+ static int arm_smmu_device_probe(struct platform_device *pdev)
+ {
+ 	int irq, ret;
+@@ -3850,6 +3878,9 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
+ 	/* Record our private device structure */
+ 	platform_set_drvdata(pdev, smmu);
+ 
++	/* Check for RMRs and install bypass STEs if any */
++	arm_smmu_rmr_install_bypass_ste(smmu);
++
+ 	/* Reset the device */
+ 	ret = arm_smmu_device_reset(smmu, bypass);
+ 	if (ret)
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jon Nettleton <jon@solid-run.com>
+Date: Thu, 5 Aug 2021 09:07:23 +0100
+Subject: [PATCH 08/24] iommu/arm-smmu: Get associated RMR info and install
+ bypass SMR
+
+Check if there is any RMR info associated with the devices behind
+the SMMU and if any, install bypass SMRs for them. This is to
+keep any ongoing traffic associated with these devices alive
+when we enable/reset SMMU during probe().
+
+Signed-off-by: Jon Nettleton <jon@solid-run.com>
+Signed-off-by: Steven Price <steven.price@arm.com>
+Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+---
+ drivers/iommu/arm/arm-smmu/arm-smmu.c | 48 +++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
+
+diff --git a/drivers/iommu/arm/arm-smmu/arm-smmu.c b/drivers/iommu/arm/arm-smmu/arm-smmu.c
+index 4bc75c4ce402..6c6b0b97756a 100644
+--- a/drivers/iommu/arm/arm-smmu/arm-smmu.c
++++ b/drivers/iommu/arm/arm-smmu/arm-smmu.c
+@@ -2066,6 +2066,50 @@ err_reset_platform_ops: __maybe_unused;
+ 	return err;
+ }
+ 
++static void arm_smmu_rmr_install_bypass_smr(struct arm_smmu_device *smmu)
++{
++	struct list_head rmr_list;
++	struct iommu_resv_region *e;
++	int i, cnt = 0;
++	u32 reg;
++
++	INIT_LIST_HEAD(&rmr_list);
++	if (iommu_dma_get_rmrs(dev_fwnode(smmu->dev), &rmr_list))
++		return;
++
++	/*
++	 * Rather than trying to look at existing mappings that
++	 * are setup by the firmware and then invalidate the ones
++	 * that do no have matching RMR entries, just disable the
++	 * SMMU until it gets enabled again in the reset routine.
++	 */
++	reg = arm_smmu_gr0_read(smmu, ARM_SMMU_GR0_sCR0);
++	reg |= ARM_SMMU_sCR0_CLIENTPD;
++	arm_smmu_gr0_write(smmu, ARM_SMMU_GR0_sCR0, reg);
++
++	list_for_each_entry(e, &rmr_list, list) {
++		u32 sid = e->fw_data.rmr.sid;
++
++		i = arm_smmu_find_sme(smmu, sid, ~0);
++		if (i < 0)
++			continue;
++		if (smmu->s2crs[i].count == 0) {
++			smmu->smrs[i].id = sid;
++			smmu->smrs[i].mask = 0;
++			smmu->smrs[i].valid = true;
++		}
++		smmu->s2crs[i].count++;
++		smmu->s2crs[i].type = S2CR_TYPE_BYPASS;
++		smmu->s2crs[i].privcfg = S2CR_PRIVCFG_DEFAULT;
++
++		cnt++;
++	}
++
++	dev_notice(smmu->dev, "\tpreserved %d boot mapping%s\n", cnt,
++		   cnt == 1 ? "" : "s");
++	iommu_dma_put_rmrs(dev_fwnode(smmu->dev), &rmr_list);
++}
++
+ static int arm_smmu_device_probe(struct platform_device *pdev)
+ {
+ 	struct resource *res;
+@@ -2192,6 +2236,10 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	platform_set_drvdata(pdev, smmu);
++
++	/* Check for RMRs and install bypass SMRs if any */
++	arm_smmu_rmr_install_bypass_smr(smmu);
++
+ 	arm_smmu_device_reset(smmu);
+ 	arm_smmu_test_smr_masks(smmu);
+ 
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+Date: Thu, 5 Aug 2021 09:07:24 +0100
+Subject: [PATCH 09/24] iommu/dma: Reserve any RMR regions associated with a
+ dev
+
+Get ACPI IORT RMR regions associated with a dev reserved
+so that there is a unity mapping for them in SMMU.
+
+Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+---
+ drivers/iommu/dma-iommu.c | 56 +++++++++++++++++++++++++++++++++++----
+ 1 file changed, 51 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
+index 9e27978ce111..7164acaafcbd 100644
+--- a/drivers/iommu/dma-iommu.c
++++ b/drivers/iommu/dma-iommu.c
+@@ -207,22 +207,68 @@ void iommu_dma_put_rmrs(struct fwnode_handle *iommu_fwnode,
+ }
+ EXPORT_SYMBOL(iommu_dma_put_rmrs);
+ 
++static bool iommu_dma_dev_has_rmr(struct iommu_fwspec *fwspec,
++				  struct iommu_resv_region *e)
++{
++	int i;
++
++	for (i = 0; i < fwspec->num_ids; i++) {
++		if (e->fw_data.rmr.sid == fwspec->ids[i])
++			return true;
++	}
++
++	return false;
++}
++
++static void iommu_dma_get_rmr_resv_regions(struct device *dev,
++					   struct list_head *list)
++{
++	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
++	struct list_head rmr_list;
++	struct iommu_resv_region *rmr, *tmp;
++
++	INIT_LIST_HEAD(&rmr_list);
++	if (iommu_dma_get_rmrs(fwspec->iommu_fwnode, &rmr_list))
++		return;
++
++	if (dev_is_pci(dev)) {
++		struct pci_dev *pdev = to_pci_dev(dev);
++		struct pci_host_bridge *host = pci_find_host_bridge(pdev->bus);
++
++		if (!host->preserve_config)
++			return;
++	}
++
++	list_for_each_entry_safe(rmr, tmp, &rmr_list, list) {
++		if (!iommu_dma_dev_has_rmr(fwspec, rmr))
++			continue;
++
++		/* Remove from iommu RMR list and add to dev resv_regions */
++		list_del_init(&rmr->list);
++		list_add_tail(&rmr->list, list);
++	}
++
++	iommu_dma_put_rmrs(fwspec->iommu_fwnode, &rmr_list);
++}
++
+ /**
+  * iommu_dma_get_resv_regions - Reserved region driver helper
+  * @dev: Device from iommu_get_resv_regions()
+  * @list: Reserved region list from iommu_get_resv_regions()
+  *
+  * IOMMU drivers can use this to implement their .get_resv_regions callback
+- * for general non-IOMMU-specific reservations. Currently, this covers GICv3
+- * ITS region reservation on ACPI based ARM platforms that may require HW MSI
+- * reservation.
++ * for general non-IOMMU-specific reservations. Currently this covers,
++ *  -GICv3 ITS region reservation on ACPI based ARM platforms that may
++ *   require HW MSI reservation.
++ *  -Any ACPI IORT RMR memory range reservations (IORT spec rev E.b)
+  */
+ void iommu_dma_get_resv_regions(struct device *dev, struct list_head *list)
+ {
+ 
+-	if (!is_of_node(dev_iommu_fwspec_get(dev)->iommu_fwnode))
++	if (!is_of_node(dev_iommu_fwspec_get(dev)->iommu_fwnode)) {
+ 		iort_iommu_msi_get_resv_regions(dev, list);
+-
++		iommu_dma_get_rmr_resv_regions(dev, list);
++	}
+ }
+ EXPORT_SYMBOL(iommu_dma_get_resv_regions);
+ 
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+Date: Fri, 17 Sep 2021 12:07:26 +0100
+Subject: [PATCH 10/24] iommu/dma: Update RMR mem attributes
+
+Since we dont have enough information from the IORT spec,
+make use of ACPI table and EFI memory map to set the RMR
+reserved region prot value.
+
+[Not tested]
+
+Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
+---
+ drivers/acpi/arm64/iort.c | 24 +++++++++++++-----------
+ drivers/iommu/dma-iommu.c |  1 +
+ include/linux/acpi_iort.h |  8 ++++++++
+ 3 files changed, 22 insertions(+), 11 deletions(-)
+
+diff --git a/drivers/acpi/arm64/iort.c b/drivers/acpi/arm64/iort.c
+index 3c32d62e63b6..7568618b3e22 100644
+--- a/drivers/acpi/arm64/iort.c
++++ b/drivers/acpi/arm64/iort.c
+@@ -809,6 +809,16 @@ static struct acpi_iort_node *iort_get_msi_resv_iommu(struct device *dev)
+ 	return NULL;
+ }
+ 
++void iort_iommu_rmr_update_mem_attr(struct device *dev,
++				    struct iommu_resv_region *rmr)
++{
++	if (device_get_dma_attr(dev) == DEV_DMA_COHERENT)
++		rmr->prot |= IOMMU_CACHE;
++
++	if (efi_mem_type(rmr->start) == EFI_MEMORY_MAPPED_IO)
++		rmr->prot |= IOMMU_MMIO;
++}
++
+ /**
+  * iort_iommu_get_rmrs() - Helper to retrieve RMR info associated with IOMMU
+  * @iommu_fwnode: fwnode for the IOMMU
+@@ -1079,6 +1089,9 @@ int iort_iommu_configure_id(struct device *dev, const u32 *input_id)
+ { return -ENODEV; }
+ int iort_iommu_get_rmrs(struct fwnode_handle *fwnode, struct list_head *head)
+ { return -ENODEV; }
++void iort_iommu_rmr_update_mem_attr(struct device *dev,
++				    struct iommu_resv_region *rmr)
++{ }
+ #endif
+ 
+ static int nc_dma_get_range(struct device *dev, u64 *size)
+@@ -1682,19 +1695,8 @@ static void __init iort_node_get_rmr_info(struct acpi_iort_node *iort_node)
+ 		}
+ 		if (rmr->flags & IOMMU_RMR_REMAP_PERMITTED) {
+ 			type = IOMMU_RESV_DIRECT_RELAXABLE;
+-			/*
+-			 * Set IOMMU_CACHE as IOMMU_RESV_DIRECT_RELAXABLE is
+-			 * normally used for allocated system memory that is
+-			 * then used for device specific reserved regions.
+-			 */
+-			prot |= IOMMU_CACHE;
+ 		} else {
+ 			type = IOMMU_RESV_DIRECT;
+-			/*
+-			 * Set IOMMU_MMIO as IOMMU_RESV_DIRECT is normally used
+-			 * for device memory like MSI doorbell.
+-			 */
+-			prot |= IOMMU_MMIO;
+ 		}
+ 
+ 		region = iommu_alloc_resv_region(addr, size, prot, type);
+diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
+index 7164acaafcbd..a406c374be71 100644
+--- a/drivers/iommu/dma-iommu.c
++++ b/drivers/iommu/dma-iommu.c
+@@ -243,6 +243,7 @@ static void iommu_dma_get_rmr_resv_regions(struct device *dev,
+ 		if (!iommu_dma_dev_has_rmr(fwspec, rmr))
+ 			continue;
+ 
++		iort_iommu_rmr_update_mem_attr(dev, rmr);
+ 		/* Remove from iommu RMR list and add to dev resv_regions */
+ 		list_del_init(&rmr->list);
+ 		list_add_tail(&rmr->list, list);
+diff --git a/include/linux/acpi_iort.h b/include/linux/acpi_iort.h
+index d8c030c103f5..f0a3882c26d4 100644
+--- a/include/linux/acpi_iort.h
++++ b/include/linux/acpi_iort.h
+@@ -10,6 +10,7 @@
+ #include <linux/acpi.h>
+ #include <linux/fwnode.h>
+ #include <linux/irqdomain.h>
++#include <linux/iommu.h>
+ 
+ #define IORT_IRQ_MASK(irq)		(irq & 0xffffffffULL)
+ #define IORT_IRQ_TRIGGER_MASK(irq)	((irq >> 32) & 0xffffffffULL)
+@@ -40,6 +41,8 @@ int iort_iommu_msi_get_resv_regions(struct device *dev, struct list_head *head);
+ phys_addr_t acpi_iort_dma_get_max_cpu_address(void);
+ int iort_iommu_get_rmrs(struct fwnode_handle *iommu_fwnode,
+ 			struct list_head *list);
++void iort_iommu_rmr_update_mem_attr(struct device *dev,
++				    struct iommu_resv_region *rmr);
+ #else
+ static inline void acpi_iort_init(void) { }
+ static inline u32 iort_msi_map_id(struct device *dev, u32 id)
+@@ -64,6 +67,11 @@ static inline
+ int iort_iommu_get_rmrs(struct fwnode_handle *iommu_fwnode,
+ 			struct list_head *list)
+ { return -ENODEV; }
++
++static inline
++void iort_iommu_rmr_update_mem_attr(struct device *dev,
++				    struct iommu_resv_region *rmr)
++{ }
+ #endif
+ 
+ #endif /* __ACPI_IORT_H__ */
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Makarand Pawagi <makarand.pawagi@nxp.com>
+Date: Tue, 21 Apr 2020 11:25:53 +0530
+Subject: [PATCH 11/24] soc: fsl: enable acpi support for Guts driver
+
+ACPI support is added in the Guts driver
+This is in accordance with the DSDT table added for Guts
+
+Signed-off-by: Makarand Pawagi <makarand.pawagi@nxp.com>
+---
+ drivers/soc/fsl/guts.c | 27 ++++++++++++++++++++++-----
+ 1 file changed, 22 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/soc/fsl/guts.c b/drivers/soc/fsl/guts.c
+index d5e9a5f2c087..4353efd07d02 100644
+--- a/drivers/soc/fsl/guts.c
++++ b/drivers/soc/fsl/guts.c
+@@ -3,6 +3,7 @@
+  * Freescale QorIQ Platforms GUTS Driver
+  *
+  * Copyright (C) 2016 Freescale Semiconductor, Inc.
++ * Copyright 2020 NXP
+  */
+ 
+ #include <linux/io.h>
+@@ -138,7 +139,7 @@ static u32 fsl_guts_get_svr(void)
+ 
+ static int fsl_guts_probe(struct platform_device *pdev)
+ {
+-	struct device_node *np = pdev->dev.of_node;
++	struct device_node *root;
+ 	struct device *dev = &pdev->dev;
+ 	struct resource *res;
+ 	const struct fsl_soc_die_attr *soc_die;
+@@ -150,7 +151,8 @@ static int fsl_guts_probe(struct platform_device *pdev)
+ 	if (!guts)
+ 		return -ENOMEM;
+ 
+-	guts->little_endian = of_property_read_bool(np, "little-endian");
++	guts->little_endian = fwnode_property_read_bool(pdev->dev.fwnode,
++							"little-endian");
+ 
+ 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+ 	guts->regs = devm_ioremap_resource(dev, res);
+@@ -158,9 +160,17 @@ static int fsl_guts_probe(struct platform_device *pdev)
+ 		return PTR_ERR(guts->regs);
+ 
+ 	/* Register soc device */
+-	root = of_find_node_by_path("/");
+-	if (of_property_read_string(root, "model", &machine))
+-		of_property_read_string_index(root, "compatible", 0, &machine);
++	if (dev_of_node(&pdev->dev)) {
++		root = of_find_node_by_path("/");
++		if (of_property_read_string(root, "model", &machine))
++			of_property_read_string_index(root,
++					"compatible", 0, &machine);
++		of_node_put(root);
++	} else {
++		fwnode_property_read_string(pdev->dev.fwnode,
++				"model", &machine);
++	}
++
+ 	if (machine)
+ 		soc_dev_attr.machine = machine;
+ 
+@@ -234,10 +244,17 @@ static const struct of_device_id fsl_guts_of_match[] = {
+ };
+ MODULE_DEVICE_TABLE(of, fsl_guts_of_match);
+ 
++static const struct acpi_device_id fsl_guts_acpi_match[] = {
++	{"NXP0030", 0 },
++	{ }
++};
++MODULE_DEVICE_TABLE(acpi, fsl_guts_acpi_match);
++
+ static struct platform_driver fsl_guts_driver = {
+ 	.driver = {
+ 		.name = "fsl-guts",
+ 		.of_match_table = fsl_guts_of_match,
++		.acpi_match_table = fsl_guts_acpi_match,
+ 	},
+ 	.probe = fsl_guts_probe,
+ 	.remove = fsl_guts_remove,
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Meenakshi Aggarwal <meenakshi.aggarwal@nxp.com>
+Date: Wed, 27 May 2020 21:35:11 +0530
+Subject: [PATCH 12/24] mmc: sdhci-of-esdhc: Add ACPI support
+
+This patch is to add acpi support in esdhc controller driver
+
+Signed-off-by: Meenakshi Aggarwal <meenakshi.aggarwal@nxp.com>
+---
+ drivers/mmc/host/sdhci-of-esdhc.c | 62 +++++++++++++++++++------------
+ 1 file changed, 39 insertions(+), 23 deletions(-)
+
+diff --git a/drivers/mmc/host/sdhci-of-esdhc.c b/drivers/mmc/host/sdhci-of-esdhc.c
+index a593b1fbd69e..cc880bf3f0bf 100644
+--- a/drivers/mmc/host/sdhci-of-esdhc.c
++++ b/drivers/mmc/host/sdhci-of-esdhc.c
+@@ -10,6 +10,7 @@
+  *	    Anton Vorontsov <avorontsov@ru.mvista.com>
+  */
+ 
++#include <linux/acpi.h>
+ #include <linux/err.h>
+ #include <linux/io.h>
+ #include <linux/of.h>
+@@ -73,6 +74,14 @@ static const struct of_device_id sdhci_esdhc_of_match[] = {
+ };
+ MODULE_DEVICE_TABLE(of, sdhci_esdhc_of_match);
+ 
++#ifdef CONFIG_ACPI
++static const struct acpi_device_id sdhci_esdhc_ids[] = {
++	{"NXP0003" },
++	{ }
++};
++MODULE_DEVICE_TABLE(acpi, sdhci_esdhc_ids);
++#endif
++
+ struct sdhci_esdhc {
+ 	u8 vendor_ver;
+ 	u8 spec_ver;
+@@ -1366,29 +1375,35 @@ static void esdhc_init(struct platform_device *pdev, struct sdhci_host *host)
+ 		esdhc->clk_fixup = match->data;
+ 	np = pdev->dev.of_node;
+ 
+-	if (of_device_is_compatible(np, "fsl,p2020-esdhc")) {
+-		esdhc->quirk_delay_before_data_reset = true;
+-		esdhc->quirk_trans_complete_erratum = true;
+-	}
++	/* in case of device tree, get clock from framework */
++	if (np) {
++		if (of_device_is_compatible(np, "fsl,p2020-esdhc")) {
++			esdhc->quirk_delay_before_data_reset = true;
++			esdhc->quirk_trans_complete_erratum = true;
++		}
+ 
+-	clk = of_clk_get(np, 0);
+-	if (!IS_ERR(clk)) {
+-		/*
+-		 * esdhc->peripheral_clock would be assigned with a value
+-		 * which is eSDHC base clock when use periperal clock.
+-		 * For some platforms, the clock value got by common clk
+-		 * API is peripheral clock while the eSDHC base clock is
+-		 * 1/2 peripheral clock.
+-		 */
+-		if (of_device_is_compatible(np, "fsl,ls1046a-esdhc") ||
+-		    of_device_is_compatible(np, "fsl,ls1028a-esdhc") ||
+-		    of_device_is_compatible(np, "fsl,ls1088a-esdhc"))
+-			esdhc->peripheral_clock = clk_get_rate(clk) / 2;
+-		else
+-			esdhc->peripheral_clock = clk_get_rate(clk);
+-
+-		clk_put(clk);
+-	}
++		clk = of_clk_get(np, 0);
++		if (!IS_ERR(clk)) {
++			/*
++			 * esdhc->peripheral_clock would be assigned with a value
++			 * which is eSDHC base clock when use periperal clock.
++			 * For some platforms, the clock value got by common clk
++			 * API is peripheral clock while the eSDHC base clock is
++			 * 1/2 peripheral clock.
++			 */
++			if (of_device_is_compatible(np, "fsl,ls1046a-esdhc") ||
++			    of_device_is_compatible(np, "fsl,ls1028a-esdhc") ||
++			    of_device_is_compatible(np, "fsl,ls1088a-esdhc"))
++				esdhc->peripheral_clock = clk_get_rate(clk) / 2;
++			else
++				esdhc->peripheral_clock = clk_get_rate(clk);
++
++			clk_put(clk);
++		}
++	} else {
++		device_property_read_u32(&pdev->dev, "clock-frequency",
++					 &esdhc->peripheral_clock);
++        }
+ 
+ 	esdhc_clock_enable(host, false);
+ 	val = sdhci_readl(host, ESDHC_DMA_SYSCTL);
+@@ -1421,7 +1436,7 @@ static int sdhci_esdhc_probe(struct platform_device *pdev)
+ 
+ 	np = pdev->dev.of_node;
+ 
+-	if (of_property_read_bool(np, "little-endian"))
++	if (device_property_read_bool(&pdev->dev, "little-endian"))
+ 		host = sdhci_pltfm_init(pdev, &sdhci_esdhc_le_pdata,
+ 					sizeof(struct sdhci_esdhc));
+ 	else
+@@ -1506,6 +1521,7 @@ static struct platform_driver sdhci_esdhc_driver = {
+ 		.name = "sdhci-esdhc",
+ 		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
+ 		.of_match_table = sdhci_esdhc_of_match,
++		.acpi_match_table = sdhci_esdhc_ids,
+ 		.pm = &esdhc_of_dev_pm_ops,
+ 	},
+ 	.probe = sdhci_esdhc_probe,
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Meharbaan <meharbaan.ali@puresoftware.com>
+Date: Tue, 28 Jul 2020 17:41:31 +0530
+Subject: [PATCH 13/24] drivers/mmc/host/sdhci-of-esdhc : Fix DMA coherent
+ check in ACPI mode.
+
+DMA-coherent check to set ESDHC_DMA_SNOOP mask was bypassed
+when booted in ACPI mode. Now it also checks the acpi device and
+its parents for _CCA property in the device, and sets the flag
+accordingly.
+
+Signed-off-by: Meharbaan <meharbaan.ali@puresoftware.com>
+---
+ drivers/base/property.c           | 38 +++++++++++++++++++++++++++++++
+ drivers/mmc/host/sdhci-of-esdhc.c |  7 ++++--
+ include/linux/property.h          |  2 ++
+ 3 files changed, 45 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/base/property.c b/drivers/base/property.c
+index 453918eb7390..42ada28b42f9 100644
+--- a/drivers/base/property.c
++++ b/drivers/base/property.c
+@@ -17,6 +17,7 @@
+ #include <linux/property.h>
+ #include <linux/etherdevice.h>
+ #include <linux/phy.h>
++#include <linux/platform_device.h>
+ 
+ struct fwnode_handle *dev_fwnode(struct device *dev)
+ {
+@@ -893,6 +894,43 @@ enum dev_dma_attr device_get_dma_attr(struct device *dev)
+ }
+ EXPORT_SYMBOL_GPL(device_get_dma_attr);
+ 
++/**
++ * device_match_fw_node - Check if the device is the parent node.
++ * @dev:		Pointer to the device.
++ * @parent_fwnode	Pointer to the parent's firmware node.
++ *
++ * The function returns true if the device has no parent.
++ *
++ */
++static int device_match_fw_node(struct device *dev, const void *parent_fwnode)
++{
++	return dev->fwnode == parent_fwnode;
++}
++
++/**
++ * dev_dma_is_coherent - Check if the device or any of its parents has
++ * dma support enabled.
++ * @dev:     Pointer to the device.
++ *
++ * The function gets the device pointer and check for device_dma_supported()
++ * on the device pointer passed and then recursively on its parent nodes.
++ */
++
++bool dev_dma_is_coherent(struct device *dev)
++{
++	struct fwnode_handle *parent_fwnode;
++
++	while (dev) {
++		if (device_dma_supported(dev))
++			return true;
++		parent_fwnode = fwnode_get_next_parent(dev->fwnode);
++		dev = bus_find_device(&platform_bus_type, NULL,	parent_fwnode,
++				      device_match_fw_node);
++	}
++	return false;
++}
++EXPORT_SYMBOL_GPL(dev_dma_is_coherent);
++
+ /**
+  * fwnode_get_phy_mode - Get phy mode for given firmware node
+  * @fwnode:	Pointer to the given node
+diff --git a/drivers/mmc/host/sdhci-of-esdhc.c b/drivers/mmc/host/sdhci-of-esdhc.c
+index cc880bf3f0bf..5c106129404e 100644
+--- a/drivers/mmc/host/sdhci-of-esdhc.c
++++ b/drivers/mmc/host/sdhci-of-esdhc.c
+@@ -541,8 +541,11 @@ static int esdhc_of_enable_dma(struct sdhci_host *host)
+ 		dma_set_mask_and_coherent(dev, DMA_BIT_MASK(40));
+ 
+ 	value = sdhci_readl(host, ESDHC_DMA_SYSCTL);
+-
+-	if (of_dma_is_coherent(dev->of_node))
++	/*
++	 * of_dma_is_coherent() returns false in case of acpi hence
++	 * dev_dma_is_coherent() is used along with it.
++	 */
++	if (of_dma_is_coherent(dev->of_node) ||  dev_dma_is_coherent(dev))
+ 		value |= ESDHC_DMA_SNOOP;
+ 	else
+ 		value &= ~ESDHC_DMA_SNOOP;
+diff --git a/include/linux/property.h b/include/linux/property.h
+index 357513a977e5..a9009883ab9e 100644
+--- a/include/linux/property.h
++++ b/include/linux/property.h
+@@ -385,6 +385,8 @@ bool device_dma_supported(struct device *dev);
+ 
+ enum dev_dma_attr device_get_dma_attr(struct device *dev);
+ 
++bool dev_dma_is_coherent(struct device *dev);
++
+ const void *device_get_match_data(struct device *dev);
+ 
+ int device_get_phy_mode(struct device *dev);
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jon Nettleton <jon@solid-run.com>
+Date: Fri, 2 Jul 2021 07:28:21 -0400
+Subject: [PATCH 14/24] ACPI: APD: Allow apd device to override fixed_clk_rate
+
+Currently by default the apd drivers are always using the
+fixed_clk_rate assigned in the matched acpi_device_desc.
+This causes an issue on the LX2160a platform because the
+NXP0001 settings do not match the platform and instead the
+I2C bus is only running at 24000kHZ rather than the expect
+100000. Instead of patching the source with more static numbers
+that may or may not change instead add a check for the device
+property "fixed-clock-rate" that can be added to the ACPI
+tables to instruct the driver what rate to use.
+
+I have chosen fixed-clock-rate because clock-frequency is already
+used by I2C devices in acpi and device-tree to specify by bus
+speed, and fixed-clock-rate matches the fixed_clk_rate used by the
+apd_device_desc.  If this device property is not set then the
+default static values are used so this should cause no regressions.
+
+Signed-off-by: Jon Nettleton <jon@solid-run.com>
+---
+ drivers/acpi/acpi_apd.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/acpi/acpi_apd.c b/drivers/acpi/acpi_apd.c
+index 6e02448d15d9..f79757c34a77 100644
+--- a/drivers/acpi/acpi_apd.c
++++ b/drivers/acpi/acpi_apd.c
+@@ -46,12 +46,21 @@ struct apd_private_data {
+ static int acpi_apd_setup(struct apd_private_data *pdata)
+ {
+ 	const struct apd_device_desc *dev_desc = pdata->dev_desc;
++	struct acpi_device *adev = pdata->adev;
++	const union acpi_object *obj;
++	unsigned int fixed_clk_rate;
+ 	struct clk *clk;
+ 
+-	if (dev_desc->fixed_clk_rate) {
++	if (!acpi_dev_get_property(adev, "uefi-clock-frequency", ACPI_TYPE_INTEGER, &obj)) {
++		fixed_clk_rate = obj->integer.value;
++	} else if (dev_desc->fixed_clk_rate) {
++		fixed_clk_rate = dev_desc->fixed_clk_rate;
++	}
++
++	if (fixed_clk_rate) {
+ 		clk = clk_register_fixed_rate(&pdata->adev->dev,
+ 					dev_name(&pdata->adev->dev),
+-					NULL, 0, dev_desc->fixed_clk_rate);
++					NULL, 0, fixed_clk_rate);
+ 		clk_register_clkdev(clk, NULL, dev_name(&pdata->adev->dev));
+ 		pdata->clk = clk;
+ 	}
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Russell King <rmk+kernel@armlinux.org.uk>
+Date: Tue, 24 Dec 2019 14:46:48 +0000
+Subject: [PATCH 15/24] bus: fsl-mc: fix dprc object reading race
+
+When modifying the objects attached to a DPRC, we may end up reading
+the list of objects from the firmware while another thread is changing
+changing the list. Since we read the objects via:
+
+- Read the number of DPRC objects
+- Iterate over this number of objects retrieving their details
+
+and objects can be added in the middle of the list, this causes the
+last few objects to unexpectedly disappear. The side effect of this
+is if network interfaces are added after boot, they come and go. This
+can result in already configured interfaces unexpectedly disappearing.
+
+This has been easy to provoke with the restool interface added, and a
+script which adds network interfaces one after each other; the kernel
+rescanning runs asynchronously to restool.
+
+NXP's approach to fixing this was to introduce a sysfs "attribute" in
+their vendor tree, /sys/bus/fsl-mc/rescan, which userspace poked at to
+request the kernel to rescan the DPRC object tree each time the
+"restool" command completed (whether or not the tool changed anything.)
+This has the effect of making the kernel's rescan synchronous with a
+scripted restool, but still fails if we have multiple restools running
+concurrently.
+
+This patch takes a different approach:
+- Read the number of DPRC objects
+- Iterate over this number of objects retrieving their details
+- Re-read the number of DPRC objects
+- If the number of DPRC objects has changed while reading, repeat.
+
+This solves the issue where network interfaces unexpectedly disappear
+while adding others via ls-addni, because they've fallen off the end
+of the object list.
+
+This does *not* solve the issue that if an object is deleted while
+another is added while we are reading the objects - that requires
+firmware modification, or a more elaborate solution on the Linux side
+(e.g., CRCing the object details and reading all objects at least
+twice to check the CRC is stable.)
+
+However, without firmware modification, this is probably the best way
+to ensure that we read all the objects.
+
+Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
+---
+ drivers/bus/fsl-mc/dprc-driver.c | 32 +++++++++++++++++++++++++++++---
+ 1 file changed, 29 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/bus/fsl-mc/dprc-driver.c b/drivers/bus/fsl-mc/dprc-driver.c
+index 315e830b6ecd..2268869bf6ab 100644
+--- a/drivers/bus/fsl-mc/dprc-driver.c
++++ b/drivers/bus/fsl-mc/dprc-driver.c
+@@ -240,11 +240,11 @@ static void dprc_add_new_devices(struct fsl_mc_device *mc_bus_dev,
+ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
+ 		      bool alloc_interrupts)
+ {
+-	int num_child_objects;
++	int num_child_objects, num_child_objects2;
+ 	int dprc_get_obj_failures;
+ 	int error;
+-	unsigned int irq_count = mc_bus_dev->obj_desc.irq_count;
+-	struct fsl_mc_obj_desc *child_obj_desc_array = NULL;
++	unsigned int irq_count;
++	struct fsl_mc_obj_desc *child_obj_desc_array;
+ 	struct fsl_mc_bus *mc_bus = to_fsl_mc_bus(mc_bus_dev);
+ 
+ 	error = dprc_get_obj_count(mc_bus_dev->mc_io,
+@@ -257,6 +257,9 @@ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
+ 		return error;
+ 	}
+ 
++retry:
++	irq_count = mc_bus_dev->obj_desc.irq_count;
++	child_obj_desc_array = NULL;
+ 	if (num_child_objects != 0) {
+ 		int i;
+ 
+@@ -315,6 +318,29 @@ int dprc_scan_objects(struct fsl_mc_device *mc_bus_dev,
+ 		}
+ 	}
+ 
++	error = dprc_get_obj_count(mc_bus_dev->mc_io,
++				   0,
++				   mc_bus_dev->mc_handle,
++				   &num_child_objects2);
++	if (error < 0) {
++		if (child_obj_desc_array)
++			devm_kfree(&mc_bus_dev->dev, child_obj_desc_array);
++		dev_err(&mc_bus_dev->dev, "dprc_get_obj_count() failed: %d\n",
++			error);
++		return error;
++	}
++
++	if (num_child_objects != num_child_objects2) {
++		/*
++		 * Something changed while reading the number of objects.
++		 * Retry reading the child object list.
++		 */
++		if (child_obj_desc_array)
++			devm_kfree(&mc_bus_dev->dev, child_obj_desc_array);
++		num_child_objects = num_child_objects2;
++		goto retry;
++	}
++
+ 	/*
+ 	 * Allocate IRQ's before binding the scanned devices with their
+ 	 * respective drivers.
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Russell King <rmk+kernel@armlinux.org.uk>
+Date: Fri, 24 Jan 2020 17:59:49 +0000
+Subject: [PATCH 16/24] iommu: silence iommu group prints
+
+On the LX2160A, there are lots (about 160) of IOMMU messages produced
+during boot; this is excessive.  Reduce the severity of these messages
+to debug level.
+
+Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
+---
+ drivers/iommu/iommu.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/iommu/iommu.c b/drivers/iommu/iommu.c
+index 3303d707bab4..ce617eb9d1ad 100644
+--- a/drivers/iommu/iommu.c
++++ b/drivers/iommu/iommu.c
+@@ -899,7 +899,7 @@ int iommu_group_add_device(struct iommu_group *group, struct device *dev)
+ 
+ 	trace_add_device_to_group(group->id, dev);
+ 
+-	dev_info(dev, "Adding to iommu group %d\n", group->id);
++	dev_dbg(dev, "Adding to iommu group %d\n", group->id);
+ 
+ 	return 0;
+ 
+@@ -936,7 +936,7 @@ void iommu_group_remove_device(struct device *dev)
+ 	if (!group)
+ 		return;
+ 
+-	dev_info(dev, "Removing from iommu group %d\n", group->id);
++	dev_dbg(dev, "Removing from iommu group %d\n", group->id);
+ 
+ 	/* Pre-notify listeners that a device is being removed. */
+ 	blocking_notifier_call_chain(&group->notifier,
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jon Nettleton <jon@solid-run.com>
+Date: Thu, 7 Oct 2021 03:11:29 -0400
+Subject: [PATCH 17/24] arm64: Alter memcpy and memmove for better ACE compat
+
+Signed-off-by: Jon Nettleton <jon@solid-run.com>
+---
+ arch/arm64/lib/memcpy.S | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/arch/arm64/lib/memcpy.S b/arch/arm64/lib/memcpy.S
+index b82fd64ee1e1..4aa907895e45 100644
+--- a/arch/arm64/lib/memcpy.S
++++ b/arch/arm64/lib/memcpy.S
+@@ -136,12 +136,12 @@ L(copy128):
+ 	stp	G_l, G_h, [dstend, -64]
+ 	stp	H_l, H_h, [dstend, -48]
+ L(copy96):
++	stp	C_l, C_h, [dstend, -32]
++	stp	D_l, D_h, [dstend, -16]
+ 	stp	A_l, A_h, [dstin]
+ 	stp	B_l, B_h, [dstin, 16]
+ 	stp	E_l, E_h, [dstin, 32]
+ 	stp	F_l, F_h, [dstin, 48]
+-	stp	C_l, C_h, [dstend, -32]
+-	stp	D_l, D_h, [dstend, -16]
+ 	ret
+ 
+ 	.p2align 4
+@@ -236,10 +236,10 @@ L(copy64_from_start):
+ 	stp	C_l, C_h, [dstend, -48]
+ 	ldp	C_l, C_h, [src]
+ 	stp	D_l, D_h, [dstend, -64]
+-	stp	G_l, G_h, [dstin, 48]
+-	stp	A_l, A_h, [dstin, 32]
+-	stp	B_l, B_h, [dstin, 16]
+ 	stp	C_l, C_h, [dstin]
++	stp	B_l, B_h, [dstin, 16]
++	stp	A_l, A_h, [dstin, 32]
++	stp	G_l, G_h, [dstin, 48]
+ 	ret
+ 
+ SYM_FUNC_END_PI(memcpy)
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jonathan Cameron <Jonathan.Cameron@huawei.com>
+Date: Fri, 24 Sep 2021 20:51:02 +1200
+Subject: [PATCH 18/24] topology: Represent clusters of CPUs within a die
+
+Both ACPI and DT provide the ability to describe additional layers of
+topology between that of individual cores and higher level constructs
+such as the level at which the last level cache is shared.
+In ACPI this can be represented in PPTT as a Processor Hierarchy
+Node Structure [1] that is the parent of the CPU cores and in turn
+has a parent Processor Hierarchy Nodes Structure representing
+a higher level of topology.
+
+For example Kunpeng 920 has 6 or 8 clusters in each NUMA node, and each
+cluster has 4 cpus. All clusters share L3 cache data, but each cluster
+has local L3 tag. On the other hand, each clusters will share some
+internal system bus.
+
++-----------------------------------+                          +---------+
+|  +------+    +------+             +--------------------------+         |
+|  | CPU0 |    | cpu1 |             |    +-----------+         |         |
+|  +------+    +------+             |    |           |         |         |
+|                                   +----+    L3     |         |         |
+|  +------+    +------+   cluster   |    |    tag    |         |         |
+|  | CPU2 |    | CPU3 |             |    |           |         |         |
+|  +------+    +------+             |    +-----------+         |         |
+|                                   |                          |         |
++-----------------------------------+                          |         |
++-----------------------------------+                          |         |
+|  +------+    +------+             +--------------------------+         |
+|  |      |    |      |             |    +-----------+         |         |
+|  +------+    +------+             |    |           |         |         |
+|                                   |    |    L3     |         |         |
+|  +------+    +------+             +----+    tag    |         |         |
+|  |      |    |      |             |    |           |         |         |
+|  +------+    +------+             |    +-----------+         |         |
+|                                   |                          |         |
++-----------------------------------+                          |   L3    |
+                                                               |   data  |
++-----------------------------------+                          |         |
+|  +------+    +------+             |    +-----------+         |         |
+|  |      |    |      |             |    |           |         |         |
+|  +------+    +------+             +----+    L3     |         |         |
+|                                   |    |    tag    |         |         |
+|  +------+    +------+             |    |           |         |         |
+|  |      |    |      |             |    +-----------+         |         |
+|  +------+    +------+             +--------------------------+         |
++-----------------------------------|                          |         |
++-----------------------------------|                          |         |
+|  +------+    +------+             +--------------------------+         |
+|  |      |    |      |             |    +-----------+         |         |
+|  +------+    +------+             |    |           |         |         |
+|                                   +----+    L3     |         |         |
+|  +------+    +------+             |    |    tag    |         |         |
+|  |      |    |      |             |    |           |         |         |
+|  +------+    +------+             |    +-----------+         |         |
+|                                   |                          |         |
++-----------------------------------+                          |         |
++-----------------------------------+                          |         |
+|  +------+    +------+             +--------------------------+         |
+|  |      |    |      |             |   +-----------+          |         |
+|  +------+    +------+             |   |           |          |         |
+|                                   |   |    L3     |          |         |
+|  +------+    +------+             +---+    tag    |          |         |
+|  |      |    |      |             |   |           |          |         |
+|  +------+    +------+             |   +-----------+          |         |
+|                                   |                          |         |
++-----------------------------------+                          |         |
++-----------------------------------+                          |         |
+|  +------+    +------+             +--------------------------+         |
+|  |      |    |      |             |  +-----------+           |         |
+|  +------+    +------+             |  |           |           |         |
+|                                   |  |    L3     |           |         |
+|  +------+    +------+             +--+    tag    |           |         |
+|  |      |    |      |             |  |           |           |         |
+|  +------+    +------+             |  +-----------+           |         |
+|                                   |                          +---------+
++-----------------------------------+
+
+That means spreading tasks among clusters will bring more bandwidth
+while packing tasks within one cluster will lead to smaller cache
+synchronization latency. So both kernel and userspace will have
+a chance to leverage this topology to deploy tasks accordingly to
+achieve either smaller cache latency within one cluster or an even
+distribution of load among clusters for higher throughput.
+
+This patch exposes cluster topology to both kernel and userspace.
+Libraried like hwloc will know cluster by cluster_cpus and related
+sysfs attributes. PoC of HWLOC support at [2].
+
+Note this patch only handle the ACPI case.
+
+Special consideration is needed for SMT processors, where it is
+necessary to move 2 levels up the hierarchy from the leaf nodes
+(thus skipping the processor core level).
+
+Note that arm64 / ACPI does not provide any means of identifying
+a die level in the topology but that may be unrelate to the cluster
+level.
+
+[1] ACPI Specification 6.3 - section 5.2.29.1 processor hierarchy node
+    structure (Type 0)
+[2] https://github.com/hisilicon/hwloc/tree/linux-cluster
+
+Signed-off-by: Jonathan Cameron <Jonathan.Cameron@huawei.com>
+Signed-off-by: Tian Tao <tiantao6@hisilicon.com>
+Signed-off-by: Barry Song <song.bao.hua@hisilicon.com>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Link: https://lore.kernel.org/r/20210924085104.44806-2-21cnbao@gmail.com
+---
+ .../ABI/stable/sysfs-devices-system-cpu       | 15 +++++
+ Documentation/admin-guide/cputopology.rst     | 12 ++--
+ arch/arm64/kernel/topology.c                  |  2 +
+ drivers/acpi/pptt.c                           | 67 +++++++++++++++++++
+ drivers/base/arch_topology.c                  | 15 +++++
+ drivers/base/topology.c                       | 10 +++
+ include/linux/acpi.h                          |  5 ++
+ include/linux/arch_topology.h                 |  5 ++
+ include/linux/topology.h                      |  6 ++
+ 9 files changed, 133 insertions(+), 4 deletions(-)
+
+diff --git a/Documentation/ABI/stable/sysfs-devices-system-cpu b/Documentation/ABI/stable/sysfs-devices-system-cpu
+index 516dafea03eb..3965ce504484 100644
+--- a/Documentation/ABI/stable/sysfs-devices-system-cpu
++++ b/Documentation/ABI/stable/sysfs-devices-system-cpu
+@@ -42,6 +42,12 @@ Description:    the CPU core ID of cpuX. Typically it is the hardware platform's
+                 architecture and platform dependent.
+ Values:         integer
+ 
++What:           /sys/devices/system/cpu/cpuX/topology/cluster_id
++Description:    the cluster ID of cpuX.  Typically it is the hardware platform's
++                identifier (rather than the kernel's). The actual value is
++                architecture and platform dependent.
++Values:         integer
++
+ What:           /sys/devices/system/cpu/cpuX/topology/book_id
+ Description:    the book ID of cpuX. Typically it is the hardware platform's
+                 identifier (rather than the kernel's). The actual value is
+@@ -85,6 +91,15 @@ Description:    human-readable list of CPUs within the same die.
+                 The format is like 0-3, 8-11, 14,17.
+ Values:         decimal list.
+ 
++What:           /sys/devices/system/cpu/cpuX/topology/cluster_cpus
++Description:    internal kernel map of CPUs within the same cluster.
++Values:         hexadecimal bitmask.
++
++What:           /sys/devices/system/cpu/cpuX/topology/cluster_cpus_list
++Description:    human-readable list of CPUs within the same cluster.
++                The format is like 0-3, 8-11, 14,17.
++Values:         decimal list.
++
+ What:           /sys/devices/system/cpu/cpuX/topology/book_siblings
+ Description:    internal kernel map of cpuX's hardware threads within the same
+                 book_id. it's only used on s390.
+diff --git a/Documentation/admin-guide/cputopology.rst b/Documentation/admin-guide/cputopology.rst
+index b085dbac60a5..6b62e182baf4 100644
+--- a/Documentation/admin-guide/cputopology.rst
++++ b/Documentation/admin-guide/cputopology.rst
+@@ -19,11 +19,13 @@ these macros in include/asm-XXX/topology.h::
+ 
+ 	#define topology_physical_package_id(cpu)
+ 	#define topology_die_id(cpu)
++	#define topology_cluster_id(cpu)
+ 	#define topology_core_id(cpu)
+ 	#define topology_book_id(cpu)
+ 	#define topology_drawer_id(cpu)
+ 	#define topology_sibling_cpumask(cpu)
+ 	#define topology_core_cpumask(cpu)
++	#define topology_cluster_cpumask(cpu)
+ 	#define topology_die_cpumask(cpu)
+ 	#define topology_book_cpumask(cpu)
+ 	#define topology_drawer_cpumask(cpu)
+@@ -39,10 +41,12 @@ not defined by include/asm-XXX/topology.h:
+ 
+ 1) topology_physical_package_id: -1
+ 2) topology_die_id: -1
+-3) topology_core_id: 0
+-4) topology_sibling_cpumask: just the given CPU
+-5) topology_core_cpumask: just the given CPU
+-6) topology_die_cpumask: just the given CPU
++3) topology_cluster_id: -1
++4) topology_core_id: 0
++5) topology_sibling_cpumask: just the given CPU
++6) topology_core_cpumask: just the given CPU
++7) topology_cluster_cpumask: just the given CPU
++8) topology_die_cpumask: just the given CPU
+ 
+ For architectures that don't support books (CONFIG_SCHED_BOOK) there are no
+ default definitions for topology_book_id() and topology_book_cpumask().
+diff --git a/arch/arm64/kernel/topology.c b/arch/arm64/kernel/topology.c
+index 4dd14a6620c1..9ab78ad826e2 100644
+--- a/arch/arm64/kernel/topology.c
++++ b/arch/arm64/kernel/topology.c
+@@ -103,6 +103,8 @@ int __init parse_acpi_topology(void)
+ 			cpu_topology[cpu].thread_id  = -1;
+ 			cpu_topology[cpu].core_id    = topology_id;
+ 		}
++		topology_id = find_acpi_cpu_topology_cluster(cpu);
++		cpu_topology[cpu].cluster_id = topology_id;
+ 		topology_id = find_acpi_cpu_topology_package(cpu);
+ 		cpu_topology[cpu].package_id = topology_id;
+ 
+diff --git a/drivers/acpi/pptt.c b/drivers/acpi/pptt.c
+index fe69dc518f31..701f61c01359 100644
+--- a/drivers/acpi/pptt.c
++++ b/drivers/acpi/pptt.c
+@@ -746,6 +746,73 @@ int find_acpi_cpu_topology_package(unsigned int cpu)
+ 					  ACPI_PPTT_PHYSICAL_PACKAGE);
+ }
+ 
++/**
++ * find_acpi_cpu_topology_cluster() - Determine a unique CPU cluster value
++ * @cpu: Kernel logical CPU number
++ *
++ * Determine a topology unique cluster ID for the given CPU/thread.
++ * This ID can then be used to group peers, which will have matching ids.
++ *
++ * The cluster, if present is the level of topology above CPUs. In a
++ * multi-thread CPU, it will be the level above the CPU, not the thread.
++ * It may not exist in single CPU systems. In simple multi-CPU systems,
++ * it may be equal to the package topology level.
++ *
++ * Return: -ENOENT if the PPTT doesn't exist, the CPU cannot be found
++ * or there is no toplogy level above the CPU..
++ * Otherwise returns a value which represents the package for this CPU.
++ */
++
++int find_acpi_cpu_topology_cluster(unsigned int cpu)
++{
++	struct acpi_table_header *table;
++	acpi_status status;
++	struct acpi_pptt_processor *cpu_node, *cluster_node;
++	u32 acpi_cpu_id;
++	int retval;
++	int is_thread;
++
++	status = acpi_get_table(ACPI_SIG_PPTT, 0, &table);
++	if (ACPI_FAILURE(status)) {
++		acpi_pptt_warn_missing();
++		return -ENOENT;
++	}
++
++	acpi_cpu_id = get_acpi_id_for_cpu(cpu);
++	cpu_node = acpi_find_processor_node(table, acpi_cpu_id);
++	if (cpu_node == NULL || !cpu_node->parent) {
++		retval = -ENOENT;
++		goto put_table;
++	}
++
++	is_thread = cpu_node->flags & ACPI_PPTT_ACPI_PROCESSOR_IS_THREAD;
++	cluster_node = fetch_pptt_node(table, cpu_node->parent);
++	if (cluster_node == NULL) {
++		retval = -ENOENT;
++		goto put_table;
++	}
++	if (is_thread) {
++		if (!cluster_node->parent) {
++			retval = -ENOENT;
++			goto put_table;
++		}
++		cluster_node = fetch_pptt_node(table, cluster_node->parent);
++		if (cluster_node == NULL) {
++			retval = -ENOENT;
++			goto put_table;
++		}
++	}
++	if (cluster_node->flags & ACPI_PPTT_ACPI_PROCESSOR_ID_VALID)
++		retval = cluster_node->acpi_processor_id;
++	else
++		retval = ACPI_PTR_DIFF(cluster_node, table);
++
++put_table:
++	acpi_put_table(table);
++
++	return retval;
++}
++
+ /**
+  * find_acpi_cpu_topology_hetero_id() - Get a core architecture tag
+  * @cpu: Kernel logical CPU number
+diff --git a/drivers/base/arch_topology.c b/drivers/base/arch_topology.c
+index 43407665918f..fc0836f460fb 100644
+--- a/drivers/base/arch_topology.c
++++ b/drivers/base/arch_topology.c
+@@ -600,6 +600,11 @@ const struct cpumask *cpu_coregroup_mask(int cpu)
+ 	return core_mask;
+ }
+ 
++const struct cpumask *cpu_clustergroup_mask(int cpu)
++{
++	return &cpu_topology[cpu].cluster_sibling;
++}
++
+ void update_siblings_masks(unsigned int cpuid)
+ {
+ 	struct cpu_topology *cpu_topo, *cpuid_topo = &cpu_topology[cpuid];
+@@ -617,6 +622,12 @@ void update_siblings_masks(unsigned int cpuid)
+ 		if (cpuid_topo->package_id != cpu_topo->package_id)
+ 			continue;
+ 
++		if (cpuid_topo->cluster_id == cpu_topo->cluster_id &&
++		    cpuid_topo->cluster_id != -1) {
++			cpumask_set_cpu(cpu, &cpuid_topo->cluster_sibling);
++			cpumask_set_cpu(cpuid, &cpu_topo->cluster_sibling);
++		}
++
+ 		cpumask_set_cpu(cpuid, &cpu_topo->core_sibling);
+ 		cpumask_set_cpu(cpu, &cpuid_topo->core_sibling);
+ 
+@@ -635,6 +646,9 @@ static void clear_cpu_topology(int cpu)
+ 	cpumask_clear(&cpu_topo->llc_sibling);
+ 	cpumask_set_cpu(cpu, &cpu_topo->llc_sibling);
+ 
++	cpumask_clear(&cpu_topo->cluster_sibling);
++	cpumask_set_cpu(cpu, &cpu_topo->cluster_sibling);
++
+ 	cpumask_clear(&cpu_topo->core_sibling);
+ 	cpumask_set_cpu(cpu, &cpu_topo->core_sibling);
+ 	cpumask_clear(&cpu_topo->thread_sibling);
+@@ -650,6 +664,7 @@ void __init reset_cpu_topology(void)
+ 
+ 		cpu_topo->thread_id = -1;
+ 		cpu_topo->core_id = -1;
++		cpu_topo->cluster_id = -1;
+ 		cpu_topo->package_id = -1;
+ 		cpu_topo->llc_id = -1;
+ 
+diff --git a/drivers/base/topology.c b/drivers/base/topology.c
+index 43c0940643f5..8f2b641d0b8c 100644
+--- a/drivers/base/topology.c
++++ b/drivers/base/topology.c
+@@ -48,6 +48,9 @@ static DEVICE_ATTR_RO(physical_package_id);
+ define_id_show_func(die_id);
+ static DEVICE_ATTR_RO(die_id);
+ 
++define_id_show_func(cluster_id);
++static DEVICE_ATTR_RO(cluster_id);
++
+ define_id_show_func(core_id);
+ static DEVICE_ATTR_RO(core_id);
+ 
+@@ -63,6 +66,10 @@ define_siblings_read_func(core_siblings, core_cpumask);
+ static BIN_ATTR_RO(core_siblings, 0);
+ static BIN_ATTR_RO(core_siblings_list, 0);
+ 
++define_siblings_read_func(cluster_cpus, cluster_cpumask);
++static BIN_ATTR_RO(cluster_cpus, 0);
++static BIN_ATTR_RO(cluster_cpus_list, 0);
++
+ define_siblings_read_func(die_cpus, die_cpumask);
+ static BIN_ATTR_RO(die_cpus, 0);
+ static BIN_ATTR_RO(die_cpus_list, 0);
+@@ -94,6 +101,8 @@ static struct bin_attribute *bin_attrs[] = {
+ 	&bin_attr_thread_siblings_list,
+ 	&bin_attr_core_siblings,
+ 	&bin_attr_core_siblings_list,
++	&bin_attr_cluster_cpus,
++	&bin_attr_cluster_cpus_list,
+ 	&bin_attr_die_cpus,
+ 	&bin_attr_die_cpus_list,
+ 	&bin_attr_package_cpus,
+@@ -112,6 +121,7 @@ static struct bin_attribute *bin_attrs[] = {
+ static struct attribute *default_attrs[] = {
+ 	&dev_attr_physical_package_id.attr,
+ 	&dev_attr_die_id.attr,
++	&dev_attr_cluster_id.attr,
+ 	&dev_attr_core_id.attr,
+ #ifdef CONFIG_SCHED_BOOK
+ 	&dev_attr_book_id.attr,
+diff --git a/include/linux/acpi.h b/include/linux/acpi.h
+index 6224b1e32681..878a62266304 100644
+--- a/include/linux/acpi.h
++++ b/include/linux/acpi.h
+@@ -1362,6 +1362,7 @@ static inline int lpit_read_residency_count_address(u64 *address)
+ #ifdef CONFIG_ACPI_PPTT
+ int acpi_pptt_cpu_is_thread(unsigned int cpu);
+ int find_acpi_cpu_topology(unsigned int cpu, int level);
++int find_acpi_cpu_topology_cluster(unsigned int cpu);
+ int find_acpi_cpu_topology_package(unsigned int cpu);
+ int find_acpi_cpu_topology_hetero_id(unsigned int cpu);
+ int find_acpi_cpu_cache_topology(unsigned int cpu, int level);
+@@ -1374,6 +1375,10 @@ static inline int find_acpi_cpu_topology(unsigned int cpu, int level)
+ {
+ 	return -EINVAL;
+ }
++static inline int find_acpi_cpu_topology_cluster(unsigned int cpu)
++{
++	return -EINVAL;
++}
+ static inline int find_acpi_cpu_topology_package(unsigned int cpu)
+ {
+ 	return -EINVAL;
+diff --git a/include/linux/arch_topology.h b/include/linux/arch_topology.h
+index f180240dc95f..b97cea83b25e 100644
+--- a/include/linux/arch_topology.h
++++ b/include/linux/arch_topology.h
+@@ -62,10 +62,12 @@ void topology_set_thermal_pressure(const struct cpumask *cpus,
+ struct cpu_topology {
+ 	int thread_id;
+ 	int core_id;
++	int cluster_id;
+ 	int package_id;
+ 	int llc_id;
+ 	cpumask_t thread_sibling;
+ 	cpumask_t core_sibling;
++	cpumask_t cluster_sibling;
+ 	cpumask_t llc_sibling;
+ };
+ 
+@@ -73,13 +75,16 @@ struct cpu_topology {
+ extern struct cpu_topology cpu_topology[NR_CPUS];
+ 
+ #define topology_physical_package_id(cpu)	(cpu_topology[cpu].package_id)
++#define topology_cluster_id(cpu)	(cpu_topology[cpu].cluster_id)
+ #define topology_core_id(cpu)		(cpu_topology[cpu].core_id)
+ #define topology_core_cpumask(cpu)	(&cpu_topology[cpu].core_sibling)
+ #define topology_sibling_cpumask(cpu)	(&cpu_topology[cpu].thread_sibling)
++#define topology_cluster_cpumask(cpu)	(&cpu_topology[cpu].cluster_sibling)
+ #define topology_llc_cpumask(cpu)	(&cpu_topology[cpu].llc_sibling)
+ void init_cpu_topology(void);
+ void store_cpu_topology(unsigned int cpuid);
+ const struct cpumask *cpu_coregroup_mask(int cpu);
++const struct cpumask *cpu_clustergroup_mask(int cpu);
+ void update_siblings_masks(unsigned int cpu);
+ void remove_cpu_topology(unsigned int cpuid);
+ void reset_cpu_topology(void);
+diff --git a/include/linux/topology.h b/include/linux/topology.h
+index 7634cd737061..80d27d717631 100644
+--- a/include/linux/topology.h
++++ b/include/linux/topology.h
+@@ -186,6 +186,9 @@ static inline int cpu_to_mem(int cpu)
+ #ifndef topology_die_id
+ #define topology_die_id(cpu)			((void)(cpu), -1)
+ #endif
++#ifndef topology_cluster_id
++#define topology_cluster_id(cpu)		((void)(cpu), -1)
++#endif
+ #ifndef topology_core_id
+ #define topology_core_id(cpu)			((void)(cpu), 0)
+ #endif
+@@ -195,6 +198,9 @@ static inline int cpu_to_mem(int cpu)
+ #ifndef topology_core_cpumask
+ #define topology_core_cpumask(cpu)		cpumask_of(cpu)
+ #endif
++#ifndef topology_cluster_cpumask
++#define topology_cluster_cpumask(cpu)		cpumask_of(cpu)
++#endif
+ #ifndef topology_die_cpumask
+ #define topology_die_cpumask(cpu)		cpumask_of(cpu)
+ #endif
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Barry Song <song.bao.hua@hisilicon.com>
+Date: Fri, 24 Sep 2021 20:51:03 +1200
+Subject: [PATCH 19/24] sched: Add cluster scheduler level in core and related
+ Kconfig for ARM64
+
+This patch adds scheduler level for clusters and automatically enables
+the load balance among clusters. It will directly benefit a lot of
+workload which loves more resources such as memory bandwidth, caches.
+
+Testing has widely been done in two different hardware configurations of
+Kunpeng920:
+
+ 24 cores in one NUMA(6 clusters in each NUMA node);
+ 32 cores in one NUMA(8 clusters in each NUMA node)
+
+Workload is running on either one NUMA node or four NUMA nodes, thus,
+this can estimate the effect of cluster spreading w/ and w/o NUMA load
+balance.
+
+* Stream benchmark:
+
+4threads stream (on 1NUMA * 24cores = 24cores)
+                stream                 stream
+                w/o patch              w/ patch
+MB/sec copy     29929.64 (   0.00%)    32932.68 (  10.03%)
+MB/sec scale    29861.10 (   0.00%)    32710.58 (   9.54%)
+MB/sec add      27034.42 (   0.00%)    32400.68 (  19.85%)
+MB/sec triad    27225.26 (   0.00%)    31965.36 (  17.41%)
+
+6threads stream (on 1NUMA * 24cores = 24cores)
+                stream                 stream
+                w/o patch              w/ patch
+MB/sec copy     40330.24 (   0.00%)    42377.68 (   5.08%)
+MB/sec scale    40196.42 (   0.00%)    42197.90 (   4.98%)
+MB/sec add      37427.00 (   0.00%)    41960.78 (  12.11%)
+MB/sec triad    37841.36 (   0.00%)    42513.64 (  12.35%)
+
+12threads stream (on 1NUMA * 24cores = 24cores)
+                stream                 stream
+                w/o patch              w/ patch
+MB/sec copy     52639.82 (   0.00%)    53818.04 (   2.24%)
+MB/sec scale    52350.30 (   0.00%)    53253.38 (   1.73%)
+MB/sec add      53607.68 (   0.00%)    55198.82 (   2.97%)
+MB/sec triad    54776.66 (   0.00%)    56360.40 (   2.89%)
+
+Thus, it could help memory-bound workload especially under medium load.
+Similar improvement is also seen in lkp-pbzip2:
+
+* lkp-pbzip2 benchmark
+
+2-96 threads (on 4NUMA * 24cores = 96cores)
+                  lkp-pbzip2              lkp-pbzip2
+                  w/o patch               w/ patch
+Hmean     tput-2   11062841.57 (   0.00%)  11341817.51 *   2.52%*
+Hmean     tput-5   26815503.70 (   0.00%)  27412872.65 *   2.23%*
+Hmean     tput-8   41873782.21 (   0.00%)  43326212.92 *   3.47%*
+Hmean     tput-12  61875980.48 (   0.00%)  64578337.51 *   4.37%*
+Hmean     tput-21 105814963.07 (   0.00%) 111381851.01 *   5.26%*
+Hmean     tput-30 150349470.98 (   0.00%) 156507070.73 *   4.10%*
+Hmean     tput-48 237195937.69 (   0.00%) 242353597.17 *   2.17%*
+Hmean     tput-79 360252509.37 (   0.00%) 362635169.23 *   0.66%*
+Hmean     tput-96 394571737.90 (   0.00%) 400952978.48 *   1.62%*
+
+2-24 threads (on 1NUMA * 24cores = 24cores)
+                 lkp-pbzip2               lkp-pbzip2
+                 w/o patch                w/ patch
+Hmean     tput-2   11071705.49 (   0.00%)  11296869.10 *   2.03%*
+Hmean     tput-4   20782165.19 (   0.00%)  21949232.15 *   5.62%*
+Hmean     tput-6   30489565.14 (   0.00%)  33023026.96 *   8.31%*
+Hmean     tput-8   40376495.80 (   0.00%)  42779286.27 *   5.95%*
+Hmean     tput-12  61264033.85 (   0.00%)  62995632.78 *   2.83%*
+Hmean     tput-18  86697139.39 (   0.00%)  86461545.74 (  -0.27%)
+Hmean     tput-24 104854637.04 (   0.00%) 104522649.46 *  -0.32%*
+
+In the case of 6 threads and 8 threads, we see the greatest performance
+improvement.
+
+Similar improvement can be seen on lkp-pixz though the improvement is
+smaller:
+
+* lkp-pixz benchmark
+
+2-24 threads lkp-pixz (on 1NUMA * 24cores = 24cores)
+                  lkp-pixz               lkp-pixz
+                  w/o patch              w/ patch
+Hmean     tput-2   6486981.16 (   0.00%)  6561515.98 *   1.15%*
+Hmean     tput-4  11645766.38 (   0.00%) 11614628.43 (  -0.27%)
+Hmean     tput-6  15429943.96 (   0.00%) 15957350.76 *   3.42%*
+Hmean     tput-8  19974087.63 (   0.00%) 20413746.98 *   2.20%*
+Hmean     tput-12 28172068.18 (   0.00%) 28751997.06 *   2.06%*
+Hmean     tput-18 39413409.54 (   0.00%) 39896830.55 *   1.23%*
+Hmean     tput-24 49101815.85 (   0.00%) 49418141.47 *   0.64%*
+
+* SPECrate benchmark
+
+4,8,16 copies mcf_r(on 1NUMA * 32cores = 32cores)
+		Base     	 	Base
+		Run Time   	 	Rate
+		-------  	 	---------
+4 Copies	w/o 580 (w/ 570)       	w/o 11.1 (w/ 11.3)
+8 Copies	w/o 647 (w/ 605)       	w/o 20.0 (w/ 21.4, +7%)
+16 Copies	w/o 844 (w/ 844)       	w/o 30.6 (w/ 30.6)
+
+32 Copies(on 4NUMA * 32 cores = 128cores)
+[w/o patch]
+                 Base     Base        Base
+Benchmarks       Copies  Run Time     Rate
+--------------- -------  ---------  ---------
+500.perlbench_r      32        584       87.2  *
+502.gcc_r            32        503       90.2  *
+505.mcf_r            32        745       69.4  *
+520.omnetpp_r        32       1031       40.7  *
+523.xalancbmk_r      32        597       56.6  *
+525.x264_r            1         --            CE
+531.deepsjeng_r      32        336      109    *
+541.leela_r          32        556       95.4  *
+548.exchange2_r      32        513      163    *
+557.xz_r             32        530       65.2  *
+ Est. SPECrate2017_int_base              80.3
+
+[w/ patch]
+                  Base     Base        Base
+Benchmarks       Copies  Run Time     Rate
+--------------- -------  ---------  ---------
+500.perlbench_r      32        580      87.8 (+0.688%)  *
+502.gcc_r            32        477      95.1 (+5.432%)  *
+505.mcf_r            32        644      80.3 (+13.574%) *
+520.omnetpp_r        32        942      44.6 (+9.58%)   *
+523.xalancbmk_r      32        560      60.4 (+6.714%%) *
+525.x264_r            1         --           CE
+531.deepsjeng_r      32        337      109  (+0.000%) *
+541.leela_r          32        554      95.6 (+0.210%) *
+548.exchange2_r      32        515      163  (+0.000%) *
+557.xz_r             32        524      66.0 (+1.227%) *
+ Est. SPECrate2017_int_base              83.7 (+4.062%)
+
+On the other hand, it is slightly helpful to CPU-bound tasks like
+kernbench:
+
+* 24-96 threads kernbench (on 4NUMA * 24cores = 96cores)
+                     kernbench              kernbench
+                     w/o cluster            w/ cluster
+Min       user-24    12054.67 (   0.00%)    12024.19 (   0.25%)
+Min       syst-24     1751.51 (   0.00%)     1731.68 (   1.13%)
+Min       elsp-24      600.46 (   0.00%)      598.64 (   0.30%)
+Min       user-48    12361.93 (   0.00%)    12315.32 (   0.38%)
+Min       syst-48     1917.66 (   0.00%)     1892.73 (   1.30%)
+Min       elsp-48      333.96 (   0.00%)      332.57 (   0.42%)
+Min       user-96    12922.40 (   0.00%)    12921.17 (   0.01%)
+Min       syst-96     2143.94 (   0.00%)     2110.39 (   1.56%)
+Min       elsp-96      211.22 (   0.00%)      210.47 (   0.36%)
+Amean     user-24    12063.99 (   0.00%)    12030.78 *   0.28%*
+Amean     syst-24     1755.20 (   0.00%)     1735.53 *   1.12%*
+Amean     elsp-24      601.60 (   0.00%)      600.19 (   0.23%)
+Amean     user-48    12362.62 (   0.00%)    12315.56 *   0.38%*
+Amean     syst-48     1921.59 (   0.00%)     1894.95 *   1.39%*
+Amean     elsp-48      334.10 (   0.00%)      332.82 *   0.38%*
+Amean     user-96    12925.27 (   0.00%)    12922.63 (   0.02%)
+Amean     syst-96     2146.66 (   0.00%)     2122.20 *   1.14%*
+Amean     elsp-96      211.96 (   0.00%)      211.79 (   0.08%)
+
+Note this patch isn't an universal win, it might hurt those workload
+which can benefit from packing. Though tasks which want to take
+advantages of lower communication latency of one cluster won't
+necessarily been packed in one cluster while kernel is not aware of
+clusters, they have some chance to be randomly packed. But this
+patch will make them more likely spread.
+
+Signed-off-by: Barry Song <song.bao.hua@hisilicon.com>
+Tested-by: Yicong Yang <yangyicong@hisilicon.com>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+---
+ arch/arm64/Kconfig             | 9 +++++++++
+ include/linux/sched/topology.h | 7 +++++++
+ include/linux/topology.h       | 7 +++++++
+ kernel/sched/topology.c        | 5 +++++
+ 4 files changed, 28 insertions(+)
+
+diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
+index fee914c716aa..14f51006d003 100644
+--- a/arch/arm64/Kconfig
++++ b/arch/arm64/Kconfig
+@@ -989,6 +989,15 @@ config SCHED_MC
+ 	  making when dealing with multi-core CPU chips at a cost of slightly
+ 	  increased overhead in some places. If unsure say N here.
+ 
++config SCHED_CLUSTER
++	bool "Cluster scheduler support"
++	help
++	  Cluster scheduler support improves the CPU scheduler's decision
++	  making when dealing with machines that have clusters of CPUs.
++	  Cluster usually means a couple of CPUs which are placed closely
++	  by sharing mid-level caches, last-level cache tags or internal
++	  busses.
++
+ config SCHED_SMT
+ 	bool "SMT scheduler support"
+ 	help
+diff --git a/include/linux/sched/topology.h b/include/linux/sched/topology.h
+index 8f0f778b7c91..2f9166f6dec8 100644
+--- a/include/linux/sched/topology.h
++++ b/include/linux/sched/topology.h
+@@ -42,6 +42,13 @@ static inline int cpu_smt_flags(void)
+ }
+ #endif
+ 
++#ifdef CONFIG_SCHED_CLUSTER
++static inline int cpu_cluster_flags(void)
++{
++	return SD_SHARE_PKG_RESOURCES;
++}
++#endif
++
+ #ifdef CONFIG_SCHED_MC
+ static inline int cpu_core_flags(void)
+ {
+diff --git a/include/linux/topology.h b/include/linux/topology.h
+index 80d27d717631..0b3704ad13c8 100644
+--- a/include/linux/topology.h
++++ b/include/linux/topology.h
+@@ -212,6 +212,13 @@ static inline const struct cpumask *cpu_smt_mask(int cpu)
+ }
+ #endif
+ 
++#if defined(CONFIG_SCHED_CLUSTER) && !defined(cpu_cluster_mask)
++static inline const struct cpumask *cpu_cluster_mask(int cpu)
++{
++	return topology_cluster_cpumask(cpu);
++}
++#endif
++
+ static inline const struct cpumask *cpu_cpu_mask(int cpu)
+ {
+ 	return cpumask_of_node(cpu_to_node(cpu));
+diff --git a/kernel/sched/topology.c b/kernel/sched/topology.c
+index 4e8698e62f07..7d27559485ea 100644
+--- a/kernel/sched/topology.c
++++ b/kernel/sched/topology.c
+@@ -1627,6 +1627,11 @@ static struct sched_domain_topology_level default_topology[] = {
+ #ifdef CONFIG_SCHED_SMT
+ 	{ cpu_smt_mask, cpu_smt_flags, SD_INIT_NAME(SMT) },
+ #endif
++
++#ifdef CONFIG_SCHED_CLUSTER
++	{ cpu_clustergroup_mask, cpu_cluster_flags, SD_INIT_NAME(CLS) },
++#endif
++
+ #ifdef CONFIG_SCHED_MC
+ 	{ cpu_coregroup_mask, cpu_core_flags, SD_INIT_NAME(MC) },
+ #endif
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Tim Chen <tim.c.chen@linux.intel.com>
+Date: Fri, 24 Sep 2021 20:51:04 +1200
+Subject: [PATCH 20/24] sched: Add cluster scheduler level for x86
+
+There are x86 CPU architectures (e.g. Jacobsville) where L2 cahce is
+shared among a cluster of cores instead of being exclusive to one
+single core.
+
+To prevent oversubscription of L2 cache, load should be balanced
+between such L2 clusters, especially for tasks with no shared data.
+On benchmark such as SPECrate mcf test, this change provides a boost
+to performance especially on medium load system on Jacobsville.  on a
+Jacobsville that has 24 Atom cores, arranged into 6 clusters of 4
+cores each, the benchmark number is as follow:
+
+ Improvement over baseline kernel for mcf_r
+ copies		run time	base rate
+ 1		-0.1%		-0.2%
+ 6		25.1%		25.1%
+ 12		18.8%		19.0%
+ 24		0.3%		0.3%
+
+So this looks pretty good. In terms of the system's task distribution,
+some pretty bad clumping can be seen for the vanilla kernel without
+the L2 cluster domain for the 6 and 12 copies case. With the extra
+domain for cluster, the load does get evened out between the clusters.
+
+Note this patch isn't an universal win as spreading isn't necessarily
+a win, particually for those workload who can benefit from packing.
+
+Signed-off-by: Tim Chen <tim.c.chen@linux.intel.com>
+Signed-off-by: Barry Song <song.bao.hua@hisilicon.com>
+Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+Link: https://lore.kernel.org/r/20210924085104.44806-4-21cnbao@gmail.com
+---
+ arch/x86/Kconfig                | 11 +++++++++
+ arch/x86/include/asm/smp.h      |  7 ++++++
+ arch/x86/include/asm/topology.h |  3 +++
+ arch/x86/kernel/cpu/cacheinfo.c |  1 +
+ arch/x86/kernel/cpu/common.c    |  3 +++
+ arch/x86/kernel/smpboot.c       | 44 ++++++++++++++++++++++++++++++++-
+ 6 files changed, 68 insertions(+), 1 deletion(-)
+
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index 1f96809606ac..c5b8a428d0e7 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -1001,6 +1001,17 @@ config NR_CPUS
+ 	  This is purely to save memory: each supported CPU adds about 8KB
+ 	  to the kernel image.
+ 
++config SCHED_CLUSTER
++	bool "Cluster scheduler support"
++	depends on SMP
++	default y
++	help
++	  Cluster scheduler support improves the CPU scheduler's decision
++	  making when dealing with machines that have clusters of CPUs.
++	  Cluster usually means a couple of CPUs which are placed closely
++	  by sharing mid-level caches, last-level cache tags or internal
++	  busses.
++
+ config SCHED_SMT
+ 	def_bool y if SMP
+ 
+diff --git a/arch/x86/include/asm/smp.h b/arch/x86/include/asm/smp.h
+index 630ff08532be..08b0e90623ad 100644
+--- a/arch/x86/include/asm/smp.h
++++ b/arch/x86/include/asm/smp.h
+@@ -16,7 +16,9 @@ DECLARE_PER_CPU_READ_MOSTLY(cpumask_var_t, cpu_core_map);
+ DECLARE_PER_CPU_READ_MOSTLY(cpumask_var_t, cpu_die_map);
+ /* cpus sharing the last level cache: */
+ DECLARE_PER_CPU_READ_MOSTLY(cpumask_var_t, cpu_llc_shared_map);
++DECLARE_PER_CPU_READ_MOSTLY(cpumask_var_t, cpu_l2c_shared_map);
+ DECLARE_PER_CPU_READ_MOSTLY(u16, cpu_llc_id);
++DECLARE_PER_CPU_READ_MOSTLY(u16, cpu_l2c_id);
+ DECLARE_PER_CPU_READ_MOSTLY(int, cpu_number);
+ 
+ static inline struct cpumask *cpu_llc_shared_mask(int cpu)
+@@ -24,6 +26,11 @@ static inline struct cpumask *cpu_llc_shared_mask(int cpu)
+ 	return per_cpu(cpu_llc_shared_map, cpu);
+ }
+ 
++static inline struct cpumask *cpu_l2c_shared_mask(int cpu)
++{
++	return per_cpu(cpu_l2c_shared_map, cpu);
++}
++
+ DECLARE_EARLY_PER_CPU_READ_MOSTLY(u16, x86_cpu_to_apicid);
+ DECLARE_EARLY_PER_CPU_READ_MOSTLY(u32, x86_cpu_to_acpiid);
+ DECLARE_EARLY_PER_CPU_READ_MOSTLY(u16, x86_bios_cpu_apicid);
+diff --git a/arch/x86/include/asm/topology.h b/arch/x86/include/asm/topology.h
+index 9239399e5491..cc164777e661 100644
+--- a/arch/x86/include/asm/topology.h
++++ b/arch/x86/include/asm/topology.h
+@@ -103,6 +103,7 @@ static inline void setup_node_to_cpumask_map(void) { }
+ #include <asm-generic/topology.h>
+ 
+ extern const struct cpumask *cpu_coregroup_mask(int cpu);
++extern const struct cpumask *cpu_clustergroup_mask(int cpu);
+ 
+ #define topology_logical_package_id(cpu)	(cpu_data(cpu).logical_proc_id)
+ #define topology_physical_package_id(cpu)	(cpu_data(cpu).phys_proc_id)
+@@ -113,7 +114,9 @@ extern const struct cpumask *cpu_coregroup_mask(int cpu);
+ extern unsigned int __max_die_per_package;
+ 
+ #ifdef CONFIG_SMP
++#define topology_cluster_id(cpu)		(per_cpu(cpu_l2c_id, cpu))
+ #define topology_die_cpumask(cpu)		(per_cpu(cpu_die_map, cpu))
++#define topology_cluster_cpumask(cpu)		(cpu_clustergroup_mask(cpu))
+ #define topology_core_cpumask(cpu)		(per_cpu(cpu_core_map, cpu))
+ #define topology_sibling_cpumask(cpu)		(per_cpu(cpu_sibling_map, cpu))
+ 
+diff --git a/arch/x86/kernel/cpu/cacheinfo.c b/arch/x86/kernel/cpu/cacheinfo.c
+index b5e36bd0425b..fe98a1465be6 100644
+--- a/arch/x86/kernel/cpu/cacheinfo.c
++++ b/arch/x86/kernel/cpu/cacheinfo.c
+@@ -846,6 +846,7 @@ void init_intel_cacheinfo(struct cpuinfo_x86 *c)
+ 		l2 = new_l2;
+ #ifdef CONFIG_SMP
+ 		per_cpu(cpu_llc_id, cpu) = l2_id;
++		per_cpu(cpu_l2c_id, cpu) = l2_id;
+ #endif
+ 	}
+ 
+diff --git a/arch/x86/kernel/cpu/common.c b/arch/x86/kernel/cpu/common.c
+index 58b1416c05da..019ecf5b50ef 100644
+--- a/arch/x86/kernel/cpu/common.c
++++ b/arch/x86/kernel/cpu/common.c
+@@ -85,6 +85,9 @@ u16 get_llc_id(unsigned int cpu)
+ }
+ EXPORT_SYMBOL_GPL(get_llc_id);
+ 
++/* L2 cache ID of each logical CPU */
++DEFINE_PER_CPU_READ_MOSTLY(u16, cpu_l2c_id) = BAD_APICID;
++
+ /* correctly size the local cpu masks */
+ void __init setup_cpu_local_masks(void)
+ {
+diff --git a/arch/x86/kernel/smpboot.c b/arch/x86/kernel/smpboot.c
+index 85f6e242b6b4..5094ab0bae58 100644
+--- a/arch/x86/kernel/smpboot.c
++++ b/arch/x86/kernel/smpboot.c
+@@ -101,6 +101,8 @@ EXPORT_PER_CPU_SYMBOL(cpu_die_map);
+ 
+ DEFINE_PER_CPU_READ_MOSTLY(cpumask_var_t, cpu_llc_shared_map);
+ 
++DEFINE_PER_CPU_READ_MOSTLY(cpumask_var_t, cpu_l2c_shared_map);
++
+ /* Per CPU bogomips and other parameters */
+ DEFINE_PER_CPU_READ_MOSTLY(struct cpuinfo_x86, cpu_info);
+ EXPORT_PER_CPU_SYMBOL(cpu_info);
+@@ -464,6 +466,21 @@ static bool match_die(struct cpuinfo_x86 *c, struct cpuinfo_x86 *o)
+ 	return false;
+ }
+ 
++static bool match_l2c(struct cpuinfo_x86 *c, struct cpuinfo_x86 *o)
++{
++	int cpu1 = c->cpu_index, cpu2 = o->cpu_index;
++
++	/* Do not match if we do not have a valid APICID for cpu: */
++	if (per_cpu(cpu_l2c_id, cpu1) == BAD_APICID)
++		return false;
++
++	/* Do not match if L2 cache id does not match: */
++	if (per_cpu(cpu_l2c_id, cpu1) != per_cpu(cpu_l2c_id, cpu2))
++		return false;
++
++	return topology_sane(c, o, "l2c");
++}
++
+ /*
+  * Unlike the other levels, we do not enforce keeping a
+  * multicore group inside a NUMA node.  If this happens, we will
+@@ -523,7 +540,7 @@ static bool match_llc(struct cpuinfo_x86 *c, struct cpuinfo_x86 *o)
+ }
+ 
+ 
+-#if defined(CONFIG_SCHED_SMT) || defined(CONFIG_SCHED_MC)
++#if defined(CONFIG_SCHED_SMT) || defined(CONFIG_SCHED_CLUSTER) || defined(CONFIG_SCHED_MC)
+ static inline int x86_sched_itmt_flags(void)
+ {
+ 	return sysctl_sched_itmt_enabled ? SD_ASYM_PACKING : 0;
+@@ -541,12 +558,21 @@ static int x86_smt_flags(void)
+ 	return cpu_smt_flags() | x86_sched_itmt_flags();
+ }
+ #endif
++#ifdef CONFIG_SCHED_CLUSTER
++static int x86_cluster_flags(void)
++{
++	return cpu_cluster_flags() | x86_sched_itmt_flags();
++}
++#endif
+ #endif
+ 
+ static struct sched_domain_topology_level x86_numa_in_package_topology[] = {
+ #ifdef CONFIG_SCHED_SMT
+ 	{ cpu_smt_mask, x86_smt_flags, SD_INIT_NAME(SMT) },
+ #endif
++#ifdef CONFIG_SCHED_CLUSTER
++	{ cpu_clustergroup_mask, x86_cluster_flags, SD_INIT_NAME(CLS) },
++#endif
+ #ifdef CONFIG_SCHED_MC
+ 	{ cpu_coregroup_mask, x86_core_flags, SD_INIT_NAME(MC) },
+ #endif
+@@ -557,6 +583,9 @@ static struct sched_domain_topology_level x86_topology[] = {
+ #ifdef CONFIG_SCHED_SMT
+ 	{ cpu_smt_mask, x86_smt_flags, SD_INIT_NAME(SMT) },
+ #endif
++#ifdef CONFIG_SCHED_CLUSTER
++	{ cpu_clustergroup_mask, x86_cluster_flags, SD_INIT_NAME(CLS) },
++#endif
+ #ifdef CONFIG_SCHED_MC
+ 	{ cpu_coregroup_mask, x86_core_flags, SD_INIT_NAME(MC) },
+ #endif
+@@ -584,6 +613,7 @@ void set_cpu_sibling_map(int cpu)
+ 	if (!has_mp) {
+ 		cpumask_set_cpu(cpu, topology_sibling_cpumask(cpu));
+ 		cpumask_set_cpu(cpu, cpu_llc_shared_mask(cpu));
++		cpumask_set_cpu(cpu, cpu_l2c_shared_mask(cpu));
+ 		cpumask_set_cpu(cpu, topology_core_cpumask(cpu));
+ 		cpumask_set_cpu(cpu, topology_die_cpumask(cpu));
+ 		c->booted_cores = 1;
+@@ -602,6 +632,9 @@ void set_cpu_sibling_map(int cpu)
+ 		if ((i == cpu) || (has_mp && match_llc(c, o)))
+ 			link_mask(cpu_llc_shared_mask, cpu, i);
+ 
++		if ((i == cpu) || (has_mp && match_l2c(c, o)))
++			link_mask(cpu_l2c_shared_mask, cpu, i);
++
+ 		if ((i == cpu) || (has_mp && match_die(c, o)))
+ 			link_mask(topology_die_cpumask, cpu, i);
+ 	}
+@@ -652,6 +685,11 @@ const struct cpumask *cpu_coregroup_mask(int cpu)
+ 	return cpu_llc_shared_mask(cpu);
+ }
+ 
++const struct cpumask *cpu_clustergroup_mask(int cpu)
++{
++	return cpu_l2c_shared_mask(cpu);
++}
++
+ static void impress_friends(void)
+ {
+ 	int cpu;
+@@ -1335,6 +1373,7 @@ void __init native_smp_prepare_cpus(unsigned int max_cpus)
+ 		zalloc_cpumask_var(&per_cpu(cpu_core_map, i), GFP_KERNEL);
+ 		zalloc_cpumask_var(&per_cpu(cpu_die_map, i), GFP_KERNEL);
+ 		zalloc_cpumask_var(&per_cpu(cpu_llc_shared_map, i), GFP_KERNEL);
++		zalloc_cpumask_var(&per_cpu(cpu_l2c_shared_map, i), GFP_KERNEL);
+ 	}
+ 
+ 	/*
+@@ -1564,7 +1603,10 @@ static void remove_siblinginfo(int cpu)
+ 
+ 	for_each_cpu(sibling, cpu_llc_shared_mask(cpu))
+ 		cpumask_clear_cpu(cpu, cpu_llc_shared_mask(sibling));
++	for_each_cpu(sibling, cpu_l2c_shared_mask(cpu))
++		cpumask_clear_cpu(cpu, cpu_l2c_shared_mask(sibling));
+ 	cpumask_clear(cpu_llc_shared_mask(cpu));
++	cpumask_clear(cpu_l2c_shared_mask(cpu));
+ 	cpumask_clear(topology_sibling_cpumask(cpu));
+ 	cpumask_clear(topology_core_cpumask(cpu));
+ 	cpumask_clear(topology_die_cpumask(cpu));
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jon Nettleton <jon@solid-run.com>
+Date: Fri, 10 Dec 2021 11:24:01 +0100
+Subject: [PATCH 21/24] PCI: layerscape: Add LX2160a MCFG quirks for ECAM
+ errata
+
+The PCIe controller in Layerscape LX2160a SoC is not 100% ECAM-compliant.
+For both V1 and V2 of the SOC which have different PCIe implementations
+the devices behind the bus can be enumerated via ECAM, however the root
+port is only accessible via the CCSR address space.
+
+By default the firmware only exposes the devices so that most PCIe
+devices will work out of the box on most distributions, however some
+users may want to also have the root port exposed as well, especially
+if working with SR-IOV. This quirk will work with the default firmware
+as a normal ecam setup, but if the firmware exposes the root port as
+bus 0 (the default) then this quirk will also allow access to a more
+traditional PCIe layout.
+
+Signed-off-by: Jon Nettleton <jon@solid-run.com>
+---
+ drivers/acpi/pci_mcfg.c                       | 10 +++
+ drivers/pci/controller/Makefile               |  1 +
+ drivers/pci/controller/pcie-layerscape-ecam.c | 89 +++++++++++++++++++
+ include/linux/pci-ecam.h                      |  1 +
+ 4 files changed, 101 insertions(+)
+ create mode 100644 drivers/pci/controller/pcie-layerscape-ecam.c
+
+diff --git a/drivers/acpi/pci_mcfg.c b/drivers/acpi/pci_mcfg.c
+index 53cab975f612..2fb54d5ceaf6 100644
+--- a/drivers/acpi/pci_mcfg.c
++++ b/drivers/acpi/pci_mcfg.c
+@@ -53,6 +53,16 @@ static struct mcfg_fixup mcfg_quirks[] = {
+ 	AL_ECAM("GRAVITON", 0, 6, &al_pcie_ops),
+ 	AL_ECAM("GRAVITON", 0, 7, &al_pcie_ops),
+ 
++#define NXP_ECAM(seg) \
++	{ "NXP   ", "LX2160  ", 0, seg, MCFG_BUS_ANY, &ls_pcie_ecam_ops }
++
++	NXP_ECAM(0),
++	NXP_ECAM(1),
++	NXP_ECAM(2),
++	NXP_ECAM(3),
++	NXP_ECAM(4),
++	NXP_ECAM(5),
++
+ #define QCOM_ECAM32(seg) \
+ 	{ "QCOM  ", "QDF2432 ", 1, seg, MCFG_BUS_ANY, &pci_32b_ops }
+ 
+diff --git a/drivers/pci/controller/Makefile b/drivers/pci/controller/Makefile
+index aaf30b3dcc14..1bb8b5cdd6f8 100644
+--- a/drivers/pci/controller/Makefile
++++ b/drivers/pci/controller/Makefile
+@@ -54,6 +54,7 @@ obj-y				+= mobiveil/
+ 
+ ifdef CONFIG_ACPI
+ ifdef CONFIG_PCI_QUIRKS
++obj-$(CONFIG_ARM64) += pcie-layerscape-ecam.o
+ obj-$(CONFIG_ARM64) += pci-thunder-ecam.o
+ obj-$(CONFIG_ARM64) += pci-thunder-pem.o
+ obj-$(CONFIG_ARM64) += pci-xgene.o
+diff --git a/drivers/pci/controller/pcie-layerscape-ecam.c b/drivers/pci/controller/pcie-layerscape-ecam.c
+new file mode 100644
+index 000000000000..8ed303c47f2c
+--- /dev/null
++++ b/drivers/pci/controller/pcie-layerscape-ecam.c
+@@ -0,0 +1,89 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * PCIe ecam driver for NXP's Layerscape SOCs, adopted from
++ * Amazon's Graviton driver.
++ *
++ * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
++ * Copyright 2021 SolidRun Ltd. All Rights Reserved.
++ *
++ * Author: Jonathan Chocron <jonnyc@amazon.com>
++ * Author: Jon Nettleton <jon@solid-run.com>
++ */
++
++#include <linux/pci.h>
++#include <linux/pci-ecam.h>
++#include <linux/pci-acpi.h>
++#include "../pci.h"
++
++#if defined(CONFIG_ACPI) && defined(CONFIG_PCI_QUIRKS)
++
++struct ls_pcie_ecam  {
++	void __iomem *ccsr_base;
++};
++
++static void __iomem *ls_pcie_ecam_map_bus(struct pci_bus *bus, unsigned int devfn,
++				     int where)
++{
++	struct pci_config_window *cfg = bus->sysdata;
++	struct ls_pcie_ecam *pcie = cfg->priv;
++	void __iomem *ccsr_base = pcie->ccsr_base;
++
++	if (bus->number == 0) {
++		/*
++		 *
++		 * No devices/functions on the root bus num, so we do this here.
++		 */
++		if (PCI_SLOT(devfn) > 0)
++			return NULL;
++		else
++			return ccsr_base + where;
++	}
++
++	return pci_ecam_map_bus(bus, devfn, where);
++}
++
++static int ls_pcie_ecam_init(struct pci_config_window *cfg)
++{
++	struct device *dev = cfg->parent;
++	struct acpi_device *adev = to_acpi_device(dev);
++	struct acpi_pci_root *root = acpi_driver_data(adev);
++	struct ls_pcie_ecam *ls_pcie;
++	struct resource *res;
++	int ret;
++
++	ls_pcie = devm_kzalloc(dev, sizeof(*ls_pcie), GFP_KERNEL);
++	if (!ls_pcie)
++		return -ENOMEM;
++
++	res = devm_kzalloc(dev, sizeof(*res), GFP_KERNEL);
++	if (!res)
++		return -ENOMEM;
++
++	ret = acpi_get_rc_resources(dev, "NXP0016", root->segment, res);
++	if (ret) {
++		dev_err(dev, "can't get rc csr base address for SEG %d\n",
++			root->segment);
++		return ret;
++	}
++
++	dev_dbg(dev, "Root port ccsr res: %pR\n", res);
++
++	ls_pcie->ccsr_base = devm_pci_remap_cfg_resource(dev, res);
++	if (IS_ERR(ls_pcie->ccsr_base))
++		return PTR_ERR(ls_pcie->ccsr_base);
++
++	cfg->priv = ls_pcie;
++
++	return 0;
++}
++
++const struct pci_ecam_ops ls_pcie_ecam_ops = {
++	.init         =  ls_pcie_ecam_init,
++	.pci_ops      = {
++		.map_bus    = ls_pcie_ecam_map_bus,
++		.read       = pci_generic_config_read,
++		.write      = pci_generic_config_write,
++	}
++};
++
++#endif /* defined(CONFIG_ACPI) && defined(CONFIG_PCI_QUIRKS) */
+diff --git a/include/linux/pci-ecam.h b/include/linux/pci-ecam.h
+index adea5a4771cf..ab6c5c851976 100644
+--- a/include/linux/pci-ecam.h
++++ b/include/linux/pci-ecam.h
+@@ -87,6 +87,7 @@ extern const struct pci_ecam_ops xgene_v1_pcie_ecam_ops; /* APM X-Gene PCIe v1 *
+ extern const struct pci_ecam_ops xgene_v2_pcie_ecam_ops; /* APM X-Gene PCIe v2.x */
+ extern const struct pci_ecam_ops al_pcie_ops;	/* Amazon Annapurna Labs PCIe */
+ extern const struct pci_ecam_ops tegra194_pcie_ops; /* Tegra194 PCIe */
++extern const struct pci_ecam_ops ls_pcie_ecam_ops;	/* NXP Layerscape LX2160a PCIe */
+ #endif
+ 
+ #if IS_ENABLED(CONFIG_PCI_HOST_COMMON)
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Diana Craciun <diana.craciun@oss.nxp.com>
+Date: Wed, 22 Sep 2021 14:05:29 +0300
+Subject: [PATCH 22/24] bus/fsl-mc: Add generic implementation for
+ open/reset/close commands
+
+The open/reset/close commands format is similar for all objects.
+Currently there are multiple implementations for these commands
+scattered through various drivers. The code is cavsi-identical.
+Create a generic implementation for the open/reset/close commands.
+One of the consumer will be the VFIO driver which needs to
+be able to reset a device.
+
+Signed-off-by: Diana Craciun <diana.craciun@oss.nxp.com>
+Reviewed-by: Laurentiu Tudor <laurentiu.tudor@nxp.com>
+Link: https://lore.kernel.org/r/20210922110530.24736-1-diana.craciun@oss.nxp.com
+Signed-off-by: Alex Williamson <alex.williamson@redhat.com>
+---
+ drivers/bus/fsl-mc/Makefile         |   3 +-
+ drivers/bus/fsl-mc/fsl-mc-private.h |  39 +++++++++--
+ drivers/bus/fsl-mc/obj-api.c        | 103 ++++++++++++++++++++++++++++
+ include/linux/fsl/mc.h              |  14 ++++
+ 4 files changed, 154 insertions(+), 5 deletions(-)
+ create mode 100644 drivers/bus/fsl-mc/obj-api.c
+
+diff --git a/drivers/bus/fsl-mc/Makefile b/drivers/bus/fsl-mc/Makefile
+index 4ae292a30e53..892946245527 100644
+--- a/drivers/bus/fsl-mc/Makefile
++++ b/drivers/bus/fsl-mc/Makefile
+@@ -15,7 +15,8 @@ mc-bus-driver-objs := fsl-mc-bus.o \
+ 		      dprc-driver.o \
+ 		      fsl-mc-allocator.o \
+ 		      fsl-mc-msi.o \
+-		      dpmcp.o
++		      dpmcp.o \
++		      obj-api.o
+ 
+ # MC userspace support
+ obj-$(CONFIG_FSL_MC_UAPI_SUPPORT) += fsl-mc-uapi.o
+diff --git a/drivers/bus/fsl-mc/fsl-mc-private.h b/drivers/bus/fsl-mc/fsl-mc-private.h
+index 1958fa065360..b3520ea1b9f4 100644
+--- a/drivers/bus/fsl-mc/fsl-mc-private.h
++++ b/drivers/bus/fsl-mc/fsl-mc-private.h
+@@ -48,7 +48,6 @@ struct dpmng_rsp_get_version {
+ 
+ /* DPMCP command IDs */
+ #define DPMCP_CMDID_CLOSE		DPMCP_CMD(0x800)
+-#define DPMCP_CMDID_OPEN		DPMCP_CMD(0x80b)
+ #define DPMCP_CMDID_RESET		DPMCP_CMD(0x005)
+ 
+ struct dpmcp_cmd_open {
+@@ -91,7 +90,6 @@ int dpmcp_reset(struct fsl_mc_io *mc_io,
+ 
+ /* DPRC command IDs */
+ #define DPRC_CMDID_CLOSE                        DPRC_CMD(0x800)
+-#define DPRC_CMDID_OPEN                         DPRC_CMD(0x805)
+ #define DPRC_CMDID_GET_API_VERSION              DPRC_CMD(0xa05)
+ 
+ #define DPRC_CMDID_GET_ATTR                     DPRC_CMD(0x004)
+@@ -453,7 +451,6 @@ int dprc_get_connection(struct fsl_mc_io *mc_io,
+ 
+ /* Command IDs */
+ #define DPBP_CMDID_CLOSE		DPBP_CMD(0x800)
+-#define DPBP_CMDID_OPEN			DPBP_CMD(0x804)
+ 
+ #define DPBP_CMDID_ENABLE		DPBP_CMD(0x002)
+ #define DPBP_CMDID_DISABLE		DPBP_CMD(0x003)
+@@ -492,7 +489,6 @@ struct dpbp_rsp_get_attributes {
+ 
+ /* Command IDs */
+ #define DPCON_CMDID_CLOSE			DPCON_CMD(0x800)
+-#define DPCON_CMDID_OPEN			DPCON_CMD(0x808)
+ 
+ #define DPCON_CMDID_ENABLE			DPCON_CMD(0x002)
+ #define DPCON_CMDID_DISABLE			DPCON_CMD(0x003)
+@@ -524,6 +520,41 @@ struct dpcon_cmd_set_notification {
+ 	__le64 user_ctx;
+ };
+ 
++/*
++ * Generic FSL MC API
++ */
++
++/* generic command versioning */
++#define OBJ_CMD_BASE_VERSION		1
++#define OBJ_CMD_ID_OFFSET		4
++
++#define OBJ_CMD(id)	(((id) << OBJ_CMD_ID_OFFSET) | OBJ_CMD_BASE_VERSION)
++
++/* open command codes */
++#define DPRTC_CMDID_OPEN		OBJ_CMD(0x810)
++#define DPNI_CMDID_OPEN		OBJ_CMD(0x801)
++#define DPSW_CMDID_OPEN		OBJ_CMD(0x802)
++#define DPIO_CMDID_OPEN		OBJ_CMD(0x803)
++#define DPBP_CMDID_OPEN		OBJ_CMD(0x804)
++#define DPRC_CMDID_OPEN		OBJ_CMD(0x805)
++#define DPDMUX_CMDID_OPEN		OBJ_CMD(0x806)
++#define DPCI_CMDID_OPEN		OBJ_CMD(0x807)
++#define DPCON_CMDID_OPEN		OBJ_CMD(0x808)
++#define DPSECI_CMDID_OPEN		OBJ_CMD(0x809)
++#define DPAIOP_CMDID_OPEN		OBJ_CMD(0x80a)
++#define DPMCP_CMDID_OPEN		OBJ_CMD(0x80b)
++#define DPMAC_CMDID_OPEN		OBJ_CMD(0x80c)
++#define DPDCEI_CMDID_OPEN		OBJ_CMD(0x80d)
++#define DPDMAI_CMDID_OPEN		OBJ_CMD(0x80e)
++#define DPDBG_CMDID_OPEN		OBJ_CMD(0x80f)
++
++/* Generic object command IDs */
++#define OBJ_CMDID_CLOSE		OBJ_CMD(0x800)
++#define OBJ_CMDID_RESET		OBJ_CMD(0x005)
++
++struct fsl_mc_obj_cmd_open {
++	__le32 obj_id;
++};
+ 
+ /**
+  * struct fsl_mc_resource_pool - Pool of MC resources of a given
+diff --git a/drivers/bus/fsl-mc/obj-api.c b/drivers/bus/fsl-mc/obj-api.c
+new file mode 100644
+index 000000000000..06c1dd84e38d
+--- /dev/null
++++ b/drivers/bus/fsl-mc/obj-api.c
+@@ -0,0 +1,103 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
++/*
++ * Copyright 2021 NXP
++ *
++ */
++#include <linux/kernel.h>
++#include <linux/fsl/mc.h>
++
++#include "fsl-mc-private.h"
++
++static int fsl_mc_get_open_cmd_id(const char *type)
++{
++	static const struct {
++		int cmd_id;
++		const char *type;
++	} dev_ids[] = {
++		{ DPRTC_CMDID_OPEN, "dprtc" },
++		{ DPRC_CMDID_OPEN, "dprc" },
++		{ DPNI_CMDID_OPEN, "dpni" },
++		{ DPIO_CMDID_OPEN, "dpio" },
++		{ DPSW_CMDID_OPEN, "dpsw" },
++		{ DPBP_CMDID_OPEN, "dpbp" },
++		{ DPCON_CMDID_OPEN, "dpcon" },
++		{ DPMCP_CMDID_OPEN, "dpmcp" },
++		{ DPMAC_CMDID_OPEN, "dpmac" },
++		{ DPSECI_CMDID_OPEN, "dpseci" },
++		{ DPDMUX_CMDID_OPEN, "dpdmux" },
++		{ DPDCEI_CMDID_OPEN, "dpdcei" },
++		{ DPAIOP_CMDID_OPEN, "dpaiop" },
++		{ DPCI_CMDID_OPEN, "dpci" },
++		{ DPDMAI_CMDID_OPEN, "dpdmai" },
++		{ DPDBG_CMDID_OPEN, "dpdbg" },
++		{ 0, NULL }
++	};
++	int i;
++
++	for (i = 0; dev_ids[i].type; i++)
++		if (!strcmp(dev_ids[i].type, type))
++			return dev_ids[i].cmd_id;
++
++	return -1;
++}
++
++int fsl_mc_obj_open(struct fsl_mc_io *mc_io,
++		    u32 cmd_flags,
++		    int obj_id,
++		    char *obj_type,
++		    u16 *token)
++{
++	struct fsl_mc_command cmd = { 0 };
++	struct fsl_mc_obj_cmd_open *cmd_params;
++	int err = 0;
++	int cmd_id = fsl_mc_get_open_cmd_id(obj_type);
++
++	if (cmd_id == -1)
++		return -ENODEV;
++
++	/* prepare command */
++	cmd.header = mc_encode_cmd_header(cmd_id, cmd_flags, 0);
++	cmd_params = (struct fsl_mc_obj_cmd_open *)cmd.params;
++	cmd_params->obj_id = cpu_to_le32(obj_id);
++
++	/* send command to mc*/
++	err = mc_send_command(mc_io, &cmd);
++	if (err)
++		return err;
++
++	/* retrieve response parameters */
++	*token = mc_cmd_hdr_read_token(&cmd);
++
++	return err;
++}
++EXPORT_SYMBOL_GPL(fsl_mc_obj_open);
++
++int fsl_mc_obj_close(struct fsl_mc_io *mc_io,
++		     u32 cmd_flags,
++		     u16 token)
++{
++	struct fsl_mc_command cmd = { 0 };
++
++	/* prepare command */
++	cmd.header = mc_encode_cmd_header(OBJ_CMDID_CLOSE, cmd_flags,
++					  token);
++
++	/* send command to mc*/
++	return mc_send_command(mc_io, &cmd);
++}
++EXPORT_SYMBOL_GPL(fsl_mc_obj_close);
++
++int fsl_mc_obj_reset(struct fsl_mc_io *mc_io,
++		     u32 cmd_flags,
++		     u16 token)
++{
++	struct fsl_mc_command cmd = { 0 };
++
++	/* prepare command */
++	cmd.header = mc_encode_cmd_header(OBJ_CMDID_RESET, cmd_flags,
++					  token);
++
++	/* send command to mc*/
++	return mc_send_command(mc_io, &cmd);
++}
++EXPORT_SYMBOL_GPL(fsl_mc_obj_reset);
+diff --git a/include/linux/fsl/mc.h b/include/linux/fsl/mc.h
+index 30ece3ae6df7..e026f6c48b49 100644
+--- a/include/linux/fsl/mc.h
++++ b/include/linux/fsl/mc.h
+@@ -620,6 +620,20 @@ int dpcon_reset(struct fsl_mc_io *mc_io,
+ 		u32 cmd_flags,
+ 		u16 token);
+ 
++int fsl_mc_obj_open(struct fsl_mc_io *mc_io,
++		    u32 cmd_flags,
++		    int obj_id,
++		    char *obj_type,
++		    u16 *token);
++
++int fsl_mc_obj_close(struct fsl_mc_io *mc_io,
++		     u32 cmd_flags,
++		     u16 token);
++
++int fsl_mc_obj_reset(struct fsl_mc_io *mc_io,
++		     u32 cmd_flags,
++		     u16 token);
++
+ /**
+  * struct dpcon_attr - Structure representing DPCON attributes
+  * @id: DPCON object ID
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Diana Craciun <diana.craciun@oss.nxp.com>
+Date: Wed, 22 Sep 2021 14:05:30 +0300
+Subject: [PATCH 23/24] vfio/fsl-mc: Add per device reset support
+
+Currently when a fsl-mc device is reset, the entire DPRC container
+is reset which is very inefficient because the devices within a
+container will be reset multiple times.
+Add support for individually resetting a device.
+
+Signed-off-by: Diana Craciun <diana.craciun@oss.nxp.com>
+Reviewed-by: Laurentiu Tudor <laurentiu.tudor@nxp.com>
+Link: https://lore.kernel.org/r/20210922110530.24736-2-diana.craciun@oss.nxp.com
+Signed-off-by: Alex Williamson <alex.williamson@redhat.com>
+---
+ drivers/vfio/fsl-mc/vfio_fsl_mc.c | 45 ++++++++++++++++++++-----------
+ 1 file changed, 30 insertions(+), 15 deletions(-)
+
+diff --git a/drivers/vfio/fsl-mc/vfio_fsl_mc.c b/drivers/vfio/fsl-mc/vfio_fsl_mc.c
+index 0ead91bfa838..6d7b2d2571a2 100644
+--- a/drivers/vfio/fsl-mc/vfio_fsl_mc.c
++++ b/drivers/vfio/fsl-mc/vfio_fsl_mc.c
+@@ -65,6 +65,34 @@ static void vfio_fsl_mc_regions_cleanup(struct vfio_fsl_mc_device *vdev)
+ 	kfree(vdev->regions);
+ }
+ 
++static int vfio_fsl_mc_reset_device(struct vfio_fsl_mc_device *vdev)
++{
++	struct fsl_mc_device *mc_dev = vdev->mc_dev;
++	int ret = 0;
++
++	if (is_fsl_mc_bus_dprc(vdev->mc_dev)) {
++		return dprc_reset_container(mc_dev->mc_io, 0,
++					mc_dev->mc_handle,
++					mc_dev->obj_desc.id,
++					DPRC_RESET_OPTION_NON_RECURSIVE);
++	} else {
++		u16 token;
++
++		ret = fsl_mc_obj_open(mc_dev->mc_io, 0, mc_dev->obj_desc.id,
++				      mc_dev->obj_desc.type,
++				      &token);
++		if (ret)
++			goto out;
++		ret = fsl_mc_obj_reset(mc_dev->mc_io, 0, token);
++		if (ret) {
++			fsl_mc_obj_close(mc_dev->mc_io, 0, token);
++			goto out;
++		}
++		ret = fsl_mc_obj_close(mc_dev->mc_io, 0, token);
++	}
++out:
++	return ret;
++}
+ 
+ static void vfio_fsl_mc_close_device(struct vfio_device *core_vdev)
+ {
+@@ -78,9 +106,7 @@ static void vfio_fsl_mc_close_device(struct vfio_device *core_vdev)
+ 	vfio_fsl_mc_regions_cleanup(vdev);
+ 
+ 	/* reset the device before cleaning up the interrupts */
+-	ret = dprc_reset_container(mc_cont->mc_io, 0, mc_cont->mc_handle,
+-				   mc_cont->obj_desc.id,
+-				   DPRC_RESET_OPTION_NON_RECURSIVE);
++	ret = vfio_fsl_mc_reset_device(vdev);
+ 
+ 	if (WARN_ON(ret))
+ 		dev_warn(&mc_cont->dev,
+@@ -203,18 +229,7 @@ static long vfio_fsl_mc_ioctl(struct vfio_device *core_vdev,
+ 	}
+ 	case VFIO_DEVICE_RESET:
+ 	{
+-		int ret;
+-		struct fsl_mc_device *mc_dev = vdev->mc_dev;
+-
+-		/* reset is supported only for the DPRC */
+-		if (!is_fsl_mc_bus_dprc(mc_dev))
+-			return -ENOTTY;
+-
+-		ret = dprc_reset_container(mc_dev->mc_io, 0,
+-					   mc_dev->mc_handle,
+-					   mc_dev->obj_desc.id,
+-					   DPRC_RESET_OPTION_NON_RECURSIVE);
+-		return ret;
++		return vfio_fsl_mc_reset_device(vdev);
+ 
+ 	}
+ 	default:
+-- 
+2.18.4
+
+
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jon Nettleton <jon@solid-run.com>
+Date: Mon, 20 Dec 2021 12:49:27 +0100
+Subject: [PATCH 24/24] bus: fsl-mc: list more commands as accepted through the
+ ioctl
+
+This adds the commands needed to use the DCE engine from
+userspace. It includes the generic reset,enable,disable as
+well as DPDCEI_* ioctls.
+
+Signed-off-by: Jon Nettleton <jon@solid-run.com>
+---
+ drivers/bus/fsl-mc/fsl-mc-uapi.c | 42 ++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
+
+diff --git a/drivers/bus/fsl-mc/fsl-mc-uapi.c b/drivers/bus/fsl-mc/fsl-mc-uapi.c
+index 9c4c1395fcdb..0b8733f0f189 100644
+--- a/drivers/bus/fsl-mc/fsl-mc-uapi.c
++++ b/drivers/bus/fsl-mc/fsl-mc-uapi.c
+@@ -61,6 +61,9 @@ enum fsl_mc_cmd_index {
+ 	DPNI_GET_STATISTICS,
+ 	DPNI_GET_LINK_STATE,
+ 	DPNI_GET_MAX_FRAME_LENGTH,
++	DPDCEI_CMDID_SET_RX_QUEUE,
++	DPDCEI_CMDID_GET_RX_QUEUE,
++	DPDCEI_CMDID_GET_TX_QUEUE,
+ 	DPSW_GET_TAILDROP,
+ 	DPSW_SET_TAILDROP,
+ 	DPSW_IF_GET_COUNTER,
+@@ -71,6 +74,9 @@ enum fsl_mc_cmd_index {
+ 	GET_IRQ_MASK,
+ 	GET_IRQ_STATUS,
+ 	CLOSE,
++	RESET,
++	ENABLE,
++	DISABLE,
+ 	OPEN,
+ 	GET_API_VERSION,
+ 	DESTROY,
+@@ -311,6 +317,24 @@ static struct fsl_mc_cmd_desc fsl_mc_accepted_cmds[] = {
+ 		.token = true,
+ 		.size = 10,
+ 	},
++	[DPDCEI_CMDID_SET_RX_QUEUE] = {
++		.cmdid_value = 0x1b00,
++		.cmdid_mask = 0xFFF0,
++		.token = true,
++		.size = 8,
++	},
++	[DPDCEI_CMDID_GET_RX_QUEUE] = {
++		.cmdid_value = 0x1b10,
++		.cmdid_mask = 0xFFF0,
++		.token = true,
++		.size = 8,
++	},
++	[DPDCEI_CMDID_GET_TX_QUEUE] = {
++		.cmdid_value = 0x1b20,
++		.cmdid_mask = 0xFFF0,
++		.token = true,
++		.size = 8,
++	},
+ 	[GET_ATTR] = {
+ 		.cmdid_value = 0x0040,
+ 		.cmdid_mask = 0xFFF0,
+@@ -335,6 +359,24 @@ static struct fsl_mc_cmd_desc fsl_mc_accepted_cmds[] = {
+ 		.token = true,
+ 		.size = 8,
+ 	},
++	[RESET] = {
++		.cmdid_value = 0x0050,
++		.cmdid_mask = 0xFFF0,
++		.token = true,
++		.size = 8,
++	},
++	[ENABLE] = {
++		.cmdid_value = 0x0020,
++		.cmdid_mask = 0xFFF0,
++		.token = true,
++		.size = 8,
++	},
++	[DISABLE] = {
++		.cmdid_value = 0x0030,
++		.cmdid_mask = 0xFFF0,
++		.token = true,
++		.size = 8,
++	},
+ 
+ 	/* Common commands amongst all types of objects. Must be checked last. */
+ 	[OPEN] = {
+-- 
+2.18.4
+
