@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 38
+%global distro_build 39
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 38.el9
+%define pkgrelease 39.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 38%{?buildid}%{?dist}
+%define specrelease 39%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -677,7 +677,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-38.el9.tar.xz
+Source0: linux-5.14.0-39.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1362,8 +1362,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-38.el9 -c
-mv linux-5.14.0-38.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-39.el9 -c
+mv linux-5.14.0-39.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2952,6 +2952,28 @@ fi
 #
 #
 %changelog
+* Fri Dec 24 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-39.el9]
+- cpuidle: pseries: Do not cap the CEDE0 latency in fixup_cede0_latency() (Gustavo Walbon) [2029870]
+- cpuidle: pseries: Fixup CEDE0 latency only for POWER10 onwards (Gustavo Walbon) [2029870]
+- powerpc/mce: Fix access error in mce handler (Gustavo Walbon) [2027829]
+- powerpc/pseries/mobility: ignore ibm, platform-facilities updates (Gustavo Walbon) [2023438]
+- KVM: SVM: Do not terminate SEV-ES guests on GHCB validation failure (Vitaly Kuznetsov) [1961151]
+- KVM: SEV: Fall back to vmalloc for SEV-ES scratch area if necessary (Vitaly Kuznetsov) [1961151]
+- KVM: SEV: Return appropriate error codes if SEV-ES scratch setup fails (Vitaly Kuznetsov) [1961151]
+- KVM: SEV: Refactor out sev_es_state struct (Vitaly Kuznetsov) [1961151]
+- redhat/configs: enable DWARF5 feature if toolchain supports it (Lianbo Jiang) [2009205]
+- init: make unknown command line param message clearer (Andrew Halaney) [2004361]
+- Bluetooth: btusb: Add one more Bluetooth part for WCN6855 (Gopal Tiwari) [2020943]
+- Bluetooth: btusb: Add the new support IDs for WCN6855 (Gopal Tiwari) [2020943]
+- Bluetooth: btusb: re-definition for board_id in struct qca_version (Gopal Tiwari) [2020943]
+- Bluetooth: btusb: Add support using different nvm for variant WCN6855 controller (Gopal Tiwari) [2020943]
+- cgroup: Make rebind_subsystems() disable v2 controllers all at once (Waiman Long) [1986734]
+- bnxt_en: Event handler for PPS events (Ken Cox) [1990151]
+- bnxt_en: 1PPS functions to configure TSIO pins (Ken Cox) [1990151]
+- bnxt_en: 1PPS support for 5750X family chips (Ken Cox) [1990151]
+- bnxt_en: Do not read the PTP PHC during chip reset (Ken Cox) [1990151]
+- bnxt_en: Move bnxt_ptp_init() from bnxt_open() back to bnxt_init_one() (Ken Cox) [1990151]
+
 * Thu Dec 23 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-38.el9]
 - x86/fpu/signal: Initialize sw_bytes in save_xstate_epilog() (David Arcari) [2004190]
 - iommu/vt-d: Remove unused PASID_DISABLED (David Arcari) [2004190]
