@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 39
+%global distro_build 40
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 39.el9
+%define pkgrelease 40.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 39%{?buildid}%{?dist}
+%define specrelease 40%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -677,7 +677,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-39.el9.tar.xz
+Source0: linux-5.14.0-40.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1362,8 +1362,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-39.el9 -c
-mv linux-5.14.0-39.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-40.el9 -c
+mv linux-5.14.0-40.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2952,6 +2952,52 @@ fi
 #
 #
 %changelog
+* Mon Jan 10 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-40.el9]
+- cpu/hotplug: Remove deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- livepatch: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- coresight: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- hwmon: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- tracing: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- padata: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- crypto: virtio - Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- platform/x86: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- powerpc: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- x86/mce/inject: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- x86/microcode: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- x86/mtrr: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- x86/mmiotrace: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- workqueue: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- net/iucv: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- s390/sclp: replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- s390: replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- net: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- virtio_net: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- ACPI: processor: Replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- PM: sleep: s2idle: Replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- cpufreq: Replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- powercap: intel_rapl: Replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- sgi-xpc: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- Input: i8042 - Add quirk for Fujitsu Lifebook T725 (Neal Gompa) [2019937]
+- sctp: remove unreachable code from sctp_sf_violation_chunk() (Xin Long) [2024909]
+- sctp: return true only for pathmtu update in sctp_transport_pl_toobig (Xin Long) [2024909]
+- sctp: subtract sctphdr len in sctp_transport_pl_hlen (Xin Long) [2024909]
+- sctp: reset probe_timer in sctp_transport_pl_update (Xin Long) [2024909]
+- sctp: allow IP fragmentation when PLPMTUD enters Error state (Xin Long) [2024909]
+- sctp: fix transport encap_port update in sctp_vtag_verify (Xin Long) [2024909]
+- sctp: account stream padding length for reconf chunk (Xin Long) [2024909]
+- sctp: break out if skb_header_pointer returns NULL in sctp_rcv_ootb (Xin Long) [2024909]
+- sctp: add vtag check in sctp_sf_ootb (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: add vtag check in sctp_sf_do_8_5_1_E_sa (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: add vtag check in sctp_sf_violation (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: fix the processing for COOKIE_ECHO chunk (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: fix the processing for INIT_ACK chunk (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: fix the processing for INIT chunk (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: use init_tag from inithdr for ABORT chunk (Xin Long) [2003494] {CVE-2021-3772}
+- drm/nouveau: clean up all clients on device removal (Karol Herbst) [1911185] {CVE-2020-27820}
+- drm/nouveau: Add a dedicated mutex for the clients list (Karol Herbst) [1911185] {CVE-2020-27820}
+- drm/nouveau: use drm_dev_unplug() during device removal (Karol Herbst) [1911185] {CVE-2020-27820}
+- redhat/configs: NFS: disable UDP, insecure enctypes (Benjamin Coddington) [1952863]
+
 * Fri Dec 24 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-39.el9]
 - cpuidle: pseries: Do not cap the CEDE0 latency in fixup_cede0_latency() (Gustavo Walbon) [2029870]
 - cpuidle: pseries: Fixup CEDE0 latency only for POWER10 onwards (Gustavo Walbon) [2029870]
