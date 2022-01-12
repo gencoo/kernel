@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 40
+%global distro_build 41
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 40.el9
+%define pkgrelease 41.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 40%{?buildid}%{?dist}
+%define specrelease 41%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -611,7 +611,7 @@ BuildRequires: python3-docutils
 BuildRequires: zlib-devel binutils-devel
 %endif
 %if %{with_selftests}
-BuildRequires: clang llvm
+BuildRequires: clang llvm fuse-devel
 %ifnarch %{arm}
 BuildRequires: numactl-devel
 %endif
@@ -677,7 +677,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-40.el9.tar.xz
+Source0: linux-5.14.0-41.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1036,7 +1036,7 @@ This package provides debug information for the bpftool package.
 %package selftests-internal
 Summary: Kernel samples and selftests
 License: GPLv2
-Requires: binutils, bpftool, iproute-tc, nmap-ncat, python3
+Requires: binutils, bpftool, iproute-tc, nmap-ncat, python3, fuse-libs
 %description selftests-internal
 Kernel sample programs and selftests.
 
@@ -1362,8 +1362,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-40.el9 -c
-mv linux-5.14.0-40.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-41.el9 -c
+mv linux-5.14.0-41.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2238,7 +2238,7 @@ export BPFTOOL=$(pwd)/tools/bpf/bpftool/bpftool
 pushd tools/testing/selftests
 # We need to install here because we need to call make with ARCH set which
 # doesn't seem possible to do in the install section.
-%{make} %{?_smp_mflags} ARCH=$Arch V=1 TARGETS="bpf livepatch net net/forwarding net/mptcp netfilter tc-testing" SKIP_TARGETS="" FORCE_TARGETS=1 INSTALL_PATH=%{buildroot}%{_libexecdir}/kselftests VMLINUX_H="${RPM_VMLINUX_H}" install
+%{make} %{?_smp_mflags} ARCH=$Arch V=1 TARGETS="bpf livepatch net net/forwarding net/mptcp netfilter tc-testing memfd" SKIP_TARGETS="" FORCE_TARGETS=1 INSTALL_PATH=%{buildroot}%{_libexecdir}/kselftests VMLINUX_H="${RPM_VMLINUX_H}" install
 
 # 'make install' for bpf is broken and upstream refuses to fix it.
 # Install the needed files manually.
@@ -2556,6 +2556,13 @@ pushd tools/testing/selftests/netfilter
 find -type d -exec install -d %{buildroot}%{_libexecdir}/kselftests/netfilter/{} \;
 find -type f -executable -exec install -D -m755 {} %{buildroot}%{_libexecdir}/kselftests/netfilter/{} \;
 find -type f ! -executable -exec install -D -m644 {} %{buildroot}%{_libexecdir}/kselftests/netfilter/{} \;
+popd
+
+# install memfd selftests
+pushd tools/testing/selftests/memfd
+find -type d -exec install -d %{buildroot}%{_libexecdir}/kselftests/memfd/{} \;
+find -type f -executable -exec install -D -m755 {} %{buildroot}%{_libexecdir}/kselftests/memfd/{} \;
+find -type f ! -executable -exec install -D -m644 {} %{buildroot}%{_libexecdir}/kselftests/memfd/{} \;
 popd
 %endif
 
@@ -2952,6 +2959,51 @@ fi
 #
 #
 %changelog
+* Wed Jan 12 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-41.el9]
+- af_unix: Return errno instead of NULL in unix_create1(). (Balazs Nemeth) [2030037]
+- s390/ftrace: remove preempt_disable()/preempt_enable() pair (Wander Lairson Costa) [1938117]
+- ftrace: do CPU checking after preemption disabled (Wander Lairson Costa) [1938117]
+- ftrace: disable preemption when recursion locked (Wander Lairson Costa) [1938117]
+- redhat: build and include memfd to kernel-selftests-internal (Aristeu Rozanski) [2027506]
+- netfilter: flowtable: fix IPv6 tunnel addr match (Florian Westphal) [2028203]
+- netfilter: ipvs: Fix reuse connection if RS weight is 0 (Florian Westphal) [2028203]
+- netfilter: ctnetlink: do not erase error code with EINVAL (Florian Westphal) [2028203]
+- netfilter: ctnetlink: fix filtering with CTA_TUPLE_REPLY (Florian Westphal) [2028203]
+- netfilter: nfnetlink_queue: fix OOB when mac header was cleared (Florian Westphal) [2028203]
+- netfilter: core: Fix clang warnings about unused static inlines (Florian Westphal) [2028203]
+- netfilter: nft_dynset: relax superfluous check on set updates (Florian Westphal) [2028203]
+- netfilter: nf_tables: skip netdev events generated on netns removal (Florian Westphal) [2028203]
+- netfilter: Kconfig: use 'default y' instead of 'm' for bool config option (Florian Westphal) [2028203]
+- netfilter: xt_IDLETIMER: fix panic that occurs when timer_type has garbage value (Florian Westphal) [2028203]
+- netfilter: nf_tables: honor NLM_F_CREATE and NLM_F_EXCL in event notification (Florian Westphal) [2028203]
+- netfilter: nf_tables: reverse order in rule replacement expansion (Florian Westphal) [2028203]
+- netfilter: nf_tables: add position handle in event notification (Florian Westphal) [2028203]
+- netfilter: conntrack: fix boot failure with nf_conntrack.enable_hooks=1 (Florian Westphal) [2028203]
+- netfilter: log: work around missing softdep backend module (Florian Westphal) [2028203]
+- netfilter: nf_tables: unlink table before deleting it (Florian Westphal) [2028203]
+- ipvs: check that ip_vs_conn_tab_bits is between 8 and 20 (Florian Westphal) [2028203]
+- netfilter: nft_ct: protect nft_ct_pcpu_template_refcnt with mutex (Florian Westphal) [2028203]
+- netfilter: ipvs: make global sysctl readonly in non-init netns (Antoine Tenart) [2008417]
+- net/sched: sch_ets: don't remove idle classes from the round-robin list (Davide Caratti) [2025552]
+- net/sched: store the last executed chain also for clsact egress (Davide Caratti) [2025552]
+- net: sched: act_mirred: drop dst for the direction from egress to ingress (Davide Caratti) [2025552]
+- net/sched: sch_ets: don't peek at classes beyond 'nbands' (Davide Caratti) [2025552]
+- net/sched: sch_ets: properly init all active DRR list handles (Davide Caratti) [2025552]
+- net: Fix offloading indirect devices dependency on qdisc order creation (Davide Caratti) [2025552]
+- net/core: Remove unused field from struct flow_indr_dev (Davide Caratti) [2025552]
+- net/sched: sch_taprio: fix undefined behavior in ktime_mono_to_any (Davide Caratti) [2025552]
+- net/sched: act_ct: Fix byte count on fragmented packets (Davide Caratti) [2025552]
+- mqprio: Correct stats in mqprio_dump_class_stats(). (Davide Caratti) [2025552]
+- net/sched: sch_taprio: properly cancel timer from taprio_destroy() (Davide Caratti) [2025552]
+- net_sched: fix NULL deref in fifo_set_limit() (Davide Caratti) [2025552]
+- net: sched: flower: protect fl_walk() with rcu (Davide Caratti) [2025552]
+- fq_codel: reject silly quantum parameters (Davide Caratti) [2025552]
+- net: sched: Fix qdisc_rate_table refcount leak when get tcf_block failed (Davide Caratti) [2025552]
+- sch_htb: Fix inconsistency when leaf qdisc creation fails (Davide Caratti) [2025552]
+- redhat/configs: Add two new CONFIGs (Prarit Bhargava) [2022993]
+- redhat/configs: Remove dead CONFIG files (Prarit Bhargava) [2022993]
+- redhat/configs/evaluate_configs: Add find dead configs option (Prarit Bhargava) [2022993]
+
 * Mon Jan 10 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-40.el9]
 - cpu/hotplug: Remove deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
 - livepatch: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
