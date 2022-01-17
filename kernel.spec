@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 43
+%global distro_build 44
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 43.el9
+%define pkgrelease 44.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 43%{?buildid}%{?dist}
+%define specrelease 44%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -606,6 +606,9 @@ BuildRequires: libcap-devel libcap-ng-devel
 BuildRequires: pciutils-devel
 %endif
 %endif
+%if %{with_tools} || %{signmodules} || %{signkernel}
+BuildRequires: openssl-devel
+%endif
 %if %{with_bpftool}
 BuildRequires: python3-docutils
 BuildRequires: zlib-devel binutils-devel
@@ -639,7 +642,7 @@ BuildRequires: kabi-dw
 %endif
 
 %if %{signkernel}%{signmodules}
-BuildRequires: openssl openssl-devel
+BuildRequires: openssl
 %if %{signkernel}
 %ifarch x86_64 aarch64
 BuildRequires: nss-tools
@@ -677,7 +680,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-43.el9.tar.xz
+Source0: linux-5.14.0-44.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1362,8 +1365,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-43.el9 -c
-mv linux-5.14.0-43.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-44.el9 -c
+mv linux-5.14.0-44.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2959,6 +2962,53 @@ fi
 #
 #
 %changelog
+* Mon Jan 17 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-44.el9]
+- dm btree remove: fix use after free in rebalance_children() (Benjamin Marzinski) [2031198]
+- dm table: log table creation error code (Benjamin Marzinski) [2031198]
+- dm: make workqueue names device-specific (Benjamin Marzinski) [2031198]
+- dm writecache: Make use of the helper macro kthread_run() (Benjamin Marzinski) [2031198]
+- dm crypt: Make use of the helper macro kthread_run() (Benjamin Marzinski) [2031198]
+- dm: Remove redundant flush_workqueue() calls (Benjamin Marzinski) [2031198]
+- dm crypt: log aead integrity violations to audit subsystem (Benjamin Marzinski) [2031198]
+- dm integrity: log audit events for dm-integrity target (Benjamin Marzinski) [2031198]
+- dm: introduce audit event module for device mapper (Benjamin Marzinski) [2031198]
+- dm: fix mempool NULL pointer race when completing IO (Benjamin Marzinski) [2031198]
+- dm rq: don't queue request to blk-mq during DM suspend (Benjamin Marzinski) [2031198]
+- dm clone: make array 'descs' static (Benjamin Marzinski) [2031198]
+- dm verity: skip redundant verity_handle_err() on I/O errors (Benjamin Marzinski) [2031198]
+- dm crypt: use in_hardirq() instead of deprecated in_irq() (Benjamin Marzinski) [2031198]
+- dm ima: update dm documentation for ima measurement support (Benjamin Marzinski) [2031198]
+- dm ima: update dm target attributes for ima measurements (Benjamin Marzinski) [2031198]
+- dm ima: add a warning in dm_init if duplicate ima events are not measured (Benjamin Marzinski) [2031198]
+- dm ima: prefix ima event name related to device mapper with dm_ (Benjamin Marzinski) [2031198]
+- dm ima: add version info to dm related events in ima log (Benjamin Marzinski) [2031198]
+- dm ima: prefix dm table hashes in ima log with hash algorithm (Benjamin Marzinski) [2031198]
+- dm crypt: Avoid percpu_counter spinlock contention in crypt_page_alloc() (Benjamin Marzinski) [2031198]
+- dm: add documentation for IMA measurement support (Benjamin Marzinski) [2031198]
+- dm: update target status functions to support IMA measurement (Benjamin Marzinski) [2031198]
+- dm ima: measure data on device rename (Benjamin Marzinski) [2031198]
+- dm ima: measure data on table clear (Benjamin Marzinski) [2031198]
+- dm ima: measure data on device remove (Benjamin Marzinski) [2031198]
+- dm ima: measure data on device resume (Benjamin Marzinski) [2031198]
+- dm ima: measure data on table load (Benjamin Marzinski) [2031198]
+- dm writecache: add event counters (Benjamin Marzinski) [2031198]
+- dm writecache: report invalid return from writecache_map helpers (Benjamin Marzinski) [2031198]
+- dm writecache: further writecache_map() cleanup (Benjamin Marzinski) [2031198]
+- dm writecache: factor out writecache_map_remap_origin() (Benjamin Marzinski) [2031198]
+- dm writecache: split up writecache_map() to improve code readability (Benjamin Marzinski) [2031198]
+- redhat: Pull in openssl-devel as a build dependency correctly (Neal Gompa) [2034670]
+- redhat/configs: Enable ThinkLMI support (Mark Pearson) [2030770]
+- platform/x86: think-lmi: Abort probe on analyze failure (Mark Pearson) [2030770]
+- platform/x86: think-lmi: add debug_cmd (Mark Pearson) [2030770]
+- include/linux/timer.h: Pad timer_list struct for KABI (Prarit Bhargava) [2034452]
+- kernel: Include RHEL Ecosystem message (Prarit Bhargava) [2033650]
+- include/linux/ioport.h: Pad resource struct for KABI (Prarit Bhargava) [2033475]
+- include/linux/hrtimer.h: Pad hrtimer struct for KABI (Prarit Bhargava) [2033473]
+- redhat/configs: Add explicit values for ZRAM_DEF_COMP_LZ4* configs (Neal Gompa) [2032758]
+- redhat/configs: Enable CONFIG_CRYPTO_ZSTD (Neal Gompa) [2032758]
+- redhat/configs: Migrate defaults for ZRAM from pending-common to common (Neal Gompa) [2032758]
+- Enable iSER on s390x (Stefan Schulze Frielinghaus) [1965279]
+
 * Fri Jan 14 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-43.el9]
 - mm: COW: restore full accuracy in page reuse (Andrea Arcangeli) [1958742]
 - mm: thp: replace the page lock with the seqlock for the THP mapcount (Andrea Arcangeli) [1958742]
