@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 44
+%global distro_build 45
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 44.el9
+%define pkgrelease 45.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 44%{?buildid}%{?dist}
+%define specrelease 45%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -680,7 +680,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-44.el9.tar.xz
+Source0: linux-5.14.0-45.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -794,7 +794,6 @@ Source80: generate_all_configs.sh
 Source81: process_configs.sh
 
 Source82: update_scripts.sh
-Source83: generate_crashkernel_default.sh
 
 Source84: mod-internal.list
 
@@ -1365,8 +1364,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-44.el9 -c
-mv linux-5.14.0-44.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-45.el9 -c
+mv linux-5.14.0-45.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2095,9 +2094,6 @@ BuildKernel() {
 
     # prune junk from kernel-devel
     find $RPM_BUILD_ROOT/usr/src/kernels -name ".*.cmd" -delete
-
-    # Generate crashkernel default config
-    %{SOURCE83} "$KernelVer" "$Arch" "$RPM_BUILD_ROOT"
 
     # Red Hat UEFI Secure Boot CA cert, which can be used to authenticate the kernel
     mkdir -p $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer
@@ -2906,7 +2902,6 @@ fi
 /lib/modules/%{KVERREL}%{?3:+%{3}}/source\
 /lib/modules/%{KVERREL}%{?3:+%{3}}/updates\
 /lib/modules/%{KVERREL}%{?3:+%{3}}/weak-updates\
-/lib/modules/%{KVERREL}%{?3:+%{3}}/crashkernel.default\
 %{_datadir}/doc/kernel-keys/%{KVERREL}%{?3:+%{3}}\
 %if %{1}\
 /lib/modules/%{KVERREL}%{?3:+%{3}}/vdso\
@@ -2962,6 +2957,52 @@ fi
 #
 #
 %changelog
+* Tue Jan 18 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-45.el9]
+- workqueue, kasan: avoid alloc_pages() when recording stack (Phil Auld) [2022894]
+- kasan: generic: introduce kasan_record_aux_stack_noalloc() (Phil Auld) [2022894]
+- kasan: common: provide can_alloc in kasan_save_stack() (Phil Auld) [2022894]
+- lib/stackdepot: introduce __stack_depot_save() (Phil Auld) [2022894]
+- lib/stackdepot: remove unused function argument (Phil Auld) [2022894]
+- lib/stackdepot: include gfp.h (Phil Auld) [2022894]
+- workqueue: Introduce show_one_worker_pool and show_one_workqueue. (Phil Auld) [2022894]
+- workqueue: make sysfs of unbound kworker cpumask more clever (Phil Auld) [2022894]
+- workqueue: fix state-dump console deadlock (Phil Auld) [2022894]
+- workqueue: Remove unused WORK_NO_COLOR (Phil Auld) [2022894]
+- workqueue: Assign a color to barrier work items (Phil Auld) [2022894]
+- workqueue: Mark barrier work with WORK_STRUCT_INACTIVE (Phil Auld) [2022894]
+- workqueue: Change the code of calculating work_flags in insert_wq_barrier() (Phil Auld) [2022894]
+- workqueue: Change arguement of pwq_dec_nr_in_flight() (Phil Auld) [2022894]
+- workqueue: Rename "delayed" (delayed by active management) to "inactive" (Phil Auld) [2022894]
+- workqueue: Replace deprecated ida_simple_*() with ida_alloc()/ida_free() (Phil Auld) [2022894]
+- workqueue: Fix typo in comments (Phil Auld) [2022894]
+- workqueue: Fix possible memory leaks in wq_numa_init() (Phil Auld) [2022894]
+- nvme: avoid race in shutdown namespace removal (Ewan D. Milne) [2014529]
+- powerpc/xmon: Dump XIVE information for online-only processors. (Steve Best) [2037642]
+- ipv4: make exception cache less predictible (Antoine Tenart) [2015112] {CVE-2021-20322}
+- [s390] s390/cio: make ccw_device_dma_* more robust (Claudio Imbrenda) [1997541]
+- [s390] s390/pci: add s390_iommu_aperture kernel parameter (Claudio Imbrenda) [2034134]
+- [s390] s390/pci: fix zpci_zdev_put() on reserve (Claudio Imbrenda) [2034132]
+- [s390] s390/pci: cleanup resources only if necessary (Claudio Imbrenda) [2034132]
+- [s390] s390/sclp: fix Secure-IPL facility detection (Claudio Imbrenda) [2034116]
+- Revert "[redhat] Generate a crashkernel.default for each kernel build" (Coiby Xu) [2034490]
+- ibmvnic: Process crqs after enabling interrupts (Diego Domingos) [2020021]
+- ibmvnic: delay complete() (Diego Domingos) [2020021]
+- ibmvnic: don't stop queue in xmit (Diego Domingos) [2019988]
+- bpf/selftests: disable test failing on RHEL9 (Viktor Malik) [2006315]
+- bpf/selftests: disable a verifier test for powerpc (Viktor Malik) [2032734]
+- bpf/selftests: allow disabling tests (Viktor Malik) [2036656]
+- kernel/crash_core: suppress unknown crashkernel parameter warning (Philipp Rudo) [2026570]
+- mm/vmalloc: do not adjust the search size for alignment overhead (David Hildenbrand) [2029493]
+- Bluetooth: fix use-after-free error in lock_sock_nested() (Gopal Tiwari) [2005691]
+- lib: zstd: Don't add -O3 to cflags (Neal Gompa) [2034834]
+- lib: zstd: Don't inline functions in zstd_opt.c (Neal Gompa) [2034834]
+- lib: zstd: Fix unused variable warning (Neal Gompa) [2034834]
+- lib: zstd: Add cast to silence clang's -Wbitwise-instead-of-logical (Neal Gompa) [2034834]
+- MAINTAINERS: Add maintainer entry for zstd (Neal Gompa) [2034834]
+- lib: zstd: Upgrade to latest upstream zstd version 1.4.10 (Neal Gompa) [2034834]
+- lib: zstd: Add decompress_sources.h for decompress_unzstd (Neal Gompa) [2034834]
+- lib: zstd: Add kernel-specific API (Neal Gompa) [2034834]
+
 * Mon Jan 17 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-44.el9]
 - dm btree remove: fix use after free in rebalance_children() (Benjamin Marzinski) [2031198]
 - dm table: log table creation error code (Benjamin Marzinski) [2031198]
