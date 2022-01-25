@@ -363,14 +363,14 @@ Summary: The Linux kernel
 %define with_bpftool 1
 %endif
 
-%ifnarch noarch
+%ifnarch x86_64
 %define with_kernel_abi_stablelists 0
 %endif
 
 # Overrides for generic default options
 
 # only package docs noarch
-%ifnarch noarch
+%ifnarch x86_64
 %define with_doc 0
 %define doc_build_fail true
 %endif
@@ -692,38 +692,24 @@ Source1: Makefile.rhelver
 
 %if %{?released_kernel}
 
-Source10: redhatsecurebootca5.cer
-Source11: redhatsecurebootca3.cer
-Source12: redhatsecurebootca6.cer
-Source13: redhatsecureboot501.cer
-Source14: redhatsecureboot302.cer
-Source15: redhatsecureboot601.cer
+Source11: clsecureboot001.cer
+Source13: clsecureboot001.cer
 
-%ifarch x86_64 aarch64
-%define secureboot_ca_0 %{SOURCE10}
-%define secureboot_key_0 %{SOURCE13}
-%define pesign_name_0 redhatsecureboot501
-%endif
-%ifarch s390x
 %define secureboot_ca_0 %{SOURCE11}
-%define secureboot_key_0 %{SOURCE14}
-%define pesign_name_0 redhatsecureboot302
-%endif
-%ifarch ppc64le
-%define secureboot_ca_0 %{SOURCE12}
-%define secureboot_key_0 %{SOURCE15}
-%define pesign_name_0 redhatsecureboot601
+%ifarch x86_64 aarch64
+%define secureboot_key_0 %{SOURCE13}
+%define pesign_name_0 clsecureboot001
 %endif
 
 # released_kernel
 %else
 
-Source10: redhatsecurebootca4.cer
-Source11: redhatsecureboot401.cer
+Source12: clsecureboot001.cer
+Source14: clsecureboot001.cer
 
-%define secureboot_ca_0 %{SOURCE10}
-%define secureboot_key_0 %{SOURCE11}
-%define pesign_name_0 redhatsecureboot401
+%define secureboot_ca_0 %{SOURCE12}
+%define secureboot_key_0 %{SOURCE14}
+%define pesign_name_0 clsecureboot001
 
 # released_kernel
 %endif
@@ -735,7 +721,7 @@ Source22: parallel_xz.sh
 %define modsign_cmd %{SOURCE21}
 
 %if 0%{?include_rhel}
-Source23: x509.genkey.rhel
+Source23: x509.genkey
 
 Source24: kernel-aarch64-rhel.config
 Source25: kernel-aarch64-debug-rhel.config
@@ -795,8 +781,8 @@ Source83: generate_crashkernel_default.sh
 
 Source84: mod-internal.list
 
-Source100: rheldup3.x509
-Source101: rhelkpatch1.x509
+# Source100: rheldup3.x509
+# Source101: rhelkpatch1.x509
 
 Source200: check-kabi
 
@@ -828,6 +814,8 @@ Source4000: README.rst
 Source4001: rpminspect.yaml
 Source4002: gating.yaml
 
+Source9000: almalinux.pem
+
 ## Patches needed for building this package
 
 %if !%{nopatches}
@@ -837,6 +825,10 @@ Patch1: patch-%{rpmversion}-redhat.patch
 
 # empty final patch to facilitate testing of kernel patches
 Patch999999: linux-kernel-test.patch
+
+Patch1000: debrand-single-cpu.patch
+Patch1001: debrand-rh_taint.patch
+Patch1002: debrand-rh-i686-cpu.patch
 
 # END OF PATCH DEFINITIONS
 
@@ -874,6 +866,7 @@ AutoProv: yes\
 %package doc
 Summary: Various documentation bits found in the kernel source
 Group: Documentation
+BuildArch: noarch
 %description doc
 This package contains documentation files from the kernel
 source. Various bits of information about the Linux kernel and the
@@ -1057,11 +1050,11 @@ kernel-gcov includes the gcov graph and source files for gcov coverage collectio
 %endif
 
 %package -n kernel-abi-stablelists
-Summary: The Red Hat Enterprise Linux kernel ABI symbol stablelists
+Summary: The AlmaLinux kernel ABI symbol stablelists
 AutoReqProv: no
 %description -n kernel-abi-stablelists
-The kABI package contains information pertaining to the Red Hat Enterprise
-Linux kernel ABI, including lists of kernel symbols that are needed by
+The kABI package contains information pertaining to the AlmaLinux kernel ABI,
+including lists of kernel symbols that are needed by
 external Linux kernel modules, and a yum plugin to aid enforcement.
 
 %if %{with_kabidw_base}
@@ -1070,8 +1063,8 @@ Summary: The baseline dataset for kABI verification using DWARF data
 Group: System Environment/Kernel
 AutoReqProv: no
 %description kernel-kabidw-base-internal
-The package contains data describing the current ABI of the Red Hat Enterprise
-Linux kernel, suitable for the kabi-dw tool.
+The package contains data describing the current ABI of the AlmaLinux kernel,
+suitable for the kabi-dw tool.
 %endif
 
 #
@@ -1169,7 +1162,7 @@ Requires: kernel%{?1:-%{1}}-modules-uname-r = %{KVERREL}%{?1:+%{1}}\
 AutoReq: no\
 AutoProv: yes\
 %description %{?1:%{1}-}modules-internal\
-This package provides kernel modules for the %{?2:%{2} }kernel package for Red Hat internal usage.\
+This package provides kernel modules for the %{?2:%{2} }kernel package for AlmaLinux internal usage.\
 %{nil}
 
 #
@@ -1363,6 +1356,7 @@ ApplyOptionalPatch()
 }
 
 %setup -q -n kernel-5.14.0-39.el9 -c
+cp -v %{SOURCE9000} linux-%{rpmversion}-%{pkgrelease}/certs/rhel.pem
 mv linux-5.14.0-39.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
@@ -1374,7 +1368,9 @@ ApplyOptionalPatch patch-%{rpmversion}-redhat.patch
 %endif
 
 ApplyOptionalPatch linux-kernel-test.patch
-
+ApplyOptionalPatch debrand-single-cpu.patch
+ApplyOptionalPatch debrand-rh_taint.patch
+ApplyOptionalPatch debrand-rh-i686-cpu.patch
 # END OF PATCH APPLICATIONS
 
 # Any further pre-build tree manipulations happen here.
@@ -1447,9 +1443,9 @@ done
 # Add DUP and kpatch certificates to system trusted keys for RHEL
 %if 0%{?rhel}
 %if %{signkernel}%{signmodules}
-openssl x509 -inform der -in %{SOURCE100} -out rheldup3.pem
-openssl x509 -inform der -in %{SOURCE101} -out rhelkpatch1.pem
-cat rheldup3.pem rhelkpatch1.pem > ../certs/rhel.pem
+# openssl x509 -inform der -in %{SOURCE100} -out rheldup3.pem
+# openssl x509 -inform der -in %{SOURCE101} -out rhelkpatch1.pem
+# cat rheldup3.pem rhelkpatch1.pem > ../certs/rhel.pem
 %ifarch s390x ppc64le
 openssl x509 -inform der -in %{secureboot_ca_0} -out secureboot.pem
 cat secureboot.pem >> ../certs/rhel.pem
