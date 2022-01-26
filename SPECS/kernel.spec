@@ -826,9 +826,7 @@ Patch1: patch-%{rpmversion}-redhat.patch
 # empty final patch to facilitate testing of kernel patches
 Patch999999: linux-kernel-test.patch
 
-Patch1000: debrand-single-cpu.patch
 Patch1001: debrand-rh_taint.patch
-Patch1002: debrand-rh-i686-cpu.patch
 
 # END OF PATCH DEFINITIONS
 
@@ -1367,10 +1365,7 @@ cp -a %{SOURCE1} .
 ApplyOptionalPatch patch-%{rpmversion}-redhat.patch
 %endif
 
-ApplyOptionalPatch linux-kernel-test.patch
-ApplyOptionalPatch debrand-single-cpu.patch
 ApplyOptionalPatch debrand-rh_taint.patch
-ApplyOptionalPatch debrand-rh-i686-cpu.patch
 # END OF PATCH APPLICATIONS
 
 # Any further pre-build tree manipulations happen here.
