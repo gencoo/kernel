@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 50
+%global distro_build 51
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 50.el9
+%define pkgrelease 51.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 50%{?buildid}%{?dist}
+%define specrelease 51%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -680,7 +680,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-50.el9.tar.xz
+Source0: linux-5.14.0-51.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1364,8 +1364,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-50.el9 -c
-mv linux-5.14.0-50.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-51.el9 -c
+mv linux-5.14.0-51.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -1589,6 +1589,7 @@ BuildKernel() {
 
     mkdir -p $RPM_BUILD_ROOT/%{image_install_path}
     mkdir -p $RPM_BUILD_ROOT/lib/modules/$KernelVer
+    mkdir -p $RPM_BUILD_ROOT/lib/modules/$KernelVer/systemtap
 %if %{with_debuginfo}
     mkdir -p $RPM_BUILD_ROOT%{debuginfodir}/%{image_install_path}
 %endif
@@ -2902,6 +2903,7 @@ fi
 /lib/modules/%{KVERREL}%{?3:+%{3}}/source\
 /lib/modules/%{KVERREL}%{?3:+%{3}}/updates\
 /lib/modules/%{KVERREL}%{?3:+%{3}}/weak-updates\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/systemtap\
 %{_datadir}/doc/kernel-keys/%{KVERREL}%{?3:+%{3}}\
 %if %{1}\
 /lib/modules/%{KVERREL}%{?3:+%{3}}/vdso\
@@ -2957,6 +2959,47 @@ fi
 #
 #
 %changelog
+* Mon Jan 31 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-51.el9]
+- selftests: bpf: Fix bind on used port (Felix Maurer) [2043528]
+- Add packaged but empty /lib/modules/<kver>/systemtap (Herton R. Krzesinski) [2012908]
+- powerpc/bpf: Update ldimm64 instructions during extra pass (Yauheni Kaliuta) [2040549]
+- RDMA/irdma: Don't arm the CQ more than two times if no CE for this CQ (Kamal Heib) [2039426]
+- RDMA/irdma: Report correct WC errors (Kamal Heib) [2039426]
+- RDMA/irdma: Fix a potential memory allocation issue in 'irdma_prm_add_pble_mem()' (Kamal Heib) [2039426]
+- RDMA/irdma: Fix a user-after-free in add_pble_prm (Kamal Heib) [2039426]
+- RDMA/irdma: Do not hold qos mutex twice on QP resume (Kamal Heib) [2039426]
+- RDMA/irdma: Set VLAN in UD work completion correctly (Kamal Heib) [2039426]
+- RDMA/irdma: Process extended CQ entries correctly (Kamal Heib) [2039426]
+- RDMA/irdma: Report correct WC error when there are MW bind errors (Kamal Heib) [2039426]
+- RDMA/irdma: Report correct WC error when transport retry counter is exceeded (Kamal Heib) [2039426]
+- RDMA/irdma: Validate number of CQ entries on create CQ (Kamal Heib) [2039426]
+- RDMA/irdma: Skip CQP ring during a reset (Kamal Heib) [2039426]
+- redhat/configs: Enable CONFIG_DM_MULTIPATH_HST (Benjamin Marzinski) [2000835]
+- RDMA/core: Don't infoleak GRH fields (Kamal Heib) [2036599]
+- RDMA/uverbs: Check for null return of kmalloc_array (Kamal Heib) [2036599]
+- RDMA/sa_query: Use strscpy_pad instead of memcpy to copy a string (Kamal Heib) [2036599]
+- RDMA/cma: Ensure rdma_addr_cancel() happens before issuing more requests (Kamal Heib) [2036599]
+- RDMA/cma: Fix listener leak in rdma_cma_listen_on_all() failure (Kamal Heib) [2036599]
+- IB/cma: Do not send IGMP leaves for sendonly Multicast groups (Kamal Heib) [2036599]
+- IB/core: Remove deprecated current_seq comments (Kamal Heib) [2036599]
+- RDMA/iwcm: Release resources if iw_cm module initialization fails (Kamal Heib) [2036599]
+- sched: padding for user_struct for KABI (Phil Auld) [2033084]
+- sched: padding for signal_struct in linux/sched/signal.h (Phil Auld) [2033084]
+- sched: padding for struct rq and related (Phil Auld) [2033084]
+- sched: Padding for sched_domain and root_domain (Phil Auld) [2033084]
+- sched: Padding for task_struct and related in include/linux/sched.h (Phil Auld) [2033084]
+- hwmon: (k10temp) Support up to 12 CCDs on AMD Family of processors (David Arcari) [2022526]
+- hwmon: (k10temp) Add support for AMD Family 19h Models 10h-1Fh and A0h-AFh (David Arcari) [2022526]
+- hwmon: (k10temp) Remove unused definitions (David Arcari) [2022526]
+- x86/amd_nb: Add AMD Family 19h Models (10h-1Fh) and (A0h-AFh) PCI IDs (David Arcari) [2022526]
+- hwmon: (k10temp) Remove residues of current and voltage (David Arcari) [2022526]
+- tipc: check for null after calling kmemdup (Xin Long) [2024993]
+- tipc: only accept encrypted MSG_CRYPTO msgs (Xin Long) [2024993]
+- tipc: constify dev_addr passing (Xin Long) [2024993]
+- tipc: increase timeout in tipc_sk_enqueue() (Xin Long) [2024993]
+- tipc: clean up inconsistent indenting (Xin Long) [2024993]
+- redhat: configs: add CONFIG_NTB and related items (John Linville) [1874186]
+
 * Fri Jan 28 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-50.el9]
 - net: fix possible NULL deref in sock_reserve_memory (Paolo Abeni) [2028420]
 - mptcp: fix per socket endpoint accounting (Paolo Abeni) [2028420]
