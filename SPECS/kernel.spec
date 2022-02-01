@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 39
+%global distro_build 42
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 39.el9
+%define pkgrelease 42.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 39%{?buildid}%{?dist}
+%define specrelease 42%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -611,7 +611,7 @@ BuildRequires: python3-docutils
 BuildRequires: zlib-devel binutils-devel
 %endif
 %if %{with_selftests}
-BuildRequires: clang llvm
+BuildRequires: clang llvm fuse-devel
 %ifnarch %{arm}
 BuildRequires: numactl-devel
 %endif
@@ -677,7 +677,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-39.el9.tar.xz
+Source0: linux-5.14.0-42.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1036,7 +1036,7 @@ This package provides debug information for the bpftool package.
 %package selftests-internal
 Summary: Kernel samples and selftests
 License: GPLv2
-Requires: binutils, bpftool, iproute-tc, nmap-ncat, python3
+Requires: binutils, bpftool, iproute-tc, nmap-ncat, python3, fuse-libs
 %description selftests-internal
 Kernel sample programs and selftests.
 
@@ -1362,8 +1362,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-39.el9 -c
-mv linux-5.14.0-39.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-42.el9 -c
+mv linux-5.14.0-42.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2238,7 +2238,7 @@ export BPFTOOL=$(pwd)/tools/bpf/bpftool/bpftool
 pushd tools/testing/selftests
 # We need to install here because we need to call make with ARCH set which
 # doesn't seem possible to do in the install section.
-%{make} %{?_smp_mflags} ARCH=$Arch V=1 TARGETS="bpf livepatch net net/forwarding net/mptcp netfilter tc-testing" SKIP_TARGETS="" FORCE_TARGETS=1 INSTALL_PATH=%{buildroot}%{_libexecdir}/kselftests VMLINUX_H="${RPM_VMLINUX_H}" install
+%{make} %{?_smp_mflags} ARCH=$Arch V=1 TARGETS="bpf livepatch net net/forwarding net/mptcp netfilter tc-testing memfd" SKIP_TARGETS="" FORCE_TARGETS=1 INSTALL_PATH=%{buildroot}%{_libexecdir}/kselftests VMLINUX_H="${RPM_VMLINUX_H}" install
 
 # 'make install' for bpf is broken and upstream refuses to fix it.
 # Install the needed files manually.
@@ -2556,6 +2556,13 @@ pushd tools/testing/selftests/netfilter
 find -type d -exec install -d %{buildroot}%{_libexecdir}/kselftests/netfilter/{} \;
 find -type f -executable -exec install -D -m755 {} %{buildroot}%{_libexecdir}/kselftests/netfilter/{} \;
 find -type f ! -executable -exec install -D -m644 {} %{buildroot}%{_libexecdir}/kselftests/netfilter/{} \;
+popd
+
+# install memfd selftests
+pushd tools/testing/selftests/memfd
+find -type d -exec install -d %{buildroot}%{_libexecdir}/kselftests/memfd/{} \;
+find -type f -executable -exec install -D -m755 {} %{buildroot}%{_libexecdir}/kselftests/memfd/{} \;
+find -type f ! -executable -exec install -D -m644 {} %{buildroot}%{_libexecdir}/kselftests/memfd/{} \;
 popd
 %endif
 
@@ -2952,6 +2959,144 @@ fi
 #
 #
 %changelog
+* Thu Jan 13 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-42.el9]
+- scsi: smartpqi: Update version to 2.1.12-055 (Don Brace) [1869853]
+- scsi: smartpqi: Add 3252-8i PCI id (Don Brace) [1869853]
+- scsi: smartpqi: Fix duplicate device nodes for tape changers (Don Brace) [1869853]
+- scsi: smartpqi: Fix boot failure during LUN rebuild (Don Brace) [1869853]
+- scsi: smartpqi: Add extended report physical LUNs (Don Brace) [1869853]
+- scsi: smartpqi: Avoid failing I/Os for offline devices (Don Brace) [1869853]
+- scsi: smartpqi: Add TEST UNIT READY check for SANITIZE operation (Don Brace) [1869853]
+- scsi: smartpqi: Update LUN reset handler (Don Brace) [1869853]
+- scsi: smartpqi: Capture controller reason codes (Don Brace) [1869853]
+- scsi: smartpqi: Add controller handshake during kdump (Don Brace) [1869853]
+- scsi: smartpqi: Update device removal management (Don Brace) [1869853]
+- scsi: smartpqi: Replace one-element array with flexible-array member (Don Brace) [1869853]
+- scsi: smartpqi: Fix an error code in pqi_get_raid_map() (Don Brace) [1869853]
+- scsi: smartpqi: Update version to 2.1.10-020 (Don Brace) [1869853]
+- scsi: smartpqi: Fix ISR accessing uninitialized data (Don Brace) [1869853]
+- scsi: smartpqi: Add PCI IDs for new ZTE controllers (Don Brace) [1869853]
+- scsi: smartpqi: Add PCI ID for new ntcom controller (Don Brace) [1869853]
+- scsi: smartpqi: Add SCSI cmd info for resets (Don Brace) [1869853]
+- scsi: smartpqi: Change Kconfig menu entry to Microchip (Don Brace) [1869853]
+- scsi: smartpqi: Change driver module macros to Microchip (Don Brace) [1869853]
+- scsi: smartpqi: Update copyright notices (Don Brace) [1869853]
+- scsi: smartpqi: Add PCI IDs for H3C P4408 controllers (Don Brace) [1869853]
+- powerpc/module_64: Fix livepatching for RO modules (Joe Lawrence) [2019205]
+- net-sysfs: try not to restart the syscall if it will fail eventually (Antoine Tenart) [2030634]
+- CI: Enable realtime checks for baselines (Veronika Kabatova)
+- CI: Cleanup residue from ARK (Veronika Kabatova)
+- redhat: ignore ksamples and kselftests on the badfuncs rpminspect test (Herton R. Krzesinski)
+- redhat: disable upstream check for rpminspect (Herton R. Krzesinski)
+- redhat/configs: Enable CONFIG_CRYPTO_BLAKE2B (Neal Gompa) [2031547]
+- selftests: netfilter: switch zone stress to socat (Florian Westphal) [2030759]
+- netfilter: conntrack: set on IPS_ASSURED if flows enters internal stream state (Florian Westphal) [2030759]
+- netfilter: conntrack: serialize hash resizes and cleanups (Florian Westphal) [2030759]
+- selftests: netfilter: add zone stress test with colliding tuples (Florian Westphal) [2030759]
+- selftests: netfilter: add selftest for directional zone support (Florian Westphal) [2030759]
+- netfilter: conntrack: include zone id in tuple hash again (Florian Westphal) [2030759]
+- netfilter: conntrack: make max chain length random (Florian Westphal) [2030759]
+- netfilter: refuse insertion if chain has grown too large (Florian Westphal) [2030759]
+- netfilter: conntrack: switch to siphash (Florian Westphal) [2030759]
+- netfilter: conntrack: sanitize table size default settings (Florian Westphal) [2030759]
+- redhat: configs: increase CONFIG_DEBUG_KMEMLEAK_MEM_POOL_SIZE (Rafael Aquini) [2008118]
+- iommu/dma: Fix incorrect error return on iommu deferred attach (Jerry Snitselaar) [2030394]
+- RDMA/siw: Mark Software iWARP Driver as tech-preview (Kamal Heib) [2023416]
+- genirq: Fix kernel doc indentation (Prarit Bhargava) [2023084]
+- genirq: Change force_irqthreads to a static key (Prarit Bhargava) [2023084]
+- genirq: Clarify documentation for request_threaded_irq() (Prarit Bhargava) [2023084]
+
+* Wed Jan 12 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-41.el9]
+- af_unix: Return errno instead of NULL in unix_create1(). (Balazs Nemeth) [2030037]
+- s390/ftrace: remove preempt_disable()/preempt_enable() pair (Wander Lairson Costa) [1938117]
+- ftrace: do CPU checking after preemption disabled (Wander Lairson Costa) [1938117]
+- ftrace: disable preemption when recursion locked (Wander Lairson Costa) [1938117]
+- redhat: build and include memfd to kernel-selftests-internal (Aristeu Rozanski) [2027506]
+- netfilter: flowtable: fix IPv6 tunnel addr match (Florian Westphal) [2028203]
+- netfilter: ipvs: Fix reuse connection if RS weight is 0 (Florian Westphal) [2028203]
+- netfilter: ctnetlink: do not erase error code with EINVAL (Florian Westphal) [2028203]
+- netfilter: ctnetlink: fix filtering with CTA_TUPLE_REPLY (Florian Westphal) [2028203]
+- netfilter: nfnetlink_queue: fix OOB when mac header was cleared (Florian Westphal) [2028203]
+- netfilter: core: Fix clang warnings about unused static inlines (Florian Westphal) [2028203]
+- netfilter: nft_dynset: relax superfluous check on set updates (Florian Westphal) [2028203]
+- netfilter: nf_tables: skip netdev events generated on netns removal (Florian Westphal) [2028203]
+- netfilter: Kconfig: use 'default y' instead of 'm' for bool config option (Florian Westphal) [2028203]
+- netfilter: xt_IDLETIMER: fix panic that occurs when timer_type has garbage value (Florian Westphal) [2028203]
+- netfilter: nf_tables: honor NLM_F_CREATE and NLM_F_EXCL in event notification (Florian Westphal) [2028203]
+- netfilter: nf_tables: reverse order in rule replacement expansion (Florian Westphal) [2028203]
+- netfilter: nf_tables: add position handle in event notification (Florian Westphal) [2028203]
+- netfilter: conntrack: fix boot failure with nf_conntrack.enable_hooks=1 (Florian Westphal) [2028203]
+- netfilter: log: work around missing softdep backend module (Florian Westphal) [2028203]
+- netfilter: nf_tables: unlink table before deleting it (Florian Westphal) [2028203]
+- ipvs: check that ip_vs_conn_tab_bits is between 8 and 20 (Florian Westphal) [2028203]
+- netfilter: nft_ct: protect nft_ct_pcpu_template_refcnt with mutex (Florian Westphal) [2028203]
+- netfilter: ipvs: make global sysctl readonly in non-init netns (Antoine Tenart) [2008417]
+- net/sched: sch_ets: don't remove idle classes from the round-robin list (Davide Caratti) [2025552]
+- net/sched: store the last executed chain also for clsact egress (Davide Caratti) [2025552]
+- net: sched: act_mirred: drop dst for the direction from egress to ingress (Davide Caratti) [2025552]
+- net/sched: sch_ets: don't peek at classes beyond 'nbands' (Davide Caratti) [2025552]
+- net/sched: sch_ets: properly init all active DRR list handles (Davide Caratti) [2025552]
+- net: Fix offloading indirect devices dependency on qdisc order creation (Davide Caratti) [2025552]
+- net/core: Remove unused field from struct flow_indr_dev (Davide Caratti) [2025552]
+- net/sched: sch_taprio: fix undefined behavior in ktime_mono_to_any (Davide Caratti) [2025552]
+- net/sched: act_ct: Fix byte count on fragmented packets (Davide Caratti) [2025552]
+- mqprio: Correct stats in mqprio_dump_class_stats(). (Davide Caratti) [2025552]
+- net/sched: sch_taprio: properly cancel timer from taprio_destroy() (Davide Caratti) [2025552]
+- net_sched: fix NULL deref in fifo_set_limit() (Davide Caratti) [2025552]
+- net: sched: flower: protect fl_walk() with rcu (Davide Caratti) [2025552]
+- fq_codel: reject silly quantum parameters (Davide Caratti) [2025552]
+- net: sched: Fix qdisc_rate_table refcount leak when get tcf_block failed (Davide Caratti) [2025552]
+- sch_htb: Fix inconsistency when leaf qdisc creation fails (Davide Caratti) [2025552]
+- redhat/configs: Add two new CONFIGs (Prarit Bhargava) [2022993]
+- redhat/configs: Remove dead CONFIG files (Prarit Bhargava) [2022993]
+- redhat/configs/evaluate_configs: Add find dead configs option (Prarit Bhargava) [2022993]
+
+* Mon Jan 10 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-40.el9]
+- cpu/hotplug: Remove deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- livepatch: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- coresight: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- hwmon: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- tracing: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- padata: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- crypto: virtio - Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- platform/x86: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- powerpc: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- x86/mce/inject: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- x86/microcode: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- x86/mtrr: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- x86/mmiotrace: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- workqueue: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- net/iucv: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- s390/sclp: replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- s390: replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- net: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- virtio_net: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- ACPI: processor: Replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- PM: sleep: s2idle: Replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- cpufreq: Replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- powercap: intel_rapl: Replace deprecated CPU-hotplug functions (Prarit Bhargava) [2023079]
+- sgi-xpc: Replace deprecated CPU-hotplug functions. (Prarit Bhargava) [2023079]
+- Input: i8042 - Add quirk for Fujitsu Lifebook T725 (Neal Gompa) [2019937]
+- sctp: remove unreachable code from sctp_sf_violation_chunk() (Xin Long) [2024909]
+- sctp: return true only for pathmtu update in sctp_transport_pl_toobig (Xin Long) [2024909]
+- sctp: subtract sctphdr len in sctp_transport_pl_hlen (Xin Long) [2024909]
+- sctp: reset probe_timer in sctp_transport_pl_update (Xin Long) [2024909]
+- sctp: allow IP fragmentation when PLPMTUD enters Error state (Xin Long) [2024909]
+- sctp: fix transport encap_port update in sctp_vtag_verify (Xin Long) [2024909]
+- sctp: account stream padding length for reconf chunk (Xin Long) [2024909]
+- sctp: break out if skb_header_pointer returns NULL in sctp_rcv_ootb (Xin Long) [2024909]
+- sctp: add vtag check in sctp_sf_ootb (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: add vtag check in sctp_sf_do_8_5_1_E_sa (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: add vtag check in sctp_sf_violation (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: fix the processing for COOKIE_ECHO chunk (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: fix the processing for INIT_ACK chunk (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: fix the processing for INIT chunk (Xin Long) [2003494] {CVE-2021-3772}
+- sctp: use init_tag from inithdr for ABORT chunk (Xin Long) [2003494] {CVE-2021-3772}
+- drm/nouveau: clean up all clients on device removal (Karol Herbst) [1911185] {CVE-2020-27820}
+- drm/nouveau: Add a dedicated mutex for the clients list (Karol Herbst) [1911185] {CVE-2020-27820}
+- drm/nouveau: use drm_dev_unplug() during device removal (Karol Herbst) [1911185] {CVE-2020-27820}
+- redhat/configs: NFS: disable UDP, insecure enctypes (Benjamin Coddington) [1952863]
+
 * Fri Dec 24 2021 Herton R. Krzesinski <herton@redhat.com> [5.14.0-39.el9]
 - cpuidle: pseries: Do not cap the CEDE0 latency in fixup_cede0_latency() (Gustavo Walbon) [2029870]
 - cpuidle: pseries: Fixup CEDE0 latency only for POWER10 onwards (Gustavo Walbon) [2029870]
