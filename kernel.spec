@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 54
+%global distro_build 55
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 54.el9
+%define pkgrelease 55.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 54%{?buildid}%{?dist}
+%define specrelease 55%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -680,7 +680,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-54.el9.tar.xz
+Source0: linux-5.14.0-55.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1364,8 +1364,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-54.el9 -c
-mv linux-5.14.0-54.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-55.el9 -c
+mv linux-5.14.0-55.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2959,6 +2959,56 @@ fi
 #
 #
 %changelog
+* Fri Feb 04 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-55.el9]
+- selftests: netfilter: switch to socat for tests using -q option (Hangbin Liu) [2041409]
+- selftests: net: udpgro_fwd.sh: explicitly checking the available ping feature (Hangbin Liu) [2041409]
+- selftests: net: using ping6 for IPv6 in udpgro_fwd.sh (Hangbin Liu) [2041409]
+- selftests: net: Fix a typo in udpgro_fwd.sh (Hangbin Liu) [2041409]
+- selftests/net: udpgso_bench_tx: fix dst ip argument (Hangbin Liu) [2041409]
+- selftest/net/forwarding: declare NETIFS p9 p10 (Hangbin Liu) [2041409]
+- selftests: Fix IPv6 address bind tests (Hangbin Liu) [2041409]
+- selftests: Fix raw socket bind tests with VRF (Hangbin Liu) [2041409]
+- selftests: Add duplicate config only for MD5 VRF tests (Hangbin Liu) [2041409]
+- selftests: icmp_redirect: pass xfail=0 to log_test() (Hangbin Liu) [2041409]
+- selftests: net: Correct ping6 expected rc from 2 to 1 (Hangbin Liu) [2041409]
+- selftests/fib_tests: Rework fib_rp_filter_test() (Hangbin Liu) [2041409]
+- selftests: net: Correct case name (Hangbin Liu) [2041409]
+- redhat/configs: Enable CONFIG_PCI_P2PDMA (Myron Stowe) [1923862]
+- nvme: drop scan_lock and always kick requeue list when removing namespaces (Gopal Tiwari) [2038783]
+- ACPI: CPPC: Add NULL pointer check to cppc_get_perf() (David Arcari) [2025291]
+- cpufreq: intel_pstate: Clear HWP Status during HWP Interrupt enable (David Arcari) [2025291]
+- cpufreq: intel_pstate: Fix unchecked MSR 0x773 access (David Arcari) [2025291]
+- cpufreq: intel_pstate: Clear HWP desired on suspend/shutdown and offline (David Arcari) [2025291]
+- cpufreq: intel_pstate: Fix cpu->pstate.turbo_freq initialization (David Arcari) [2025291]
+- cpufreq: intel_pstate: Process HWP Guaranteed change notification (David Arcari) [2025291]
+- cpufreq: intel_pstate: Override parameters if HWP forced by BIOS (David Arcari) [2025291]
+- cpufreq: intel_pstate: hybrid: Rework HWP calibration (David Arcari) [2025291]
+- Revert "cpufreq: intel_pstate: Process HWP Guaranteed change notification" (David Arcari) [2025291]
+- cpufreq: intel_pstate: Process HWP Guaranteed change notification (David Arcari) [2025291]
+- cpufreq: Replace deprecated CPU-hotplug functions (David Arcari) [2025291]
+- ACPI: CPPC: Introduce cppc_get_nominal_perf() (David Arcari) [2025291]
+- Change s390x CONFIG_NODES_SHIFT from 4 to 1 (Prarit Bhargava) [2018568]
+- Build CONFIG_SPI_PXA2XX as a module on x86 (Prarit Bhargava) [2018568]
+- Turn on CONFIG_CPU_FREQ_GOV_SCHEDUTIL for x86 (Prarit Bhargava) [2018568]
+- Turn CONFIG_DEVMEM back off for aarch64 (Prarit Bhargava) [2018568]
+- New configs in drivers/media (Prarit Bhargava) [2018568]
+- Manually add pending items that need to be set due to mismatch (Prarit Bhargava) [2018568]
+- Build CRYPTO_SHA3_*_S390 inline for s390 zfcpdump (Prarit Bhargava) [2018568]
+- configs: Remove pending CONFIG_CHELSIO_IPSEC_INLINE file (Prarit Bhargava) [2018568]
+- New configs in arch/powerpc (Prarit Bhargava) [2018568]
+- New configs in lib/Kconfig.debug (Prarit Bhargava) [2018568]
+- New configs in drivers/vhost (Prarit Bhargava) [2018568]
+- New configs in drivers/pinctrl (Prarit Bhargava) [2018568]
+- New configs in drivers/gpu (Prarit Bhargava) [2018568]
+- New configs in drivers/gpio (Prarit Bhargava) [2018568]
+- New configs in drivers/block (Prarit Bhargava) [2018568]
+- New configs in crypto/Kconfig (Prarit Bhargava) [2018568]
+- New configs in drivers/acpi (Prarit Bhargava) [2018568]
+- New configs in arch/arm64 (Prarit Bhargava) [2018568]
+- New configs in arch/Kconfig (Prarit Bhargava) [2018568]
+- AUTOMATIC: New configs (Prarit Bhargava) [2018568]
+- Clean up pending common (Prarit Bhargava) [2018568]
+
 * Thu Feb 03 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-54.el9]
 - iwlwifi: mvm: read 6E enablement flags from DSM and pass to FW (Íñigo Huguet) [2033354]
 - ath11k: add string type to search board data in board-2.bin for WCN6855 (Íñigo Huguet) [2033354]
@@ -3731,7 +3781,7 @@ fi
 - scsi: lpfc: Fix leaked lpfc_dmabuf mbox allocations with NPIV (Dick Kennedy) [2034278]
 - scsi: lpfc: Fix non-recovery of remote ports following an unsolicited LOGO (Dick Kennedy) [2039036]
 - mm/memcg: Exclude mem_cgroup pointer from kABI signature computation (Waiman Long) [2036995]
-- From: Steve Dickson <steved@redhat.com> (Steve Dickson) [2016699]
+- NFS: Default change_attr_type to NFS4_CHANGE_TYPE_IS_UNDEFINED (Steve Dickson) [2016699]
 
 * Sat Jan 22 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-47.el9]
 - nvmet: register discovery subsystem as 'current' (John Meneghini) [2021672]
