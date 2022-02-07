@@ -97,7 +97,7 @@ Summary: The Linux kernel
 %if 0%{?released_kernel}
 
 # Do we have a -stable update to apply?
-%define stable_update 18
+%define stable_update 21
 # Set rpm version accordingly
 %if 0%{?stable_update}
 %define stablerev %{stable_update}
@@ -3006,6 +3006,9 @@ fi
 #
 #
 %changelog
+* Mon Feb  7 2022 Pablo Greco <pgreco@centosproject.org> - 5.15.21-200
+- Linux v5.15.21
+
 * Sat Jan 29 2022 Pablo Greco <pgreco@centosproject.org> - 5.15.18-200
 - Linux v5.15.18
 
