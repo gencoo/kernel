@@ -85,7 +85,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 55
+%global distro_build 56
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +129,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 55.el9
+%define pkgrelease 56.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 55%{?buildid}%{?dist}
+%define specrelease 56%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -680,7 +680,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-55.el9.tar.xz
+Source0: linux-5.14.0-56.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1364,8 +1364,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-55.el9 -c
-mv linux-5.14.0-55.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-56.el9 -c
+mv linux-5.14.0-56.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2959,6 +2959,48 @@ fi
 #
 #
 %changelog
+* Mon Feb 07 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-56.el9]
+- KVM: VMX: switch blocked_vcpu_on_cpu_lock to raw spinlock (Marcelo Tosatti) [2034007]
+- x86/hyperv: Properly deal with empty cpumasks in hyperv_flush_tlb_multi() (Vitaly Kuznetsov) [2035993]
+- tcp: add missing htmldocs for skb->ll_node and sk->defer_list (Antoine Tenart) [2041382]
+- net: move early demux fields close to sk_refcnt (Antoine Tenart) [2041382]
+- tcp: defer skb freeing after socket lock is released (Antoine Tenart) [2041382]
+- net: shrink struct sock by 8 bytes (Antoine Tenart) [2041382]
+- ipv6: shrink struct ipcm6_cookie (Antoine Tenart) [2041382]
+- net: remove sk_route_nocaps (Antoine Tenart) [2041382]
+- net: remove sk_route_forced_caps (Antoine Tenart) [2041382]
+- net: use sk_is_tcp() in more places (Antoine Tenart) [2041382]
+- bpf, sockmap: Use stricter sk state checks in sk_lookup_assign (Antoine Tenart) [2041382]
+- ipv6: move inet6_sk(sk)->rx_dst_cookie to sk->sk_rx_dst_cookie (Antoine Tenart) [2041382]
+- tcp: move inet->rx_dst_ifindex to sk->sk_rx_dst_ifindex (Antoine Tenart) [2041382]
+- [RHEL-9.0] IPMI Add RH_KABI_RESERVE to kABI sensitive structs (Tony Camuso) [2042031]
+- configs: disable CONFIG_CRAMFS (Abhi Das) [2041184]
+- ppp: ensure minimum packet size in ppp_write() (Guillaume Nault) [2042936]
+- [pci] PCI: Add reserved fields to 'struct pci_sriov' (Myron Stowe) [2039086]
+- [include] PCI: Add reserved fields to 'struct pci_driver' (Myron Stowe) [2039086]
+- [include] PCI: Add reserved fields to 'struct pci_bus' (Myron Stowe) [2039086]
+- [include] PCI: Add reserved fields, and extension, to 'struct pci_dev' (Myron Stowe) [2039086]
+- PCI: ACPI: Check parent pointer in acpi_pci_find_companion() (Myron Stowe) [2039086]
+- PCI/ACPI: Don't reset a fwnode set by OF (Myron Stowe) [2039086]
+- PCI: Make saved capability state private to core (Myron Stowe) [2039086]
+- PCI: Change the type of probe argument in reset functions (Myron Stowe) [2039086]
+- PCI: Add support for ACPI _RST reset method (Myron Stowe) [2039086]
+- PCI: Setup ACPI fwnode early and at the same time with OF (Myron Stowe) [2039086]
+- PCI: Use acpi_pci_power_manageable() (Myron Stowe) [2039086]
+- PCI: Add pci_set_acpi_fwnode() to set ACPI_COMPANION (Myron Stowe) [2039086]
+- PCI: Allow userspace to query and set device reset mechanism (Myron Stowe) [2039086]
+- PCI: Remove reset_fn field from pci_dev (Myron Stowe) [2039086]
+- PCI: Add array to track reset method ordering (Myron Stowe) [2039086]
+- PCI: Add pcie_reset_flr() with 'probe' argument (Myron Stowe) [2039086]
+- PCI: Cache PCIe Device Capabilities register (Myron Stowe) [2039086]
+- PCI: Allow PASID on fake PCIe devices without TLP prefixes (Myron Stowe) [2039086]
+- clocksource: Reduce the default clocksource_watchdog() retries to 2 (Waiman Long) [2027463]
+- clocksource: Avoid accidental unstable marking of clocksources (Waiman Long) [2027463]
+- Revert "clocksource: Increase WATCHDOG_MAX_SKEW" (Waiman Long) [2027463]
+- PCI: Add pcie_ptm_enabled() (Petr Oros) [2037314]
+- Revert "PCI: Make pci_enable_ptm() private" (Petr Oros) [2037314]
+- iommu/vt-d: Fix unmap_pages support (Jerry Snitselaar) [2027762]
+
 * Fri Feb 04 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-55.el9]
 - selftests: netfilter: switch to socat for tests using -q option (Hangbin Liu) [2041409]
 - selftests: net: udpgro_fwd.sh: explicitly checking the available ping feature (Hangbin Liu) [2041409]
