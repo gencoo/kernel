@@ -71,12 +71,6 @@
 
 Summary: The Linux kernel
 
-# Set released_kernel to 1 when the upstream source tarball contains a
-#  kernel release. (This includes prepatch or "rc" releases.)
-# Set released_kernel to 0 when the upstream source tarball contains an
-#  unreleased kernel development snapshot.
-%global released_kernel 0
-
 # Set debugbuildsenabled to 1 to build separate base and debug kernels
 #  (on supported architectures). The kernel-debug-* subpackages will
 #  contain the debug kernel.
@@ -85,7 +79,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 56
+%global distro_build 57
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -129,13 +123,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 56.el9
+%define pkgrelease 57.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 56%{?buildid}%{?dist}
+%define specrelease 57%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -644,6 +638,7 @@ BuildRequires: kabi-dw
 %if %{signkernel}%{signmodules}
 BuildRequires: openssl
 %if %{signkernel}
+BuildRequires: system-sb-certs
 %ifarch x86_64 aarch64
 BuildRequires: nss-tools
 BuildRequires: pesign >= 0.10-4
@@ -680,10 +675,11 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-56.el9.tar.xz
+Source0: linux-5.14.0-57.el9.tar.xz
 
 Source1: Makefile.rhelver
 
+%if %{signkernel}
 
 # Name of the packaged file containing signing key
 %ifarch ppc64le
@@ -693,42 +689,24 @@ Source1: Makefile.rhelver
 %define signing_key_filename kernel-signing-s390.cer
 %endif
 
-%if %{?released_kernel}
+%define secureboot_ca_0 %{_datadir}/pki/sb-certs/secureboot-ca-%{_arch}.cer
+%define secureboot_key_0 %{_datadir}/pki/sb-certs/secureboot-kernel-%{_arch}.cer
 
-Source10: redhatsecurebootca5.cer
-Source11: redhatsecurebootca3.cer
-Source12: redhatsecurebootca6.cer
-Source13: redhatsecureboot501.cer
-Source14: redhatsecureboot302.cer
-Source15: redhatsecureboot601.cer
-
+%if 0%{?centos}
+%define pesign_name_0 centossecureboot201
+%else
 %ifarch x86_64 aarch64
-%define secureboot_ca_0 %{SOURCE10}
-%define secureboot_key_0 %{SOURCE13}
 %define pesign_name_0 redhatsecureboot501
 %endif
 %ifarch s390x
-%define secureboot_ca_0 %{SOURCE11}
-%define secureboot_key_0 %{SOURCE14}
 %define pesign_name_0 redhatsecureboot302
 %endif
 %ifarch ppc64le
-%define secureboot_ca_0 %{SOURCE12}
-%define secureboot_key_0 %{SOURCE15}
 %define pesign_name_0 redhatsecureboot601
 %endif
+%endif
 
-# released_kernel
-%else
-
-Source10: redhatsecurebootca4.cer
-Source11: redhatsecureboot401.cer
-
-%define secureboot_ca_0 %{SOURCE10}
-%define secureboot_key_0 %{SOURCE11}
-%define pesign_name_0 redhatsecureboot401
-
-# released_kernel
+# signkernel
 %endif
 
 Source20: mod-denylist.sh
@@ -1364,8 +1342,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-56.el9 -c
-mv linux-5.14.0-56.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-57.el9 -c
+mv linux-5.14.0-57.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -1452,9 +1430,11 @@ done
 openssl x509 -inform der -in %{SOURCE100} -out rheldup3.pem
 openssl x509 -inform der -in %{SOURCE101} -out rhelkpatch1.pem
 cat rheldup3.pem rhelkpatch1.pem > ../certs/rhel.pem
+%if %{signkernel}
 %ifarch s390x ppc64le
 openssl x509 -inform der -in %{secureboot_ca_0} -out secureboot.pem
 cat secureboot.pem >> ../certs/rhel.pem
+%endif
 %endif
 for i in *.config; do
   sed -i 's@CONFIG_SYSTEM_TRUSTED_KEYS=""@CONFIG_SYSTEM_TRUSTED_KEYS="certs/rhel.pem"@' $i
@@ -1641,7 +1621,7 @@ BuildKernel() {
     %ifarch s390x ppc64le
     if [ -x /usr/bin/rpm-sign ]; then
 	rpm-sign --key "%{pesign_name_0}" --lkmsign $SignImage --output vmlinuz.signed
-    elif [ $DoModules -eq 1 ]; then
+    elif [ "$DoModules" == "1" -a "%{signmodules}" == "1" ]; then
 	chmod +x scripts/sign-file
 	./scripts/sign-file -p sha256 certs/signing_key.pem certs/signing_key.x509 $SignImage vmlinuz.signed
     else
@@ -2070,14 +2050,6 @@ BuildKernel() {
     rm -f $RPM_BUILD_ROOT/mod-extra.list
     rm -f $RPM_BUILD_ROOT/mod-internal.list
 
-%if %{signmodules}
-    if [ $DoModules -eq 1 ]; then
-	# Save the signing keys so we can sign the modules in __modsign_install_post
-	cp certs/signing_key.pem certs/signing_key.pem.sign${Variant:++${Variant}}
-	cp certs/signing_key.x509 certs/signing_key.x509.sign${Variant:++${Variant}}
-    fi
-%endif
-
     # Move the devel headers out of the root file system
     mkdir -p $RPM_BUILD_ROOT/usr/src/kernels
     mv $RPM_BUILD_ROOT/lib/modules/$KernelVer/build $RPM_BUILD_ROOT/$DevelDir
@@ -2098,18 +2070,29 @@ BuildKernel() {
 
     # Red Hat UEFI Secure Boot CA cert, which can be used to authenticate the kernel
     mkdir -p $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer
+%if %{signkernel}
     install -m 0644 %{secureboot_ca_0} $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/kernel-signing-ca.cer
     %ifarch s390x ppc64le
-    if [ $DoModules -eq 1 ]; then
-	if [ -x /usr/bin/rpm-sign ]; then
-	    install -m 0644 %{secureboot_key_0} $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/%{signing_key_filename}
-	else
-	    install -m 0644 certs/signing_key.x509.sign${Variant:++${Variant}} $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/kernel-signing-ca.cer
-	    openssl x509 -in certs/signing_key.pem.sign${Variant:++${Variant}} -outform der -out $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/%{signing_key_filename}
-	    chmod 0644 $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/%{signing_key_filename}
-	fi
+    if [ -x /usr/bin/rpm-sign ]; then
+        install -m 0644 %{secureboot_key_0} $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/%{signing_key_filename}
     fi
     %endif
+%endif
+
+%if %{signmodules}
+    if [ $DoModules -eq 1 ]; then
+        # Save the signing keys so we can sign the modules in __modsign_install_post
+        cp certs/signing_key.pem certs/signing_key.pem.sign${Variant:++${Variant}}
+        cp certs/signing_key.x509 certs/signing_key.x509.sign${Variant:++${Variant}}
+        %ifarch s390x ppc64le
+        if [ ! -x /usr/bin/rpm-sign ]; then
+            install -m 0644 certs/signing_key.x509.sign${Variant:++${Variant}} $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/kernel-signing-ca.cer
+            openssl x509 -in certs/signing_key.pem.sign${Variant:++${Variant}} -outform der -out $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/%{signing_key_filename}
+            chmod 0644 $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/%{signing_key_filename}
+        fi
+        %endif
+    fi
+%endif
 
 %if %{with_ipaclones}
     MAXPROCS=$(echo %{?_smp_mflags} | sed -n 's/-j\s*\([0-9]\+\)/\1/p')
@@ -2959,6 +2942,50 @@ fi
 #
 #
 %changelog
+* Tue Feb 08 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-57.el9]
+- block: assign bi_bdev for cloned bios in blk_rq_prep_clone (Benjamin Marzinski) [2026948]
+- dm sysfs: use default_groups in kobj_type (Benjamin Marzinski) [2043224]
+- dm space map common: add bounds check to sm_ll_lookup_bitmap() (Benjamin Marzinski) [2043224]
+- dm btree: add a defensive bounds check to insert_at() (Benjamin Marzinski) [2043224]
+- dm btree remove: change a bunch of BUG_ON() calls to proper errors (Benjamin Marzinski) [2043224]
+- dm btree spine: eliminate duplicate le32_to_cpu() in node_check() (Benjamin Marzinski) [2043224]
+- dm btree spine: remove extra node_check function declaration (Benjamin Marzinski) [2043224]
+- redhat: drop the RELEASED_KERNEL switch (Herton R. Krzesinski) [2037084 2045327]
+- redhat: switch the kernel package to use certs from system-sb-certs (Herton R. Krzesinski) [2037084 2045327]
+- mptcp: disable by default (Davide Caratti) [2044392]
+- sch_api: Don't skip qdisc attach on ingress (Davide Caratti) [2044560]
+- flow_offload: return EOPNOTSUPP for the unsupported mpls action type (Davide Caratti) [2044560]
+- sch_cake: do not call cake_destroy() from cake_init() (Davide Caratti) [2044560]
+- net/sched: fq_pie: prevent dismantle issue (Davide Caratti) [2044560]
+- vrf: Reset IPCB/IP6CB when processing outbound pkts in vrf dev xmit (Antoine Tenart) [2044252]
+- qla2xxx: Add new messaging (Ewan D. Milne) [2039070]
+- nvme-fc: remove freeze/unfreeze around update_nr_hw_queues (Ewan D. Milne) [2030051]
+- nvme-fc: avoid race between time out and tear down (Ewan D. Milne) [2030051]
+- nvme-fc: update hardware queues before using them (Ewan D. Milne) [2030051]
+- lpfc: Add new messaging (Ewan D. Milne) [2039068]
+- tee: handle lookup of shm with reference count 0 (Chris von Recklinghausen) [2030754] {CVE-2021-44733}
+- dma-buf: move dma-buf symbols into the DMA_BUF module namespace (Chris von Recklinghausen) [2030754] {CVE-2021-44733}
+- tee: add sec_world_id to struct tee_shm (Chris von Recklinghausen) [2030754] {CVE-2021-44733}
+- drm/i915/selftests: Do not use import_obj uninitialized (Chris von Recklinghausen) [2030754] {CVE-2021-44733}
+- drm/gem: Provide drm_gem_fb_{vmap,vunmap}() (Chris von Recklinghausen) [2030754] {CVE-2021-44733}
+- drm: Define DRM_FORMAT_MAX_PLANES (Chris von Recklinghausen) [2030754] {CVE-2021-44733}
+- drm/i915/gem: Correct the locking and pin pattern for dma-buf (v8) (Chris von Recklinghausen) [2030754] {CVE-2021-44733}
+- drm/gm12u320: Use framebuffer dma-buf helpers (Chris von Recklinghausen) [2030754] {CVE-2021-44733}
+- drm/gud: Use framebuffer dma-buf helpers (Chris von Recklinghausen) [2030754] {CVE-2021-44733}
+- drm/udl: Use framebuffer dma-buf helpers (Chris von Recklinghausen) [2030754] {CVE-2021-44733}
+- drm/gem: Provide drm_gem_fb_{begin,end}_cpu_access() helpers (Chris von Recklinghausen) [2030754] {CVE-2021-44733}
+- dmaengine: idxd: Add wq occupancy information to sysfs attribute Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=1971888 Upstream Status: kernel/git/torvalds/linux.git (Julia Denham)
+- arch/x86: KABI structs and array padding (Prarit Bhargava) [2033081]
+- hpsa: add new messaging (Tomas Henzl) [2028575]
+- aacraid: add new messaging (Tomas Henzl) [2028574]
+- mptsas: add new messaging (Tomas Henzl) [2027741]
+- megaraid_sas: add new messaging (Tomas Henzl) [2027741]
+- mpt3sas: Add new messaging (Tomas Henzl) [2027741]
+- scsi: mpi3mr: Use scnprintf() instead of snprintf() (Tomas Henzl) [1876005]
+- scsi: mpi3mr: Clean up mpi3mr_print_ioc_info() (Tomas Henzl) [1876005]
+- scsi: mpi3mr: Set up IRQs in resume path (Tomas Henzl) [1876005]
+- scsi: mpi3mr: Use the proper SCSI midlayer interfaces for PI (Tomas Henzl) [1876005]
+
 * Mon Feb 07 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-56.el9]
 - KVM: VMX: switch blocked_vcpu_on_cpu_lock to raw spinlock (Marcelo Tosatti) [2034007]
 - x86/hyperv: Properly deal with empty cpumasks in hyperv_flush_tlb_multi() (Vitaly Kuznetsov) [2035993]
