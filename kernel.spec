@@ -79,7 +79,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 66
+%global distro_build 67
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -123,13 +123,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 66.el9
+%define pkgrelease 67.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 66%{?buildid}%{?dist}
+%define specrelease 67%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -675,7 +675,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-66.el9.tar.xz
+Source0: linux-5.14.0-67.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1342,8 +1342,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-66.el9 -c
-mv linux-5.14.0-66.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-67.el9 -c
+mv linux-5.14.0-67.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2942,6 +2942,64 @@ fi
 #
 #
 %changelog
+* Tue Feb 22 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-67.el9]
+- kabi: Adding symbol strncpy_from_user (lib/strncpy_from_user.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strlcpy (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strchr (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol simple_strtoull (lib/vsprintf.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol simple_strtol (lib/vsprintf.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol memparse (lib/cmdline.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strsep (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol kstrtoll (lib/kstrtox.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol __bitmap_weight (lib/bitmap.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol vsprintf (lib/vsprintf.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol vsnprintf (lib/vsprintf.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strstr (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strrchr (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strlcat (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strcpy (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol sprintf (lib/vsprintf.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strnlen (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strncpy (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol snprintf (lib/vsprintf.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol memcmp (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol dump_stack (lib/dump_stack.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strncmp (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol sscanf (lib/vsprintf.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol memset (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol memmove (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol __list_add_valid (lib/list_debug.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strlen (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol strcmp (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol memcpy (lib/string.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol _copy_to_user (lib/usercopy.c) (Čestmír Kalina) [2008872]
+- kabi: Adding symbol _copy_from_user (lib/usercopy.c) (Čestmír Kalina) [2008872]
+- block: bio-integrity: Advance seed correctly for larger interval sizes (Ming Lei) [2044184]
+- blk-mq: Fix wrong wakeup batch configuration which will cause hang (Ming Lei) [2044184]
+- block: fix memory leak in disk_register_independent_access_ranges (Ming Lei) [2044184]
+- block: fix async_depth sysfs interface for mq-deadline (Ming Lei) [2044184]
+- blk-mq: fix tag_get wait task can't be awakened (Ming Lei) [2044184]
+- block: Fix wrong offset in bio_truncate() (Ming Lei) [2044184]
+- block: assign bi_bdev for cloned bios in blk_rq_prep_clone (Ming Lei) [2044184]
+- block: Fix fsync always failed if once failed (Ming Lei) [2044184]
+- block: don't protect submit_bio_checks by q_usage_counter (Ming Lei) [2044184]
+- blk-mq: use bio->bi_opf after bio is checked (Ming Lei) [2044184]
+- block: fix double bio queue when merging in cached request path (Ming Lei) [2044184]
+- blk-mq: cleanup request allocation (Ming Lei) [2044184]
+- blk-mq: simplify the plug handling in blk_mq_submit_bio (Ming Lei) [2044184]
+- block: null_blk: only set set->nr_maps as 3 if active poll_queues is > 0 (Ming Lei) [2044184]
+- null_blk: allow zero poll queues (Ming Lei) [2044184]
+- iocost: Fix divide-by-zero on donation from low hweight cgroup (Ming Lei) [2044184]
+- block: fix ioprio_get(IOPRIO_WHO_PGRP) vs setuid(2) (Ming Lei) [2044184]
+- block: fix single bio async DIO error handling (Ming Lei) [2044184]
+- usb: xhci: Extend support for runtime power management for AMD's Yellow carp. (Renjith Pananchikkal) [2015776]
+- usb: xhci: Enable runtime-pm by default on AMD Yellow Carp platform (Renjith Pananchikkal) [2015776]
+- redhat: switch the vsyscall config to CONFIG_LEGACY_VSYSCALL_XONLY=y (Herton R. Krzesinski) [2023041]
+- ice: Implement support for SMA and U.FL on E810-T (Jonathan Toppins) [1975008]
+- ice: Add support for SMA control multiplexer (Jonathan Toppins) [1975008]
+- ice: Implement functions for reading and setting GPIO pins (Jonathan Toppins) [1975008]
+- ice: Refactor ice_aqc_link_topo_addr (Jonathan Toppins) [1975008]
+
 * Mon Feb 21 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-66.el9]
 - lockd: fix failure to cleanup client locks (Scott Mayhew) [2049200]
 - lockd: fix server crash on reboot of client holding lock (Scott Mayhew) [2049200]
