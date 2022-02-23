@@ -1,0 +1,37 @@
+From 48068b4e3675eac937d64530e26a1c4a6b344523 Mon Sep 17 00:00:00 2001
+From: Pablo Greco <pgreco@centosproject.org>
+Date: Tue, 22 Feb 2022 23:12:06 +0000
+Subject: [PATCH] Fix build on i686
+
+---
+ arch/x86/kernel/resource.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/x86/kernel/resource.c b/arch/x86/kernel/resource.c
+index e8dc9bc..5038c99 100644
+--- a/arch/x86/kernel/resource.c
++++ b/arch/x86/kernel/resource.c
+@@ -1,7 +1,9 @@
+ // SPDX-License-Identifier: GPL-2.0
+ #include <linux/ioport.h>
+ #include <asm/e820/api.h>
++#ifdef CONFIG_X86_64
+ #include <asm/pci_x86.h>
++#endif
+ 
+ static void resource_clip(struct resource *res, resource_size_t start,
+ 			  resource_size_t end)
+@@ -29,8 +31,10 @@ static void remove_e820_regions(struct resource *avail)
+ 	int i;
+ 	struct e820_entry *entry;
+ 
++#ifdef CONFIG_X86_64
+ 	if (!pci_use_e820)
+ 		return;
++#endif
+ 
+ 	for (i = 0; i < e820_table->nr_entries; i++) {
+ 		entry = &e820_table->entries[i];
+-- 
+2.18.4
+

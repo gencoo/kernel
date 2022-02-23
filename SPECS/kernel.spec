@@ -331,12 +331,14 @@ Summary: The Linux kernel
 %if %{with_baseonly}
 %define with_pae 0
 %define with_debug 0
+%define with_vdso_install 0
 %endif
 
 # if requested, only build pae kernel
 %if %{with_paeonly}
 %define with_up 0
 %define with_debug 0
+%define with_vdso_install 0
 %endif
 
 # if requested, only build debug kernel
@@ -344,6 +346,7 @@ Summary: The Linux kernel
 %if %{debugbuildsenabled}
 %define with_up 0
 %endif
+%define with_vdso_install 0
 %define with_pae 0
 %define with_tools 0
 %define with_perf 0
@@ -429,6 +432,7 @@ Summary: The Linux kernel
 %define make_target vmlinux
 %define kernel_image vmlinux
 %define kernel_image_elf 1
+%define use_vdso 0
 %define all_arch_configs kernel-%{version}-ppc64le*.config
 %define kcflags -O3
 %endif
@@ -832,6 +836,7 @@ Source5000: patch-5.%{base_sublevel}-git%{gitrev}.xz
 %if !%{nopatches}
 
 Patch6: fedora-v5.15.patch
+Patch7: 0001-Fix-build-on-i686.patch
 Patch11: 0001-kdump-round-up-the-total-memory-size-to-128M-for-cra.patch
 #Patch12: 0001-kdump-add-support-for-crashkernel-auto.patch
 #Patch15: 0001-kdump-fix-a-grammar-issue-in-a-kernel-message.patch
@@ -854,7 +859,11 @@ Patch104: 0001-brcm-rpi4-fix-usb-numeration.patch
 
 # RPi-4 and wifi issues
 #Patch105: arm-dts-rpi-4-disable-wifi-frequencies.patch
+%ifarch aarch64
 Patch10000: linux-honeycomb-5.15.y.patch
+%else
+Source10000: linux-honeycomb-5.15.y.patch
+%endif
 
 # END OF PATCH DEFINITIONS
 
@@ -2031,7 +2040,9 @@ BuildKernel() {
 
     cp -a --parents tools/arch/x86/include/asm $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
     cp -a --parents tools/arch/x86/include/uapi/asm $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
-    cp -a --parents tools/objtool/arch/x86/lib $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    if [ -d tools/objtool/arch/x86/lib ];then
+        cp -a --parents tools/objtool/arch/x86/lib $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
+    fi
     cp -a --parents tools/arch/x86/lib/ $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
     cp -a --parents tools/arch/x86/tools/gen-insn-attr-x86.awk $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
     cp -a --parents tools/objtool/arch/x86/ $RPM_BUILD_ROOT/lib/modules/$KernelVer/build
