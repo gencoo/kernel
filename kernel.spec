@@ -79,7 +79,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 69
+%global distro_build 70
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -123,13 +123,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 69.el9
+%define pkgrelease 70.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 69%{?buildid}%{?dist}
+%define specrelease 70%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -678,7 +678,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-69.el9.tar.xz
+Source0: linux-5.14.0-70.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1345,8 +1345,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-69.el9 -c
-mv linux-5.14.0-69.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-70.el9 -c
+mv linux-5.14.0-70.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2945,6 +2945,20 @@ fi
 #
 #
 %changelog
+* Thu Feb 24 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-70.el9]
+- stmmac/intel: mark driver as tech preview (Mark Salter) [2045594]
+- net: stmmac: Add GFP_DMA32 for rx buffers if no 64 capability (Mark Salter) [2045594]
+- mm: fix invalid page pointer returned with FOLL_PIN gups (Peter Xu) [2037300]
+- tipc: improve size validations for received domain records (Xin Long) [2048972] {CVE-2022-0435}
+- cgroup-v1: Require capabilities to set release_agent (Waiman Long) [2052168] {CVE-2022-0492}
+- bpf, arm64: Use emit_addr_mov_i64() for BPF_PSEUDO_FUNC (Yauheni Kaliuta) [2033596]
+- bpf: Stop caching subprog index in the bpf_pseudo_func insn (Yauheni Kaliuta) [2033596]
+- ucount: Make get_ucount a safe get_user replacement (Alexey Gladkov) [2049040] {CVE-2022-24122}
+- ucounts: Add get_ucounts_or_wrap for clarity (Alexey Gladkov) [2049040]
+- ucounts: Remove unnecessary test for NULL ucount in get_ucounts (Alexey Gladkov) [2049040]
+- ucounts: Use atomic_long_sub_return for clarity (Alexey Gladkov) [2049040]
+- ucounts: Fix rlimit max values check (Alexey Gladkov) [2049040]
+
 * Wed Feb 23 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-69.el9]
 - config: mt76: set CONFIG_MT7921S to not set, like in ark (Íñigo Huguet) [2043454]
 - config: rtw89: enable driver and device RTL8852AE (Íñigo Huguet) [2043454]
