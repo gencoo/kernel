@@ -70,7 +70,7 @@ Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
  1 file changed, 133 insertions(+), 1 deletion(-)
 
 diff --git a/drivers/acpi/arm64/iort.c b/drivers/acpi/arm64/iort.c
-index 3b23fb775ac4..d76ba46ebe67 100644
+index f2f8f05662de..7df83d80819b 100644
 --- a/drivers/acpi/arm64/iort.c
 +++ b/drivers/acpi/arm64/iort.c
 @@ -40,6 +40,8 @@ struct iort_fwnode {
@@ -92,7 +92,7 @@ index 3b23fb775ac4..d76ba46ebe67 100644
  			*id_out = map->output_base;
  			return parent;
  		}
-@@ -1566,6 +1569,134 @@ static void __init iort_enable_acs(struct acpi_iort_node *iort_node)
+@@ -1574,6 +1577,134 @@ static void __init iort_enable_acs(struct acpi_iort_node *iort_node)
  #else
  static inline void iort_enable_acs(struct acpi_iort_node *iort_node) { }
  #endif
@@ -227,7 +227,7 @@ index 3b23fb775ac4..d76ba46ebe67 100644
  
  static void __init iort_init_platform_devices(void)
  {
-@@ -1636,6 +1767,7 @@ void __init acpi_iort_init(void)
+@@ -1644,6 +1775,7 @@ void __init acpi_iort_init(void)
  	}
  
  	iort_init_platform_devices();
@@ -358,7 +358,7 @@ Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
  3 files changed, 49 insertions(+)
 
 diff --git a/drivers/acpi/arm64/iort.c b/drivers/acpi/arm64/iort.c
-index d76ba46ebe67..3c32d62e63b6 100644
+index 7df83d80819b..66d200e577cb 100644
 --- a/drivers/acpi/arm64/iort.c
 +++ b/drivers/acpi/arm64/iort.c
 @@ -809,6 +809,42 @@ static struct acpi_iort_node *iort_get_msi_resv_iommu(struct device *dev)
@@ -878,7 +878,7 @@ Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
  3 files changed, 22 insertions(+), 11 deletions(-)
 
 diff --git a/drivers/acpi/arm64/iort.c b/drivers/acpi/arm64/iort.c
-index 3c32d62e63b6..7568618b3e22 100644
+index 66d200e577cb..c397c980a7f4 100644
 --- a/drivers/acpi/arm64/iort.c
 +++ b/drivers/acpi/arm64/iort.c
 @@ -809,6 +809,16 @@ static struct acpi_iort_node *iort_get_msi_resv_iommu(struct device *dev)
@@ -908,7 +908,7 @@ index 3c32d62e63b6..7568618b3e22 100644
  #endif
  
  static int nc_dma_get_range(struct device *dev, u64 *size)
-@@ -1682,19 +1695,8 @@ static void __init iort_node_get_rmr_info(struct acpi_iort_node *iort_node)
+@@ -1690,19 +1703,8 @@ static void __init iort_node_get_rmr_info(struct acpi_iort_node *iort_node)
  		}
  		if (rmr->flags & IOMMU_RMR_REMAP_PERMITTED) {
  			type = IOMMU_RESV_DIRECT_RELAXABLE;
@@ -1077,7 +1077,7 @@ Signed-off-by: Meenakshi Aggarwal <meenakshi.aggarwal@nxp.com>
  1 file changed, 39 insertions(+), 23 deletions(-)
 
 diff --git a/drivers/mmc/host/sdhci-of-esdhc.c b/drivers/mmc/host/sdhci-of-esdhc.c
-index a593b1fbd69e..cc880bf3f0bf 100644
+index 0f3658b36513..c11544f6047b 100644
 --- a/drivers/mmc/host/sdhci-of-esdhc.c
 +++ b/drivers/mmc/host/sdhci-of-esdhc.c
 @@ -10,6 +10,7 @@
@@ -1103,7 +1103,7 @@ index a593b1fbd69e..cc880bf3f0bf 100644
  struct sdhci_esdhc {
  	u8 vendor_ver;
  	u8 spec_ver;
-@@ -1366,29 +1375,35 @@ static void esdhc_init(struct platform_device *pdev, struct sdhci_host *host)
+@@ -1370,29 +1379,35 @@ static void esdhc_init(struct platform_device *pdev, struct sdhci_host *host)
  		esdhc->clk_fixup = match->data;
  	np = pdev->dev.of_node;
  
@@ -1161,7 +1161,7 @@ index a593b1fbd69e..cc880bf3f0bf 100644
  
  	esdhc_clock_enable(host, false);
  	val = sdhci_readl(host, ESDHC_DMA_SYSCTL);
-@@ -1421,7 +1436,7 @@ static int sdhci_esdhc_probe(struct platform_device *pdev)
+@@ -1425,7 +1440,7 @@ static int sdhci_esdhc_probe(struct platform_device *pdev)
  
  	np = pdev->dev.of_node;
  
@@ -1170,7 +1170,7 @@ index a593b1fbd69e..cc880bf3f0bf 100644
  		host = sdhci_pltfm_init(pdev, &sdhci_esdhc_le_pdata,
  					sizeof(struct sdhci_esdhc));
  	else
-@@ -1506,6 +1521,7 @@ static struct platform_driver sdhci_esdhc_driver = {
+@@ -1510,6 +1525,7 @@ static struct platform_driver sdhci_esdhc_driver = {
  		.name = "sdhci-esdhc",
  		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
  		.of_match_table = sdhci_esdhc_of_match,
@@ -1201,7 +1201,7 @@ Signed-off-by: Meharbaan <meharbaan.ali@puresoftware.com>
  3 files changed, 45 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/base/property.c b/drivers/base/property.c
-index 453918eb7390..42ada28b42f9 100644
+index 4c77837769c6..f478a0d10634 100644
 --- a/drivers/base/property.c
 +++ b/drivers/base/property.c
 @@ -17,6 +17,7 @@
@@ -1257,11 +1257,11 @@ index 453918eb7390..42ada28b42f9 100644
   * fwnode_get_phy_mode - Get phy mode for given firmware node
   * @fwnode:	Pointer to the given node
 diff --git a/drivers/mmc/host/sdhci-of-esdhc.c b/drivers/mmc/host/sdhci-of-esdhc.c
-index cc880bf3f0bf..5c106129404e 100644
+index c11544f6047b..6e67bff51454 100644
 --- a/drivers/mmc/host/sdhci-of-esdhc.c
 +++ b/drivers/mmc/host/sdhci-of-esdhc.c
-@@ -541,8 +541,11 @@ static int esdhc_of_enable_dma(struct sdhci_host *host)
- 		dma_set_mask_and_coherent(dev, DMA_BIT_MASK(40));
+@@ -545,8 +545,11 @@ static int esdhc_of_enable_dma(struct sdhci_host *host)
+ 	}
  
  	value = sdhci_readl(host, ESDHC_DMA_SYSCTL);
 -
@@ -1480,10 +1480,10 @@ Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/drivers/iommu/iommu.c b/drivers/iommu/iommu.c
-index 3303d707bab4..ce617eb9d1ad 100644
+index 7f409e9eea4b..2dc9592ff309 100644
 --- a/drivers/iommu/iommu.c
 +++ b/drivers/iommu/iommu.c
-@@ -899,7 +899,7 @@ int iommu_group_add_device(struct iommu_group *group, struct device *dev)
+@@ -905,7 +905,7 @@ int iommu_group_add_device(struct iommu_group *group, struct device *dev)
  
  	trace_add_device_to_group(group->id, dev);
  
@@ -1492,7 +1492,7 @@ index 3303d707bab4..ce617eb9d1ad 100644
  
  	return 0;
  
-@@ -936,7 +936,7 @@ void iommu_group_remove_device(struct device *dev)
+@@ -942,7 +942,7 @@ void iommu_group_remove_device(struct device *dev)
  	if (!group)
  		return;
  
@@ -2186,7 +2186,7 @@ Signed-off-by: Peter Zijlstra (Intel) <peterz@infradead.org>
  4 files changed, 28 insertions(+)
 
 diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
-index fee914c716aa..14f51006d003 100644
+index 0758ea0717f9..359db6a4739e 100644
 --- a/arch/arm64/Kconfig
 +++ b/arch/arm64/Kconfig
 @@ -989,6 +989,15 @@ config SCHED_MC
@@ -2354,7 +2354,7 @@ index 630ff08532be..08b0e90623ad 100644
  DECLARE_EARLY_PER_CPU_READ_MOSTLY(u32, x86_cpu_to_acpiid);
  DECLARE_EARLY_PER_CPU_READ_MOSTLY(u16, x86_bios_cpu_apicid);
 diff --git a/arch/x86/include/asm/topology.h b/arch/x86/include/asm/topology.h
-index 9239399e5491..cc164777e661 100644
+index 55160445ea78..2f0b6be8eaab 100644
 --- a/arch/x86/include/asm/topology.h
 +++ b/arch/x86/include/asm/topology.h
 @@ -103,6 +103,7 @@ static inline void setup_node_to_cpumask_map(void) { }
