@@ -79,7 +79,7 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 70
+%global distro_build 71
 
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
@@ -123,13 +123,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 70.el9
+%define pkgrelease 71.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 70%{?buildid}%{?dist}
+%define specrelease 71%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -678,7 +678,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-70.el9.tar.xz
+Source0: linux-5.14.0-71.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1345,8 +1345,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-70.el9 -c
-mv linux-5.14.0-70.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-71.el9 -c
+mv linux-5.14.0-71.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2945,6 +2945,33 @@ fi
 #
 #
 %changelog
+* Tue Mar 08 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-71.el9]
+- CI: Build coverage RPMs on c9s environment (Veronika Kabatova)
+- md: use default_groups in kobj_type (Nigel Croxon) [2042797]
+- md: Move alloc/free acct bioset in to personality (Nigel Croxon) [2042797]
+- md: fix spelling of "its" (Nigel Croxon) [2042797]
+- md: raid456 add nowait support (Nigel Croxon) [2042797]
+- md: raid10 add nowait support (Nigel Croxon) [2042797]
+- md: raid1 add nowait support (Nigel Croxon) [2042797]
+- md: add support for REQ_NOWAIT (Nigel Croxon) [2042797]
+- md: drop queue limitation for RAID1 and RAID10 (Nigel Croxon) [2042797]
+- md/raid5: play nice with PREEMPT_RT (Nigel Croxon) [2042797]
+- md/raid1: fix missing bitmap update w/o WriteMostly devices (Nigel Croxon) [2042797]
+- md: fix double free of mddev->private in autorun_array() (Nigel Croxon) [2042797]
+- md: fix update super 1.0 on rdev size change (Nigel Croxon) [2042797]
+- raid5-ppl: use swap() to make code cleaner (Nigel Croxon) [2042797]
+- md/bitmap: don't set max_write_behind if there is no write mostly device (Nigel Croxon) [2042797]
+- md: update superblock after changing rdev flags in state_store (Nigel Croxon) [2042797]
+- md: remove unused argument from md_new_event (Nigel Croxon) [2042797]
+- md/raid5: call roundup_pow_of_two in raid5_run (Nigel Croxon) [2042797]
+- md/raid1: use rdev in raid1_write_request directly (Nigel Croxon) [2042797]
+- md/raid1: only allocate write behind bio fof WriteMostly device (Nigel Croxon) [2042797]
+- md: properly unwind when failing to add the kobject in md_alloc (Nigel Croxon) [2042797]
+- md: extend disks_mutex coverage (Nigel Croxon) [2042797]
+- md: add the bitmap group to the default groups for the md kobject (Nigel Croxon) [2042797]
+- md: add error handling support for add_disk() (Nigel Croxon) [2042797]
+- redhat: Bump RHEL_MINOR for 9.1 (Patrick Talbert)
+
 * Thu Feb 24 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-70.el9]
 - stmmac/intel: mark driver as tech preview (Mark Salter) [2045594]
 - net: stmmac: Add GFP_DMA32 for rx buffers if no 64 capability (Mark Salter) [2045594]
