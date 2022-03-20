@@ -79,8 +79,6 @@ Summary: The Linux kernel
 #  the --with-release option overrides this setting.)
 %define debugbuildsenabled 1
 
-%global distro_build 72
-
 %if 0%{?fedora}
 %define secure_boot_arch x86_64
 %else
@@ -123,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 72.el9
+%define pkgrelease 73.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 72%{?buildid}%{?dist}
+%define specrelease 73%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -678,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-72.el9.tar.xz
+Source0: linux-5.14.0-73.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -795,8 +793,8 @@ Source211: Module.kabi_dup_ppc64le
 Source212: Module.kabi_dup_s390x
 Source213: Module.kabi_dup_x86_64
 
-Source300: kernel-abi-stablelists-%{rpmversion}-%{distro_build}.tar.bz2
-Source301: kernel-kabi-dw-%{rpmversion}-%{distro_build}.tar.bz2
+Source300: kernel-abi-stablelists-%{rpmversion}-%{pkgrelease}.tar.bz2
+Source301: kernel-kabi-dw-%{rpmversion}-%{pkgrelease}.tar.bz2
 
 # Sources for kernel-tools
 Source2000: cpupower.service
@@ -1348,8 +1346,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-72.el9 -c
-mv linux-5.14.0-72.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-73.el9 -c
+mv linux-5.14.0-73.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2968,6 +2966,66 @@ fi
 #
 #
 %changelog
+* Sun Mar 20 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-73.el9]
+- CI: Use 9.0-rt branch for rhel-9 realtime_check (Juri Lelli)
+- redhat: enable zstream release numbering for rhel 9.0 (Herton R. Krzesinski)
+- redhat: change kabi tarballs to use the package release (Herton R. Krzesinski)
+- redhat: generate distgit changelog in genspec.sh as well (Herton R. Krzesinski)
+- redhat: make genspec prefer metadata from git notes (Herton R. Krzesinski)
+- redhat: use tags from git notes for zstream to generate changelog (Herton R. Krzesinski)
+- CI: Add disttag setting (Veronika Kabatova)
+- CI: Drop c9s config (Veronika Kabatova)
+- virtio-net: fix pages leaking when building skb in big mode (Laurent Vivier) [2042559]
+- lib/iov_iter: initialize "flags" in new pipe_buffer (Carlos Maiolino) [2060869] {CVE-2022-0847}
+- redhat/configs: Make CRYPTO_ECDH algos built-in (Simo Sorce) [2062199]
+- crypto: api - Move cryptomgr soft dependency into algapi (Vladis Dronov) [2062199]
+- crypto: api - Fix boot-up crash when crypto manager is disabled (Vladis Dronov) [2062199]
+- crypto: api - Do not create test larvals if manager is disabled (Vladis Dronov) [2062199]
+- crypto: api - Export crypto_boot_test_finished (Vladis Dronov) [2062199]
+- crypto: api - Fix built-in testing dependency failures (Vladis Dronov) [2062199]
+- redhat/configs: Add CRYPTO_AES_ARM64 config explicitly (Vladis Dronov) [2062199]
+- crypto: arm64/aes-ce - stop using SIMD helper for skciphers (Vladis Dronov) [2062199]
+- crypto: arm64/aes-neonbs - stop using SIMD helper for skciphers (Vladis Dronov) [2062199]
+- redhat: change default dist suffix for RHEL 9.0 (Herton R. Krzesinski)
+- selftests: kvm: Check whether SIDA memop fails for normal guests (Thomas Huth) [2050813]
+- KVM: s390: Return error on SIDA memop on normal guest (Thomas Huth) [2050813]
+- block: kabi: reserve space for block layer public structure (Ming Lei) [2057238]
+- block: kabi: reserve space for blk-mq related structure (Ming Lei) [2057238]
+- block: kabi: reserve space for bsg related structure (Ming Lei) [2057238]
+- block: kabi: reserve space for integrity related structure (Ming Lei) [2057238]
+- scsi: lpfc: Fix pt2pt NVMe PRLI reject LOGO loop (Dick Kennedy) [2054866]
+- x86/MCE/AMD, EDAC/mce_amd: Support non-uniform MCA bank type enumeration (Aristeu Rozanski) [1898165 2047430 2047446]
+- x86/MCE/AMD, EDAC/mce_amd: Add new SMCA bank types (Aristeu Rozanski) [1898165 2047430 2047446]
+- EDAC/amd64: Add support for AMD Family 19h Models 10h-1Fh and A0h-AFh (Aristeu Rozanski) [1898165 2047430 2047446]
+- EDAC: Add RDDR5 and LRDDR5 memory types (Aristeu Rozanski) [1898165 2047430 2047446]
+- drm/amdgpu: Register MCE notifier for Aldebaran RAS (Aristeu Rozanski) [1898165 2047430 2047446]
+- x86/MCE/AMD: Export smca_get_bank_type symbol (Aristeu Rozanski) [1898165 2047430 2047446]
+- PCI/ACPI: Fix acpi_pci_osc_control_set() kernel-doc comment (Mark Langsdorf) [2049635]
+- PCI/ACPI: Check for _OSC support in acpi_pci_osc_control_set() (Mark Langsdorf) [2049635]
+- PCI/ACPI: Move _OSC query checks to separate function (Mark Langsdorf) [2049635]
+- PCI/ACPI: Move supported and control calculations to separate functions (Mark Langsdorf) [2049635]
+- PCI/ACPI: Remove OSC_PCI_SUPPORT_MASKS and OSC_PCI_CONTROL_MASKS (Mark Langsdorf) [2049635]
+- nvmet-tcp: fix missing unmainted messages (Chris Leech) [2054441]
+- dm stats: fix too short end duration_ns when using precise_timestamps (Benjamin Marzinski) [2051798]
+- dm: fix double accounting of flush with data (Benjamin Marzinski) [2051798]
+- dm: interlock pending dm_io and dm_wait_for_bios_completion (Benjamin Marzinski) [2051798]
+- dm: properly fix redundant bio-based IO accounting (Benjamin Marzinski) [2051798]
+- dm: revert partial fix for redundant bio-based IO accounting (Benjamin Marzinski) [2051798]
+- block: add bio_start_io_acct_time() to control start_time (Benjamin Marzinski) [2051798]
+- scsi: mpt3sas: Fix incorrect system timestamp (Tomas Henzl) [2049631]
+- scsi: mpt3sas: Fix system going into read-only mode (Tomas Henzl) [2049631]
+- scsi: mpt3sas: Fix kernel panic during drive powercycle test (Tomas Henzl) [2049631]
+- redhat/configs: enable mellanox platform drivers to support LED, fan & watchdog devices (Ivan Vecera) [2057491]
+- x86/cpu: Drop spurious underscore from RAPTOR_LAKE #define (David Arcari) [2040022]
+- x86/cpu: Add Raptor Lake to Intel family (David Arcari) [2040022]
+- powerpc/64: Move paca allocation later in boot (Desnes A. Nunes do Rosario) [2055566]
+- powerpc: Set crashkernel offset to mid of RMA region (Desnes A. Nunes do Rosario) [2055566]
+- selftests: kvm: Check whether SIDA memop fails for normal guests (Thomas Huth) [2060814]
+- KVM: s390: Return error on SIDA memop on normal guest (Thomas Huth) [2060814]
+- igb: refactor XDP registration (Corinna Vinschen) [2054379]
+- igc: avoid kernel warning when changing RX ring parameters (Corinna Vinschen) [2054379]
+- redhat/configs: Enable CONFIG_ACER_WIRELESS (Peter Georg) [2025985]
+
 * Tue Mar 15 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-72.el9]
 - spec: Fix separate tools build (Jiri Olsa) [2054579]
 - redhat: use centos x509.genkey file if building under centos (Herton R. Krzesinski) [2029952]
