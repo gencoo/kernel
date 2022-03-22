@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 73.el9
+%define pkgrelease 74.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 73%{?buildid}%{?dist}
+%define specrelease 74%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-73.el9.tar.xz
+Source0: linux-5.14.0-74.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1346,8 +1346,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-73.el9 -c
-mv linux-5.14.0-73.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-74.el9 -c
+mv linux-5.14.0-74.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2966,6 +2966,11 @@ fi
 #
 #
 %changelog
+* Tue Mar 22 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-74.el9]
+- redhat: rpminspect: disable 'patches' check for known empty patch files (Patrick Talbert)
+- KVM: x86/mmu: Don't advance iterator after restart due to yielding (Nico Pache) [2055725]
+- ibmvnic: don't release napi in __ibmvnic_open() (Diego Domingos) [2055981]
+
 * Sun Mar 20 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-73.el9]
 - CI: Use 9.0-rt branch for rhel-9 realtime_check (Juri Lelli)
 - redhat: enable zstream release numbering for rhel 9.0 (Herton R. Krzesinski)
