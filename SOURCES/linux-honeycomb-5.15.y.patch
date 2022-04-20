@@ -260,7 +260,7 @@ Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
  2 files changed, 42 insertions(+)
 
 diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
-index 2d6021644000..b49651349efb 100644
+index 276b6fcc80ad..9e6977bf930f 100644
 --- a/drivers/iommu/dma-iommu.c
 +++ b/drivers/iommu/dma-iommu.c
 @@ -174,6 +174,35 @@ void iommu_put_dma_cookie(struct iommu_domain *domain)
@@ -414,7 +414,7 @@ index 7df83d80819b..66d200e577cb 100644
  
  static int nc_dma_get_range(struct device *dev, u64 *size)
 diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
-index b49651349efb..9e27978ce111 100644
+index 9e6977bf930f..5cabcaa97744 100644
 --- a/drivers/iommu/dma-iommu.c
 +++ b/drivers/iommu/dma-iommu.c
 @@ -185,6 +185,9 @@ EXPORT_SYMBOL(iommu_put_dma_cookie);
@@ -479,10 +479,10 @@ Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
  1 file changed, 15 insertions(+), 13 deletions(-)
 
 diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-index a388e318f86e..23acac6d89c7 100644
+index 430315135cff..8acc86073953 100644
 --- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
 +++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-@@ -2529,6 +2529,19 @@ static bool arm_smmu_sid_in_range(struct arm_smmu_device *smmu, u32 sid)
+@@ -2530,6 +2530,19 @@ static bool arm_smmu_sid_in_range(struct arm_smmu_device *smmu, u32 sid)
  	return sid < limit;
  }
  
@@ -502,7 +502,7 @@ index a388e318f86e..23acac6d89c7 100644
  static int arm_smmu_insert_master(struct arm_smmu_device *smmu,
  				  struct arm_smmu_master *master)
  {
-@@ -2552,20 +2565,9 @@ static int arm_smmu_insert_master(struct arm_smmu_device *smmu,
+@@ -2553,20 +2566,9 @@ static int arm_smmu_insert_master(struct arm_smmu_device *smmu,
  		new_stream->id = sid;
  		new_stream->master = master;
  
@@ -554,7 +554,7 @@ Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
  1 file changed, 13 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-index 23acac6d89c7..12b5c9677df8 100644
+index 8acc86073953..c1cb83cf2b5b 100644
 --- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
 +++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
 @@ -1374,12 +1374,21 @@ static void arm_smmu_write_strtab_ent(struct arm_smmu_master *master, u32 sid,
@@ -590,7 +590,7 @@ index 23acac6d89c7..12b5c9677df8 100644
  	arm_smmu_write_strtab_l1_desc(strtab, desc);
  	return 0;
  }
-@@ -3053,7 +3062,7 @@ static int arm_smmu_init_strtab_linear(struct arm_smmu_device *smmu)
+@@ -3054,7 +3063,7 @@ static int arm_smmu_init_strtab_linear(struct arm_smmu_device *smmu)
  	reg |= FIELD_PREP(STRTAB_BASE_CFG_LOG2SIZE, smmu->sid_bits);
  	cfg->strtab_base_cfg = reg;
  
@@ -623,10 +623,10 @@ Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
  1 file changed, 31 insertions(+)
 
 diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-index 12b5c9677df8..22fa2900ad44 100644
+index c1cb83cf2b5b..3732cecb6cca 100644
 --- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
 +++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-@@ -3769,6 +3769,34 @@ static void __iomem *arm_smmu_ioremap(struct device *dev, resource_size_t start,
+@@ -3770,6 +3770,34 @@ static void __iomem *arm_smmu_ioremap(struct device *dev, resource_size_t start,
  	return devm_ioremap_resource(dev, &res);
  }
  
@@ -661,7 +661,7 @@ index 12b5c9677df8..22fa2900ad44 100644
  static int arm_smmu_device_probe(struct platform_device *pdev)
  {
  	int irq, ret;
-@@ -3850,6 +3878,9 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
+@@ -3851,6 +3879,9 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
  	/* Record our private device structure */
  	platform_set_drvdata(pdev, smmu);
  
@@ -778,7 +778,7 @@ Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
  1 file changed, 51 insertions(+), 5 deletions(-)
 
 diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
-index 9e27978ce111..7164acaafcbd 100644
+index 5cabcaa97744..f83426df6f89 100644
 --- a/drivers/iommu/dma-iommu.c
 +++ b/drivers/iommu/dma-iommu.c
 @@ -207,22 +207,68 @@ void iommu_dma_put_rmrs(struct fwnode_handle *iommu_fwnode,
@@ -929,7 +929,7 @@ index 66d200e577cb..c397c980a7f4 100644
  
  		region = iommu_alloc_resv_region(addr, size, prot, type);
 diff --git a/drivers/iommu/dma-iommu.c b/drivers/iommu/dma-iommu.c
-index 7164acaafcbd..a406c374be71 100644
+index f83426df6f89..bdf438bcf2e4 100644
 --- a/drivers/iommu/dma-iommu.c
 +++ b/drivers/iommu/dma-iommu.c
 @@ -243,6 +243,7 @@ static void iommu_dma_get_rmr_resv_regions(struct device *dev,
