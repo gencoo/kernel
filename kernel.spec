@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 80.el9
+%define pkgrelease 81.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 80%{?buildid}%{?dist}
+%define specrelease 81%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-80.el9.tar.xz
+Source0: linux-5.14.0-81.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -988,7 +988,7 @@ This package provides debug information for package kernel-tools.
 # symlinks because of the trailing nonmatching alternation and
 # the leading .*, because of find-debuginfo.sh's buggy handling
 # of matching the pattern against the symlinks file.
-%{expand:%%global _find_debuginfo_opts %{?_find_debuginfo_opts} -p '.*%%{_bindir}/centrino-decode(\.debug)?|.*%%{_bindir}/powernow-k8-decode(\.debug)?|.*%%{_bindir}/cpupower(\.debug)?|.*%%{_libdir}/libcpupower.*|.*%%{_bindir}/turbostat(\.debug)?|.*%%{_bindir}/x86_energy_perf_policy(\.debug)?|.*%%{_bindir}/tmon(\.debug)?|.*%%{_bindir}/lsgpio(\.debug)?|.*%%{_bindir}/gpio-hammer(\.debug)?|.*%%{_bindir}/gpio-event-mon(\.debug)?|.*%%{_bindir}/gpio-watch(\.debug)?|.*%%{_bindir}/iio_event_monitor(\.debug)?|.*%%{_bindir}/iio_generic_buffer(\.debug)?|.*%%{_bindir}/lsiio(\.debug)?|.*%%{_bindir}/intel-speed-select(\.debug)?|.*%%{_bindir}/page_owner_sort(\.debug)?|.*%%{_bindir}/slabinfo(\.debug)?|XXX' -o kernel-tools-debuginfo.list}
+%{expand:%%global _find_debuginfo_opts %{?_find_debuginfo_opts} -p '.*%%{_bindir}/centrino-decode(\.debug)?|.*%%{_bindir}/powernow-k8-decode(\.debug)?|.*%%{_bindir}/cpupower(\.debug)?|.*%%{_libdir}/libcpupower.*|.*%%{_bindir}/turbostat(\.debug)?|.*%%{_bindir}/x86_energy_perf_policy(\.debug)?|.*%%{_bindir}/tmon(\.debug)?|.*%%{_bindir}/lsgpio(\.debug)?|.*%%{_bindir}/gpio-hammer(\.debug)?|.*%%{_bindir}/gpio-event-mon(\.debug)?|.*%%{_bindir}/gpio-watch(\.debug)?|.*%%{_bindir}/iio_event_monitor(\.debug)?|.*%%{_bindir}/iio_generic_buffer(\.debug)?|.*%%{_bindir}/lsiio(\.debug)?|.*%%{_bindir}/intel-speed-select(\.debug)?|.*%%{_bindir}/page_owner_sort(\.debug)?|.*%%{_bindir}/slabinfo(\.debug)?|.*%%{_sbindir}/intel_sdsi(\.debug)?|XXX' -o kernel-tools-debuginfo.list}
 
 # with_tools
 %endif
@@ -1346,8 +1346,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-80.el9 -c
-mv linux-5.14.0-80.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-81.el9 -c
+mv linux-5.14.0-81.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2195,6 +2195,9 @@ chmod +x tools/power/cpupower/utils/version-gen.sh
    pushd tools/power/x86/intel-speed-select
    %{make}
    popd
+   pushd tools/arch/x86/intel_sdsi
+   %{tools_make}
+   popd
 %endif
 %endif
 pushd tools/thermal/tmon/
@@ -2467,6 +2470,9 @@ install -m644 %{SOURCE2001} %{buildroot}%{_sysconfdir}/sysconfig/cpupower
    popd
    pushd tools/power/x86/intel-speed-select
    %{tools_make} CFLAGS+="-D_GNU_SOURCE -Iinclude" DESTDIR=%{buildroot} install
+   popd
+   pushd tools/arch/x86/intel_sdsi
+   %{tools_make} DESTDIR=%{buildroot} install
    popd
 %endif
 pushd tools/thermal/tmon
@@ -2799,6 +2805,7 @@ fi
 %{_bindir}/turbostat
 %{_mandir}/man8/turbostat*
 %{_bindir}/intel-speed-select
+%{_sbindir}/intel_sdsi
 %endif
 # cpupowerarchs
 %endif
@@ -2966,6 +2973,107 @@ fi
 #
 #
 %changelog
+* Tue Apr 26 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-81.el9]
+- powerpc/pseries/vas: Add VAS migration handler (Steve Best) [2028677]
+- powerpc/pseries/vas: Modify reconfig open/close functions for migration (Steve Best) [2028677]
+- powerpc/pseries/vas: Define global hv_cop_caps struct (Steve Best) [2028677]
+- powerpc/pseries/vas: Add 'update_total_credits' entry for QoS capabilities (Steve Best) [2028677]
+- powerpc/pseries/vas: sysfs interface to export capabilities (Steve Best) [2028677]
+- powerpc/pseries/vas: Reopen windows with DLPAR core add (Steve Best) [2028677]
+- powerpc/pseries/vas: Close windows with DLPAR core removal (Steve Best) [2028677]
+- powerpc/vas: Map paste address only if window is active (Steve Best) [2028677]
+- powerpc/vas: Return paste instruction failure if no active window (Steve Best) [2028677]
+- powerpc/vas: Add paste address mmap fault handler (Steve Best) [2028677]
+- powerpc/pseries/vas: Save PID in pseries_vas_window struct (Steve Best) [2028677]
+- powerpc/pseries/vas: Use common names in VAS capability structure (Steve Best) [2028677]
+- s390/kexec: fix return code handling (Lichen Liu) [2017023]
+- s390/kexec: fix memory leak of ipl report buffer (Lichen Liu) [2017023]
+- Build intel_sdsi with %%{tools_make} (David Arcari) [1971952]
+- redhat/kernel.spec.template: Add intel_sdsi utility (David Arcari) [1971952]
+- redhat/configs: enable CONFIG_INTEL_SDSI (David Arcari) [1971952]
+- selftests: sdsi: test sysfs setup (David Arcari) [1971952]
+- tools arch x86: Add Intel SDSi provisiong tool (David Arcari) [1971952]
+- platform/x86: Add Intel Software Defined Silicon driver (David Arcari) [1971952]
+- spi: pxa2xx: Add support for Intel Raptor Lake PCH-S (David Arcari) [2040032]
+- redhat/configs: change intel-lpss to be a loadable module (David Arcari) [2040032]
+- mfd: intel-lpss: Provide an SSP type to the driver (David Arcari) [2040032]
+- mfd: intel-lpss: Add Intel Raptor Lake PCH-S PCI IDs (David Arcari) [2040032]
+- mfd: intel-lpss: Fix I2C4 not being available on the Microsoft Surface Go & Go 2 (David Arcari) [2040032]
+- mfd: intel-lpss-pci: Fix clock speed for 38a8 UART (David Arcari) [2040032]
+- mfd: intel-lpss: Fix too early PM enablement in the ACPI ->probe() (David Arcari) [2040032]
+- mfd: intel-lpss: Add Intel Lakefield PCH PCI IDs (David Arcari) [2040032]
+- mfd: intel-lpss: Add support for MacBookPro16,2 ICL-N UART (David Arcari) [2040032]
+- mfd: intel-lpss: Add Intel Cannon Lake ACPI IDs (David Arcari) [2040032]
+- pinctrl: alderlake: Add Raptor Lake-S ACPI ID (David Arcari) [2040034]
+- pinctrl: tigerlake: Revert "Add Alder Lake-M ACPI ID" (David Arcari) [2040034]
+- pinctrl: intel: fix unexpected interrupt (David Arcari) [2040034]
+- pinctrl: intel: Fix a glitch when updating IRQ flags on a preconfigured line (David Arcari) [2040034]
+- pinctrl: intel: Kconfig: Add configuration menu to Intel pin control (David Arcari) [2040034]
+- i2c: i801: Drop two outdated comments (David Arcari) [2040028]
+- i2c: i801: Add support for the Process Call command (David Arcari) [2040028]
+- i2c: i801: Drop useless masking in i801_access (David Arcari) [2040028]
+- i2c: i801: Add support for Intel Raptor Lake PCH-S (David Arcari) [2040028]
+- eeprom: ee1004: limit i2c reads to I2C_SMBUS_BLOCK_MAX (David Arcari) [2040028]
+- i2c: i801: Don't clear status flags twice in interrupt mode (David Arcari) [2040028]
+- i2c: i801: Don't read back cleared status in i801_check_pre() (David Arcari) [2040028]
+- i2c: i801: Improve handling platform data for tco device (David Arcari) [2040028]
+- i2c: i801: Improve handling of chip-specific feature definitions (David Arcari) [2040028]
+- i2c: i801: Remove i801_set_block_buffer_mode (David Arcari) [2040028]
+- i2c: i801: Don't silently correct invalid transfer size (David Arcari) [2040028]
+- i2c: i801: Fix interrupt storm from SMB_ALERT signal (David Arcari) [2040028]
+- i2c: i801: Restore INTREN on unload (David Arcari) [2040028]
+- i2c: i801: Add support for Intel Ice Lake PCH-N (David Arcari) [2040028]
+- i2c: i801: Fix incorrect and needless software PEC disabling (David Arcari) [2040028]
+- i2c: i801: Stop using pm_runtime_set_autosuspend_delay(-1) (David Arcari) [2040028]
+- i2c: i801: Use PCI bus rescan mutex to protect P2SB access (David Arcari) [2040028]
+- i2c: i801: Improve i801_add_mux (David Arcari) [2040028]
+- i2c: i801: Improve i801_acpi_probe/remove functions (David Arcari) [2040028]
+- i2c: i801: Remove not needed check for PCI_COMMAND_INTX_DISABLE (David Arcari) [2040028]
+- i2c: i801: Improve is_dell_system_with_lis3lv02d (David Arcari) [2040028]
+- i2c: i801: Remove not needed debug message (David Arcari) [2040028]
+- i2c: i801: make p2sb_spinlock a mutex (David Arcari) [2040028]
+- i2c: i801: Improve disabling runtime pm (David Arcari) [2040028]
+- i2c: i801: Fix handling SMBHSTCNT_PEC_EN (David Arcari) [2040028]
+- kABI: Pad the address_space struct (Nico Pache) [2048328]
+- kABI: Pad the readahead_control struct (Nico Pache) [2048328]
+- kABI: Pad the vm_fault struct (Nico Pache) [2048328]
+- kABI: Pad vm_operations_struct (Nico Pache) [2048328]
+- kABI: Pad the mempolicy struct (Nico Pache) [2048328]
+- kABI: Pad mempool_s (Nico Pache) [2048328]
+- kABI: Pad dev_pagemap and dev_pagemap_ops (Nico Pache) [2048328]
+- kABI: Pad struct swap_info_struct (Nico Pache) [2048328]
+- kABI: Pad vmem_altmap (Nico Pache) [2048328]
+- kABI: Pad the vm_area_struct (Nico Pache) [2048328]
+- kABI: Pad the mm_struct (Nico Pache) [2048328]
+- kABI: exclude reclaim_state struct (Nico Pache) [2048328]
+- kABI: Pad the shrinker struct (Nico Pache) [2048328]
+- kABI: Exclude memcg pointer from shrinker (Nico Pache) [2048328]
+- pseries/eeh: Fix the kdump kernel crash during eeh_pseries_init (Steve Best) [2067770]
+- scsi: smartpqi: Update version to 2.1.14-035 (Don Brace) [2012229]
+- scsi: smartpqi: Fix lsscsi -t SAS addresses (Don Brace) [2012229]
+- scsi: smartpqi: Fix hibernate and suspend (Don Brace) [2012229]
+- scsi: smartpqi: Fix BUILD_BUG_ON() statements (Don Brace) [2012229]
+- scsi: smartpqi: Fix NUMA node not updated during init (Don Brace) [2012229]
+- scsi: smartpqi: Expose SAS address for SATA drives (Don Brace) [2012229]
+- scsi: smartpqi: Speed up RAID 10 sequential reads (Don Brace) [2012229]
+- scsi: smartpqi: Fix kdump issue when controller is locked up (Don Brace) [2012229]
+- scsi: smartpqi: Update volume size after expansion (Don Brace) [2012229]
+- scsi: smartpqi: Avoid drive spin-down during suspend (Don Brace) [2012229]
+- scsi: smartpqi: Resolve delay issue with PQI_HZ value (Don Brace) [2012229]
+- scsi: smartpqi: Fix a typo in func pqi_aio_submit_io() (Don Brace) [2012229]
+- scsi: smartpqi: Fix a name typo and cleanup code (Don Brace) [2012229]
+- scsi: smartpqi: Quickly propagate path failures to SCSI midlayer (Don Brace) [2012229]
+- scsi: smartpqi: Eliminate drive spin down on warm boot (Don Brace) [2012229]
+- scsi: smartpqi: Enable SATA NCQ priority in sysfs (Don Brace) [2012229]
+- scsi: smartpqi: Add PCI IDs (Don Brace) [2012229]
+- scsi: smartpqi: Fix rmmod stack trace (Don Brace) [2012229]
+- selftests: xsk: Generate packet directly in umem (Felix Maurer) [2006330]
+- selftests: xsk: Decrease sending speed (Felix Maurer) [2006330]
+- selftests: xsk: Simplify packet validation in xsk tests (Felix Maurer) [2006330]
+- selftests: xsk: Rename worker_* functions that are not thread entry points (Felix Maurer) [2006330]
+- selftests: xsk: Remove end-of-test packet (Felix Maurer) [2006330]
+- RDMA/qedr: Fix reporting max_{send/recv}_wr attrs (Kamal Heib) [2051532]
+
 * Thu Apr 21 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-80.el9]
 - redhat: disable uncommon media device infrastructure (Jarod Wilson) [2074598]
 - netfilter: nf_tables: unregister flowtable hooks on netns exit (Florian Westphal) [2056869]
