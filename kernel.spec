@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 82.el9
+%define pkgrelease 83.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 82%{?buildid}%{?dist}
+%define specrelease 83%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-82.el9.tar.xz
+Source0: linux-5.14.0-83.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1346,8 +1346,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-82.el9 -c
-mv linux-5.14.0-82.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-83.el9 -c
+mv linux-5.14.0-83.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2973,6 +2973,45 @@ fi
 #
 #
 %changelog
+* Fri Apr 29 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-83.el9]
+- redhat/configs: aarch64: enable CPU_FREQ_GOV_SCHEDUTIL (Mark Salter) [2077664]
+- x86/platform/uv: Log gap hole end size (Frank Ramsay) [2074097]
+- x86/platform/uv: Update TSC sync state for UV5 (Frank Ramsay) [2074097]
+- x86/platform/uv: Update NMI Handler for UV5 (Frank Ramsay) [2074097]
+- tun: annotate access to queue->trans_start (Ivan Vecera) [2073453]
+- stmmac: fix build due to brainos in trans_start changes (Ivan Vecera) [2073453]
+- net: no longer stop all TX queues in dev_watchdog() (Ivan Vecera) [2073453]
+- net: do not inline netif_tx_lock()/netif_tx_unlock() (Ivan Vecera) [2073453]
+- net: annotate accesses to queue->trans_start (Ivan Vecera) [2073453]
+- net: use an atomic_long_t for queue->trans_timeout (Ivan Vecera) [2073453]
+- virtio_net: introduce TX timeout watchdog (Ivan Vecera) [2073453]
+- net: remove the unnecessary check in cipso_v4_doi_free (Guillaume Nault) [2074605]
+- net: fix NULL pointer reference in cipso_v4_doi_free (Guillaume Nault) [2074605]
+- selftest/powerpc: Add PAPR sysfs attributes sniff test (Steve Best) [1869665]
+- powerpc/pseries: Interface to represent PAPR firmware attributes (Steve Best) [1869665]
+- x86: intel_epb: Allow model specific normal EPB value (David Arcari) [2068330]
+- redhat: configs: Disable CONFIG_MPLS for s390x/zfcpdump (Guillaume Nault) [2039239]
+- ACPI: CPPC: Amend documentation in the comments (David Arcari) [1961725]
+- ACPI: CPPC: Drop redundant local variable from cpc_read() (David Arcari) [1961725]
+- ACPI: CPPC: Fix up I/O port access in cpc_read() (David Arcari) [1961725]
+- cpufreq: amd-pstate: Fix Kconfig dependencies for AMD P-State (David Arcari) [1961725]
+- cpufreq: amd-pstate: Fix struct amd_cpudata kernel-doc comment (David Arcari) [1961725]
+- cpufreq: amd-pstate: Add AMD P-State performance attributes (David Arcari) [1961725]
+- cpufreq: amd-pstate: Add AMD P-State frequencies attributes (David Arcari) [1961725]
+- cpufreq: amd-pstate: Add boost mode support for AMD P-State (David Arcari) [1961725]
+- cpufreq: amd-pstate: Add trace for AMD P-State module (David Arcari) [1961725]
+- cpufreq: amd-pstate: Introduce the support for the processors with shared memory solution (David Arcari) [1961725]
+- cpufreq: amd-pstate: Add fast switch function for AMD P-State (David Arcari) [1961725]
+- redhat/configs: enable CONFIG_X86_AMD_PSTATE (David Arcari) [1961725]
+- cpufreq: amd-pstate: Introduce a new AMD P-State driver to support future processors (David Arcari) [1961725]
+- tools arch x86: Sync the msr-index.h copy with the kernel sources (David Arcari) [1961725]
+- x86/msr: Add AMD CPPC MSR definitions (David Arcari) [1961725]
+- tools headers cpufeatures: Sync with the kernel sources (David Arcari) [1961725]
+- x86/cpufeatures: Add AMD Collaborative Processor Performance Control feature flag (David Arcari) [1961725]
+- ACPI: CPPC: Add CPPC enable register function (David Arcari) [1961725]
+- ACPI: CPPC: Check present CPUs for determining _CPC is valid (David Arcari) [1961725]
+- ACPI: CPPC: Implement support for SystemIO registers (David Arcari) [1961725]
+
 * Thu Apr 28 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-82.el9]
 - mt76: mt7921e: fix possible probe failure after reboot (Íñigo Huguet) [2065633]
 - mm: lru_cache_disable: replace work queue synchronization with synchronize_rcu (Marcelo Tosatti) [2033500]
