@@ -694,19 +694,7 @@ Source1: Makefile.rhelver
 %define secureboot_ca_0 %{_datadir}/pki/sb-certs/secureboot-ca-%{_arch}.cer
 %define secureboot_key_0 %{_datadir}/pki/sb-certs/secureboot-kernel-%{_arch}.cer
 
-%if 0%{?centos}
-%define pesign_name_0 centossecureboot201
-%else
-%ifarch x86_64 aarch64
-%define pesign_name_0 redhatsecureboot501
-%endif
-%ifarch s390x
-%define pesign_name_0 redhatsecureboot302
-%endif
-%ifarch ppc64le
-%define pesign_name_0 redhatsecureboot601
-%endif
-%endif
+%define pesign_name_0 clsecureboot001
 
 # signkernel
 %endif
@@ -777,8 +765,8 @@ Source82: update_scripts.sh
 
 Source84: mod-internal.list
 
-Source100: rheldup3.x509
-Source101: rhelkpatch1.x509
+Source100: almalinuxdup1.x509
+Source101: almalinuxkpatch1.x509
 
 Source200: check-kabi
 
@@ -1040,11 +1028,11 @@ kernel-gcov includes the gcov graph and source files for gcov coverage collectio
 %endif
 
 %package -n kernel-abi-stablelists
-Summary: The Red Hat Enterprise Linux kernel ABI symbol stablelists
+Summary: The AlmaLinux kernel ABI symbol stablelists
 AutoReqProv: no
 %description -n kernel-abi-stablelists
-The kABI package contains information pertaining to the Red Hat Enterprise
-Linux kernel ABI, including lists of kernel symbols that are needed by
+The kABI package contains information pertaining to the AlmaLinux
+kernel ABI, including lists of kernel symbols that are needed by
 external Linux kernel modules, and a yum plugin to aid enforcement.
 
 %if %{with_kabidw_base}
@@ -1053,8 +1041,8 @@ Summary: The baseline dataset for kABI verification using DWARF data
 Group: System Environment/Kernel
 AutoReqProv: no
 %description kernel-kabidw-base-internal
-The package contains data describing the current ABI of the Red Hat Enterprise
-Linux kernel, suitable for the kabi-dw tool.
+The package contains data describing the current ABI of the AlmaLinux
+kernel, suitable for the kabi-dw tool.
 %endif
 
 #
@@ -1152,7 +1140,7 @@ Requires: kernel%{?1:-%{1}}-modules-uname-r = %{KVERREL}%{?1:+%{1}}\
 AutoReq: no\
 AutoProv: yes\
 %description %{?1:%{1}-}modules-internal\
-This package provides kernel modules for the %{?2:%{2} }kernel package for Red Hat internal usage.\
+This package provides kernel modules for the %{?2:%{2} }kernel package for AlmaLinux internal usage.\
 %{nil}
 
 #
@@ -2071,7 +2059,7 @@ BuildKernel() {
     # prune junk from kernel-devel
     find $RPM_BUILD_ROOT/usr/src/kernels -name ".*.cmd" -delete
 
-    # Red Hat UEFI Secure Boot CA cert, which can be used to authenticate the kernel
+    # AlmaLinux UEFI Secure Boot CA cert, which can be used to authenticate the kernel
     mkdir -p $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer
 %if %{signkernel}
     install -m 0644 %{secureboot_ca_0} $RPM_BUILD_ROOT%{_datadir}/doc/kernel-keys/$KernelVer/kernel-signing-ca.cer
