@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 92.el9
+%define pkgrelease 93.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 92%{?buildid}%{?dist}
+%define specrelease 93%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-92.el9.tar.xz
+Source0: linux-5.14.0-93.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1346,8 +1346,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-92.el9 -c
-mv linux-5.14.0-92.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-93.el9 -c
+mv linux-5.14.0-93.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2973,6 +2973,29 @@ fi
 #
 #
 %changelog
+* Tue May 17 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-93.el9]
+- NFSv4 only print the label when its queried (Benjamin Coddington) [2057327]
+- nvme: expose cntrltype and dctype through sysfs (John Meneghini) [2045550]
+- nvme: send uevent on connection up (John Meneghini) [2045550]
+- xfs: punch out data fork delalloc blocks on COW writeback failure (Andrey Albershteyn) [2039058]
+- macvlan: Fix leaking skb in source mode with nodst option (Davide Caratti) [2079415]
+- net: macvlan: fix potential UAF problem for lowerdev (Davide Caratti) [2079415]
+- net: ipvtap: fix template string argument of device_create() call (Davide Caratti) [2079415]
+- net: macvtap: fix template string argument of device_create() call (Davide Caratti) [2079415]
+- redhat/configs: Set CONFIG_EFI_DISABLE_RUNTIME Kconfig symbol (Javier Martinez Canillas) [2070196]
+- efi: Allow to enable EFI runtime services by default on RT (Javier Martinez Canillas) [2070196]
+- arm64: Restore forced disabling of KPTI on ThunderX (Mark Salter) [2043737]
+- devlink: Clarifies max_macs generic devlink param (Petr Oros) [2073210]
+- devlink: Add new "event_eq_size" generic device param (Petr Oros) [2073210]
+- devlink: Add new "io_eq_size" generic device param (Petr Oros) [2073210]
+- devlink: Simplify devlink resources unregister call (Petr Oros) [2073210]
+- devlink: Remove misleading internal_flags from health reporter dump (Petr Oros) [2073210]
+- devlink: fix flexible_array.cocci warning (Petr Oros) [2073210]
+- devlink: Add 'enable_iwarp' generic device param (Petr Oros) [2073210]
+- eth: fwnode: remove the addr len from mac helpers (Íñigo Huguet) [2069566]
+- eth: fwnode: change the return type of mac address helpers (Íñigo Huguet) [2069566]
+- device property: move mac addr helpers to eth.c (Íñigo Huguet) [2069566]
+
 * Sat May 14 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-92.el9]
 - RDMA/hfi1: Fix use-after-free bug for mm struct (Kamal Heib) [2056772]
 - RDMA/siw: Fix a condition race issue in MPA request processing (Kamal Heib) [2056772]
