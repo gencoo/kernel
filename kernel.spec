@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 94.el9
+%define pkgrelease 95.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 94%{?buildid}%{?dist}
+%define specrelease 95%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-94.el9.tar.xz
+Source0: linux-5.14.0-95.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1346,8 +1346,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-94.el9 -c
-mv linux-5.14.0-94.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-95.el9 -c
+mv linux-5.14.0-95.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2973,6 +2973,14 @@ fi
 #
 #
 %changelog
+* Wed May 18 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-95.el9]
+- mm: create a new system state and fix core_kernel_text() (Patrick Talbert) [2076713]
+- vmxnet3: Remove useless DMA-32 fallback configuration (Kamal Heib) [2083562]
+- vmxnet3: fix minimum vectors alloc issue (Kamal Heib) [2083562]
+- net: vmxnet3: remove multiple false checks in vmxnet3_ethtool.c (Kamal Heib) [2083562]
+- vmxnet3: do not stop tx queues after netif_device_detach() (Kamal Heib) [2083562]
+- openvswitch: Fix setting ipv6 fields causing hw csum failure (Eelco Chaudron) [2076582]
+
 * Wed May 18 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-94.el9]
 - md: fix NULL pointer deref with nowait but no mddev->queue (Nigel Croxon) [2079942]
 - dm integrity: fix memory corruption when tag_size is less than digest size (Benjamin Marzinski) [2081778]
