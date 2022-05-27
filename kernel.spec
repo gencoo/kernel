@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 100.el9
+%define pkgrelease 101.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 100%{?buildid}%{?dist}
+%define specrelease 101%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -676,7 +676,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-100.el9.tar.xz
+Source0: linux-5.14.0-101.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1346,8 +1346,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-100.el9 -c
-mv linux-5.14.0-100.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-101.el9 -c
+mv linux-5.14.0-101.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2739,6 +2739,7 @@ fi
 %if %{with_headers}
 %files headers
 /usr/include/*
+%exclude %{_includedir}/cpufreq.h
 %endif
 
 %if %{with_cross_headers}
@@ -2979,6 +2980,30 @@ fi
 #
 #
 %changelog
+* Fri May 27 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-101.el9]
+- redhat: Exclude cpufreq.h from kernel-headers (Patrick Talbert)
+- tools: Add kmem_cache_alloc_lru() (Waiman Long) [2085412]
+- tools: Move gfp.h and slab.h from radix-tree to lib (Waiman Long) [2085412]
+- mm: workingset: replace IRQ-off check with a lockdep assert. (Waiman Long) [2079537]
+- mm/memcg: disable migration instead of preemption in drain_all_stock(). (Waiman Long) [2079537]
+- mm/memcg: protect memcg_stock with a local_lock_t (Waiman Long) [2079537]
+- mm/memcg: opencode the inner part of obj_cgroup_uncharge_pages() in drain_obj_stock() (Waiman Long) [2079537]
+- mm/memcg: protect per-CPU counter by disabling preemption on PREEMPT_RT where needed. (Waiman Long) [2079537]
+- mm/memcg: disable threshold event handlers on PREEMPT_RT (Waiman Long) [2079537]
+- mm/memcg: revert ("mm/memcg: optimize user context object stock access") (Waiman Long) [2079537]
+- zsmalloc: replace get_cpu_var with local_lock (Waiman Long) [2079537]
+- zsmalloc: replace per zpage lock with pool->migrate_lock (Waiman Long) [2079537]
+- zsmalloc: remove zspage isolation for migration (Waiman Long) [2079537]
+- zsmalloc: move huge compressed obj from page to zspage (Waiman Long) [2079537]
+- zsmalloc: introduce obj_allocated (Waiman Long) [2079537]
+- zsmalloc: decouple class actions from zspage works (Waiman Long) [2079537]
+- zsmalloc: rename zs_stat_type to class_stat_type (Waiman Long) [2079537]
+- zsmalloc: introduce some helper functions (Waiman Long) [2079537]
+- memcg: better bounds on the memcg stats updates (Waiman Long) [2079537]
+- mm: unexport {,un}lock_page_memcg (Waiman Long) [2079537]
+- mm: unexport folio_memcg_{,un}lock (Waiman Long) [2079537]
+- zsmalloc: Stop using slab fields in struct page (Waiman Long) [2079537]
+
 * Thu May 26 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-100.el9]
 - PCI: vmd: Revert 2565e5b69c44 ("PCI: vmd: Do not disable MSI-X remapping if interrupt remapping is enabled by IOMMU.") (Myron Stowe) [2084146]
 - PCI: vmd: Assign VMD IRQ domain before enumeration (Myron Stowe) [2084146]
