@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 106.el9
+%define pkgrelease 107.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 106%{?buildid}%{?dist}
+%define specrelease 107%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-106.el9.tar.xz
+Source0: linux-5.14.0-107.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1349,8 +1349,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-106.el9 -c
-mv linux-5.14.0-106.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-107.el9 -c
+mv linux-5.14.0-107.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2983,6 +2983,29 @@ fi
 #
 #
 %changelog
+* Wed Jun 08 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-107.el9]
+- NFSv4: Fix free of uninitialized nfs4_label on referral lookup. (Benjamin Coddington) [2086367]
+- sched/tracing: Append prev_state to tp args instead (Phil Auld) [2078906]
+- sched/pelt: Fix attach_entity_load_avg() corner case (Phil Auld) [2078906]
+- timers: Fix warning condition in __run_timers() (Phil Auld) [2078906]
+- sched: Teach the forced-newidle balancer about CPU affinity limitation. (Phil Auld) [2078906]
+- sched/core: Fix forceidle balancing (Phil Auld) [2078906]
+- tick/sched: Fix non-kernel-doc comment (Phil Auld) [2078906]
+- prlimit: do not grab the tasklist_lock (Phil Auld) [2078906]
+- prlimit: make do_prlimit() static (Phil Auld) [2078906]
+- timekeeping: Really make sure wall_to_monotonic isn't positive (Phil Auld) [2078906]
+- tick/nohz: Use WARN_ON_ONCE() to prevent console saturation (Phil Auld) [2078906]
+- posix-cpu-timers: Clear task::posix_cputimers_work in copy_process() (Phil Auld) [2078906]
+- timers/nohz: Last resort update jiffies on nohz_full IRQ entry (Phil Auld) [2078906]
+- vdpa: mlx5: synchronize driver status with CVQ (Laurent Vivier) [2059799]
+- vdpa: mlx5: prevent cvq work from hogging CPU (Laurent Vivier) [2059799]
+- vdpa/mlx5: Avoid processing works if workqueue was destroyed (Laurent Vivier) [2059799]
+- selftests/bpf: Fix btf_dump test under new clang (Yauheni Kaliuta) [2090982]
+- ahci: Add a generic 'controller2' RAID id (Tomas Henzl) [2078880]
+- net/af_packet: make sure to pull mac header (Hangbin Liu) [2089566]
+- net/af_packet: add VLAN support for AF_PACKET SOCK_RAW GSO (Hangbin Liu) [2089566]
+- net: openvswitch: fix leak of nested actions (Eelco Chaudron) [2076588]
+
 * Tue Jun 07 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-106.el9]
 - mm, compaction: fast_find_migrateblock() should return pfn in the target zone (Rafael Aquini) [2092667]
 - [s390] s390/net: sort out physical vs virtual pointers usage (Mete Durlu) [2044295]
