@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 127.el9
+%define pkgrelease 128.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 127%{?buildid}%{?dist}
+%define specrelease 128%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-127.el9.tar.xz
+Source0: linux-5.14.0-128.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1349,8 +1349,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-127.el9 -c
-mv linux-5.14.0-127.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-128.el9 -c
+mv linux-5.14.0-128.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -3007,6 +3007,24 @@ fi
 #
 #
 %changelog
+* Tue Jul 12 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-128.el9]
+- block: remove WARN_ON() from bd_link_disk_holder (Ming Lei) [2094256]
+- block: pop cached rq before potentially blocking rq_qos_throttle() (Ming Lei) [2094256]
+- block: remove queue from struct blk_independent_access_range (Ming Lei) [2094256]
+- block: freeze the queue earlier in del_gendisk (Ming Lei) [2094256]
+- block: remove per-disk debugfs files in blk_unregister_queue (Ming Lei) [2094256]
+- block: serialize all debugfs operations using q->debugfs_mutex (Ming Lei) [2094256]
+- block: disable the elevator int del_gendisk (Ming Lei) [2094256]
+- net: add missing include in include/net/gro.h (Ivan Vecera) [2101789]
+- net: gro: populate net/core/gro.c (Ivan Vecera) [2101789]
+- net: gro: move skb_gro_receive into net/core/gro.c (Ivan Vecera) [2101789]
+- net: gro: move skb_gro_receive_list to udp_offload.c (Ivan Vecera) [2101789]
+- net: move gro definitions to include/net/gro.h (Ivan Vecera) [2101789]
+- net:dev: Change napi_gro_complete return type to void (Ivan Vecera) [2101789]
+- move netdev_boot_setup into Space.c (Ivan Vecera) [2101789]
+- sched: Fix balance_push() vs __sched_setscheduler() (Phil Auld) [2100215]
+- selftests, xsk: Fix bpf_res cleanup test (Felix Maurer) [2090981]
+
 * Sat Jul 09 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-127.el9]
 - intel/igbvf:fix repeated words in comments (Corinna Vinschen) [2037985]
 - igbvf: Remove useless DMA-32 fallback configuration (Corinna Vinschen) [2037985]
