@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 128.el9
+%define pkgrelease 129.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 128%{?buildid}%{?dist}
+%define specrelease 129%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-128.el9.tar.xz
+Source0: linux-5.14.0-129.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1080,7 +1080,7 @@ AutoReqProv: no\
 %description %{?1:%{1}-}debuginfo\
 This package provides debug information for package %{name}%{?1:-%{1}}.\
 This is required to use SystemTap with %{name}%{?1:-%{1}}-%{KVERREL}.\
-%{expand:%%global _find_debuginfo_opts %{?_find_debuginfo_opts} -p '.*\/usr\/src\/kernels/.*|XXX' -o ignored-debuginfo.list -p '/.*/%%{KVERREL_RE}%{?1:[+]%{1}}/.*|/.*%%{KVERREL_RE}%{?1:\+%{1}}(\.debug)?' -o debuginfo%{?1}.list}\
+%{expand:%%global _find_debuginfo_opts %{?_find_debuginfo_opts} --keep-section '.BTF' -p '.*\/usr\/src\/kernels/.*|XXX' -o ignored-debuginfo.list -p '/.*/%%{KVERREL_RE}%{?1:[+]%{1}}/.*|/.*%%{KVERREL_RE}%{?1:\+%{1}}(\.debug)?' -o debuginfo%{?1}.list}\
 %{nil}
 
 #
@@ -1349,8 +1349,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-128.el9 -c
-mv linux-5.14.0-128.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-129.el9 -c
+mv linux-5.14.0-129.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -3007,6 +3007,69 @@ fi
 #
 #
 %changelog
+* Thu Jul 14 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-129.el9]
+- fuse: send security context of inode on file (Vivek Goyal) [2101526]
+- fuse: extend init flags (Vivek Goyal) [2101526]
+- security, lsm: dentry_init_security() Handle multi LSM registration (Vivek Goyal) [2101526]
+- security: Return xattr name from security_dentry_init_security() (Vivek Goyal) [2101526]
+- fuse: add FOPEN_NOFLUSH (Vivek Goyal) [2101526]
+- net: fix data-race in dev_isalive() (Hangbin Liu) [2101278]
+- net: Write lock dev_base_lock without disabling bottom halves. (Hangbin Liu) [2101278]
+- net: fix IFF_TX_SKB_NO_LINEAR definition (Hangbin Liu) [2101278]
+- sock: redo the psock vs ULP protection check (Hangbin Liu) [2101278]
+- net: fix dev_fill_forward_path with pppoe + bridge (Hangbin Liu) [2101278]
+- net: Fix features skip in for_each_netdev_feature() (Hangbin Liu) [2101278]
+- RDMA/irdma: Add SW mechanism to generate completions on error (Kamal Heib) [2100317]
+- RDMA/irdma: Remove the redundant variable (Kamal Heib) [2100317]
+- RDMA/irdma: Add support for DSCP (Kamal Heib) [2100317]
+- RDMA/irdma: Use irq_update_affinity_hint() (Kamal Heib) [2100317]
+- RDMA/irdma: Set protocol based on PF rdma_mode flag (Kamal Heib) [2096127 2100317]
+- spec: Keep .BTF section in modules (Viktor Malik) [2097188]
+- NFSD: Instantiate a struct file when creating a regular NFSv4 file (Benjamin Coddington) [1905809]
+- NFSD: Clean up nfsd_open_verified() (Benjamin Coddington) [1905809]
+- NFSD: Remove do_nfsd_create() (Benjamin Coddington) [1905809]
+- NFSD: Refactor NFSv4 OPEN(CREATE) (Benjamin Coddington) [1905809]
+- NFSD: Refactor NFSv3 CREATE (Benjamin Coddington) [1905809]
+- NFSD: Refactor nfsd_create_setattr() (Benjamin Coddington) [1905809]
+- NFSD: Avoid calling fh_drop_write() twice in do_nfsd_create() (Benjamin Coddington) [1905809]
+- NFSD: Clean up nfsd3_proc_create() (Benjamin Coddington) [1905809]
+- ext4: fix up test_dummy_encryption handling for new mount API (Lukas Czerner) [2099577]
+- ext4: only allow test_dummy_encryption when supported (Lukas Czerner) [2099577]
+- fscrypt: add new helper functions for test_dummy_encryption (Lukas Czerner) [2099577]
+- fscrypt: factor out fscrypt_policy_to_key_spec() (Lukas Czerner) [2099577]
+- ext4: fix super block checksum incorrect after mount (Lukas Czerner) [2099577]
+- ext4: fix bug_on ext4_mb_use_inode_pa (Lukas Czerner) [2099577]
+- ext4: make variable "count" signed (Lukas Czerner) [2099577]
+- ext4: add reserved GDT blocks check (Lukas Czerner) [2099577]
+- ext4: fix bug_on in __es_tree_search (Lukas Czerner) [2099577]
+- ext4: avoid cycles in directory h-tree (Lukas Czerner) [2099577]
+- ext4: verify dir block before splitting it (Lukas Czerner) [2099577]
+- ext4: filter out EXT4_FC_REPLAY from on-disk superblock field s_state (Lukas Czerner) [2099577]
+- ext4: fix bug_on in ext4_writepages (Lukas Czerner) [2099577]
+- ext4: fix memory leak in parse_apply_sb_mount_options() (Lukas Czerner) [2099577]
+- ext4: reject the 'commit' option on ext2 filesystems (Lukas Czerner) [2099577]
+- ext4: fix race condition between ext4_write and ext4_convert_inline_data (Lukas Czerner) [2099577]
+- ext4: fix journal_ioprio mount option handling (Lukas Czerner) [2099577]
+- ext4: mark group as trimmed only if it was fully scanned (Lukas Czerner) [2099577]
+- ext4: fix use-after-free in ext4_rename_dir_prepare (Lukas Czerner) [2099577]
+- ext4: fix warning in ext4_handle_inode_extension (Lukas Czerner) [2099577]
+- redhat/configs: enable CONFIG_SAMPLE_VFIO_MDEV_MTTY (Patrick Talbert) [2071955]
+- Revert "mm: remove the extra ZONE_DEVICE struct page refcount" (Karol Herbst) [2043115]
+- Merge DRM changes from upstream v5.17..v5.18 (Karol Herbst) [2043115]
+- seq_file: include linux/string_helpers.h (Karol Herbst) [2043115]
+- iosys-map: Add a few more helpers (Karol Herbst) [2043115]
+- iosys-map: Add offset to iosys_map_memcpy_to() (Karol Herbst) [2043115]
+- dma-buf-map: Rename to iosys-map (Karol Herbst) [2043115]
+- Revert "virtio: wrap config->reset calls" (Karol Herbst) [2043115]
+- Merge DRM changes from upstream v5.16..v5.17 (Karol Herbst) [2043115]
+- drm/i915/rpl-s: Add PCI IDS for Raptor Lake S (Karol Herbst) [2043115]
+- Merge DRM changes from upstream v5.15..v5.16 (Karol Herbst) [2043115]
+- Merge DRM changes from upstream v5.14..v5.15 (Karol Herbst) [2043115]
+- fbdev: fbmem: add a helper to determine if an aperture is used by a fw fb (Karol Herbst) [2043115]
+- redhat/configs: enable CONFIG_UDMABUF (Karol Herbst) [2012748]
+- redhat/configs: set new DRM configs (Karol Herbst) [2043115]
+- Makefiles: set initial DRM version (Karol Herbst) [2043115]
+
 * Tue Jul 12 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-128.el9]
 - block: remove WARN_ON() from bd_link_disk_holder (Ming Lei) [2094256]
 - block: pop cached rq before potentially blocking rq_qos_throttle() (Ming Lei) [2094256]
