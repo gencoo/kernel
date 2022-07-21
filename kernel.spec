@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 133.el9
+%define pkgrelease 134.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 133%{?buildid}%{?dist}
+%define specrelease 134%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-133.el9.tar.xz
+Source0: linux-5.14.0-134.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1225,7 +1225,7 @@ The meta-package for the %{1} kernel\
 #	%%define variant_summary The Linux kernel compiled for <configuration>
 #	%%kernel_variant_package [-n <pretty-name>] [-m] [-o] <subpackage>
 #
-%define kernel_variant_package(n:m:o) \
+%define kernel_variant_package(n:mo) \
 %package %{?1:%{1}-}core\
 Summary: %{variant_summary}\
 Provides: kernel-%{?1:%{1}-}core-uname-r = %{KVERREL}%{?1:+%{1}}\
@@ -1351,8 +1351,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-133.el9 -c
-mv linux-5.14.0-133.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-134.el9 -c
+mv linux-5.14.0-134.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -3009,6 +3009,16 @@ fi
 #
 #
 %changelog
+* Thu Jul 21 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-134.el9]
+- redhat: fix kernel_variant_package option definition (Herton R. Krzesinski)
+- audit: free module name (Richard Guy Briggs) [2100261]
+- audit,io_uring,io-wq: call __audit_uring_exit for dummy contexts (Richard Guy Briggs) [2100261]
+- certs: Add FIPS selftests (David Howells) [2080044]
+- certs: Move load_certificate_list() to be with the asymmetric keys code (David Howells) [2080044]
+- scsi: core: Add scsi_done_direct() for immediate completion (Ewan D. Milne) [2094105]
+- scsi: core: Rename scsi_mq_done() into scsi_done() and export it (Ewan D. Milne) [2094105]
+- scsi: core: Use a structure member to track the SCSI command submitter (Ewan D. Milne) [2094105]
+
 * Wed Jul 20 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-133.el9]
 - lockd: fix nlm_close_files (Jeffrey Layton) [2082816]
 - lockd: set fl_owner when unlocking files (Jeffrey Layton) [2082816]
