@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 139.el9
+%define pkgrelease 140.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 139%{?buildid}%{?dist}
+%define specrelease 140%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-139.el9.tar.xz
+Source0: linux-5.14.0-140.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1351,8 +1351,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-139.el9 -c
-mv linux-5.14.0-139.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-140.el9 -c
+mv linux-5.14.0-140.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -3018,6 +3018,15 @@ fi
 #
 #
 %changelog
+* Tue Aug 02 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-140.el9]
+- tracing: Show size of requested perf buffer (Michael Petlan) [2106297]
+- tracing: Increase PERF_MAX_TRACE_SIZE to handle Sentinel1 and docker together (Michael Petlan) [2106297]
+- ibmvnic: Properly dispose of all skbs during a failover. (Steve Best) [2107561]
+- powerpc/fadump: save CPU reg data in vmcore when PHYP terminates LPAR (Steve Best) [2104440]
+- perf cpumap: Add perf_cpu_map__for_each_idx() (Michael Petlan) [2085427]
+- perf stat: Make use of index clearer with perf_counts (Michael Petlan) [2085427]
+- perf stat: Fix and validate CPU map inputs in synthetic PERF_RECORD_STAT events (Michael Petlan) [2085427]
+
 * Mon Aug 01 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-139.el9]
 - RDMA/irdma: Fix sleep from invalid context BUG (Kamal Heib) [2097326]
 - RDMA/irdma: Do not advertise 1GB page size for x722 (Kamal Heib) [2097326]
