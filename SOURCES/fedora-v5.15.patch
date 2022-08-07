@@ -1963,7 +1963,7 @@ Date:   Tue Aug 25 21:52:45 2020 -0400
  1 file changed, 3 insertions(+)
 
 diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index 19054b791c67..9ed6fa09b60d 100644
+index 0c9cdbaf5cd6..62e17b323765 100644
 --- a/drivers/nvme/host/core.c
 +++ b/drivers/nvme/host/core.c
 @@ -262,6 +262,9 @@ static void nvme_delete_ctrl_sync(struct nvme_ctrl *ctrl)
@@ -2018,7 +2018,7 @@ Signed-off-by: Mike Snitzer <snitzer@redhat.com>
  1 file changed, 14 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index 9ed6fa09b60d..e8d56b2bb9f3 100644
+index 62e17b323765..8828ef0d76a6 100644
 --- a/drivers/nvme/host/core.c
 +++ b/drivers/nvme/host/core.c
 @@ -324,6 +324,7 @@ enum nvme_disposition {
@@ -2118,7 +2118,7 @@ Signed-off-by: Mike Snitzer <snitzer@redhat.com>
  3 files changed, 17 insertions(+), 5 deletions(-)
 
 diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index e8d56b2bb9f3..0149a7fe3092 100644
+index 8828ef0d76a6..2bc302c1eca1 100644
 --- a/drivers/nvme/host/core.c
 +++ b/drivers/nvme/host/core.c
 @@ -365,6 +365,8 @@ static inline void nvme_end_req(struct request *req)
@@ -2168,10 +2168,10 @@ index 064acad505d3..4619b304e4d0 100644
  	spin_lock_irqsave(&ns->head->requeue_lock, flags);
  	for (bio = req->bio; bio; bio = bio->bi_next)
 diff --git a/drivers/nvme/host/nvme.h b/drivers/nvme/host/nvme.h
-index 72bcd7e5716e..512c7358c83d 100644
+index 75a7e7baa1fc..4f93a37d5e9b 100644
 --- a/drivers/nvme/host/nvme.h
 +++ b/drivers/nvme/host/nvme.h
-@@ -770,6 +770,7 @@ void nvme_mpath_wait_freeze(struct nvme_subsystem *subsys);
+@@ -771,6 +771,7 @@ void nvme_mpath_wait_freeze(struct nvme_subsystem *subsys);
  void nvme_mpath_start_freeze(struct nvme_subsystem *subsys);
  bool nvme_mpath_set_disk_name(struct nvme_ns *ns, char *disk_name, int *flags);
  void nvme_failover_req(struct request *req);
@@ -2179,7 +2179,7 @@ index 72bcd7e5716e..512c7358c83d 100644
  void nvme_kick_requeue_lists(struct nvme_ctrl *ctrl);
  int nvme_mpath_alloc_disk(struct nvme_ctrl *ctrl,struct nvme_ns_head *head);
  void nvme_mpath_add_disk(struct nvme_ns *ns, struct nvme_id_ns *id);
-@@ -809,6 +810,9 @@ static inline bool nvme_mpath_set_disk_name(struct nvme_ns *ns, char *disk_name,
+@@ -810,6 +811,9 @@ static inline bool nvme_mpath_set_disk_name(struct nvme_ns *ns, char *disk_name,
  static inline void nvme_failover_req(struct request *req)
  {
  }
@@ -2378,10 +2378,10 @@ Acked-by: Bjorn Helgaas <bhelgaas@google.com>
  5 files changed, 57 insertions(+)
 
 diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index 9f4f3e2ceea6..a141da629b39 100644
+index b47905c4a92f..7085630999ee 100644
 --- a/Documentation/admin-guide/kernel-parameters.txt
 +++ b/Documentation/admin-guide/kernel-parameters.txt
-@@ -3990,6 +3990,15 @@
+@@ -3992,6 +3992,15 @@
  				please report a bug.
  		nocrs		[X86] Ignore PCI host bridge windows from ACPI.
  				If you need to use this, please report a bug.
