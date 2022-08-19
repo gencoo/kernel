@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 149.el9
+%define pkgrelease 150.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 149%{?buildid}%{?dist}
+%define specrelease 150%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-149.el9.tar.xz
+Source0: linux-5.14.0-150.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1351,8 +1351,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-149.el9 -c
-mv linux-5.14.0-149.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-150.el9 -c
+mv linux-5.14.0-150.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -3018,6 +3018,42 @@ fi
 #
 #
 %changelog
+* Fri Aug 19 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-150.el9]
+- CI: Switch to c9s container image on quay.io (Michael Hofmann)
+- KVM: x86: nSVM: implement nested LBR virtualization (Emanuele Giuseppe Esposito) [2079722]
+- KVM: x86: nSVM: correctly virtualize LBR msrs when L2 is running (Emanuele Giuseppe Esposito) [2079722]
+- kvm: x86: SVM: use vmcb* instead of svm->vmcb where it makes sense (Emanuele Giuseppe Esposito) [2079722]
+- KVM: x86: nSVM: implement nested VMLOAD/VMSAVE (Emanuele Giuseppe Esposito) [2079722]
+- nfs: only issue commit in DIO codepath if we have uncommitted data (Jeffrey Layton) [2028370]
+- nfs: always check dreq->error after a commit (Jeffrey Layton) [2028370]
+- nfs: add new nfs_direct_req tracepoint events (Jeffrey Layton) [2028370]
+- nfsd: eliminate the NFSD_FILE_BREAK_* flags (Jeffrey Layton) [2107360]
+- NFSD: Clean up the show_nf_flags() macro (Jeffrey Layton) [2107360]
+- vmxnet3: do not reschedule napi for rx processing (Kamal Heib) [2115062]
+- Revert "ACPI: APEI: explicit init of HEST and GHES in apci_init()" (Mark Langsdorf) [2115261]
+- Revert "ACPI: APEI: rename ghes_init() with an "acpi_" prefix" (Mark Langsdorf) [2115261]
+- KVM: selftests: Disable rseq_test for all architectures (Gavin Shan) [2116654]
+- mm: Fix CVE-2022-2590 by reverting "mm/shmem: unconditionally set pte dirty in mfill_atomic_install_pte" (David Hildenbrand) [2116301] {CVE-2022-2590}
+- scsi: megaraid: Clear READ queue map's nr_queues (Tomas Henzl) [2103830]
+- SUNRPC release the transport of a relocated task with an assigned transport (Scott Mayhew) [2069732]
+- SUNRPC don't resend a task on an offlined transport (Scott Mayhew) [2069732]
+- Documentation: Describe net.ipv4.tcp_reflect_tos. (Guillaume Nault) [2070198]
+- drm/amd/display: Fix new dmub notification enabling in DM (Mika Penttilä) [2107633]
+- sfc: fix kernel panic when creating VF (Íñigo Huguet) [2104536]
+- netdevsim: don't overwrite read only ethtool parms (Petr Oros) [2112332]
+- netdevsim: fix uninit value in nsim_drv_configure_vfs() (Petr Oros) [2112332]
+- netdevsim: rename 'driver' entry points (Petr Oros) [2112332]
+- netdevsim: move max vf config to dev (Petr Oros) [2112332]
+- netdevsim: move details of vf config to dev (Petr Oros) [2112332]
+- netdevsim: move vfconfig to nsim_dev (Petr Oros) [2112332]
+- netdevsim: take rtnl_lock when assigning num_vfs (Petr Oros) [2112332]
+- netdevsim: remove max_vfs dentry (Petr Oros) [2112332]
+- netdevsim: make array res_ids static const, makes object smaller (Petr Oros) [2112332]
+- CI: Add automotive checks (Veronika Kabatova)
+- fs: dlm: fix build with CONFIG_IPV6 disabled (Alexander Aring) [2026474]
+- fs: dlm: don't call kernel_getpeername() in error_report() (Alexander Aring) [2026474]
+- fs: dlm: use sk->sk_socket instead of con->sock (Alexander Aring) [2026474]
+
 * Fri Aug 19 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-149.el9]
 - netfilter: h323: merge nat hook pointers into one (Florian Westphal) [2111270]
 - netfilter: nf_conntrack: use rcu accessors where needed (Florian Westphal) [2111270]
