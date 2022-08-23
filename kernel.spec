@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 154.el9
+%define pkgrelease 155.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 154%{?buildid}%{?dist}
+%define specrelease 155%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-154.el9.tar.xz
+Source0: linux-5.14.0-155.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1351,8 +1351,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-154.el9 -c
-mv linux-5.14.0-154.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-155.el9 -c
+mv linux-5.14.0-155.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -3018,6 +3018,39 @@ fi
 #
 #
 %changelog
+* Tue Aug 23 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-155.el9]
+- i40e: Fix tunnel checksum offload with fragmented traffic (Ivan Vecera) [2104734]
+- wait: Fix __wait_event_hrtimeout for RT/DL tasks (Prarit Bhargava) [2112265]
+- raid1: ensure write behind bio has less than BIO_MAX_VECS sectors (Nigel Croxon) [2117034]
+- KVM: nVMX: Inject #UD if VMXON is attempted with incompatible CR0/CR4 (Vitaly Kuznetsov) [2118955]
+- iavf: Fix deadlock in initialization (Petr Oros) [2106658]
+- netfilter: nf_tables: do not allow RULE_ID to refer to another chain (Florian Westphal) [2116355] {CVE-2022-2586}
+- netfilter: nf_tables: do not allow CHAIN_ID to refer to another table (Florian Westphal) [2116355] {CVE-2022-2586}
+- netfilter: nf_tables: do not allow SET_ID to refer to another table (Florian Westphal) [2116355] {CVE-2022-2586}
+- kbuild: expose explicit .symversions targets (Čestmír Kalina) [2066238]
+- selftests: mptcp: make sendfile selftest work (Florian Westphal) [2109043]
+- netfilter: nf_queue: do not allow packet truncation below transport header offset (Florian Westphal) [2116161] {CVE-2022-36946}
+- ASoC: amd: yc: Update DMI table entries for AMD platforms (Jaroslav Kysela) [2114934]
+- ASoC: amd: yc: Update DMI table entries (Jaroslav Kysela) [2114934]
+- sfc: fix use after free when disabling sriov (Íñigo Huguet) [2097189]
+- mm: Fix PASID use-after-free issue (Jerry Snitselaar) [2113044]
+- ice: Fix VF not able to send tagged traffic with no VLAN filters (Petr Oros) [2116964]
+- ice: Ignore error message when setting same promiscuous mode (Petr Oros) [2116964]
+- ice: Fix clearing of promisc mode with bridge over bond (Petr Oros) [2116964]
+- ice: Ignore EEXIST when setting promisc mode (Petr Oros) [2116964]
+- ice: Fix double VLAN error when entering promisc mode (Petr Oros) [2116964]
+- ice: Fix promiscuous mode not turning off (Petr Oros) [2116964]
+- ice: Introduce enabling promiscuous mode on multiple VF's (Petr Oros) [2116964]
+- ice: do not setup vlan for loopback VSI (Petr Oros) [2116964]
+- ice: check (DD | EOF) bits on Rx descriptor rather than (EOP | RS) (Petr Oros) [2116964]
+- ice: Fix VSIs unable to share unicast MAC (Petr Oros) [2116964]
+- ice: Fix max VLANs available for VF (Petr Oros) [2116964]
+- ice: change devlink code to read NVM in blocks (Petr Oros) [2116964]
+- be2net: Remove useless DMA-32 fallback configuration (Petr Oros) [2051280]
+- ethernet: constify references to netdev->dev_addr in drivers (Petr Oros) [2051280]
+- ethernet: Remove redundant 'flush_workqueue()' calls (Petr Oros) [2051280]
+- be2net: Use irq_update_affinity_hint() (Petr Oros) [2051280]
+
 * Tue Aug 23 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-154.el9]
 - Revert "x86/sev: Expose sev_es_ghcb_hv_call() for use by HyperV" (John Allen) [2081424]
 - virt: sev-guest: Pass the appropriate argument type to iounmap() (John Allen) [2081424]
