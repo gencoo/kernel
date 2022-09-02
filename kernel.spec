@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 160.el9
+%define pkgrelease 161.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 160%{?buildid}%{?dist}
+%define specrelease 161%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-160.el9.tar.xz
+Source0: linux-5.14.0-161.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1351,8 +1351,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-160.el9 -c
-mv linux-5.14.0-160.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-161.el9 -c
+mv linux-5.14.0-161.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -3018,6 +3018,14 @@ fi
 #
 #
 %changelog
+* Fri Sep 02 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-161.el9]
+- x86/ftrace: Use alternative RET encoding (Joe Lawrence) [2121368]
+- x86/ibt,ftrace: Make function-graph play nice (Joe Lawrence) [2121368]
+- x86/ibt,paravirt: Use text_gen_insn() for paravirt_patch() (Joe Lawrence) [2121368]
+- x86/text-patching: Make text_gen_insn() play nice with ANNOTATE_NOENDBR (Joe Lawrence) [2121368]
+- redhat: remove GL_DISTGIT_USER, RHDISTGIT and unify dist-git cloning (Frantisek Hrbata)
+- random: allow reseeding DRBG with getrandom (Daiki Ueno) [2114854]
+
 * Thu Aug 25 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-160.el9]
 - iavf: Fix VLAN_V2 addition/rejection (Ivan Vecera) [2119701]
 - gve: Recording rx queue before sending to napi (Jordan Kimbrough) [2022916]
