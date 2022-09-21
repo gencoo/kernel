@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 165.el9
+%define pkgrelease 166.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 165%{?buildid}%{?dist}
+%define specrelease 166%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-165.el9.tar.xz
+Source0: linux-5.14.0-166.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1351,8 +1351,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-165.el9 -c
-mv linux-5.14.0-165.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-166.el9 -c
+mv linux-5.14.0-166.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -3018,6 +3018,18 @@ fi
 #
 #
 %changelog
+* Wed Sep 21 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-166.el9]
+- scsi: restore setting of scmd->scsi_done() in EH and reset ioctl paths (Ewan D. Milne) [2120469]
+- x86/boot: Don't propagate uninitialized boot_params->cc_blob_address (Terry Bowman) [2124644]
+- ice: Allow operation with reduced device MSI-X (Petr Oros) [2107719]
+- ixgbe: Add locking to prevent panic when setting sriov_numvfs to zero (Ken Cox) [2109871]
+- drm/hyperv : Removing the restruction of VRAM allocation with PCI bar size (Vitaly Kuznetsov) [2030922]
+- drm/nouveau/kms/nv140-: Disable interlacing (Lyude Paul) [2122068]
+- drm/amdgpu: Only disable prefer_shadow on hawaii (Lyude Paul) [2120670]
+- i40e: Fix kernel crash during module removal (Ivan Vecera) [2070375]
+- Revert "net: macsec: update SCI upon MAC address change." (Sabrina Dubroca) [2118139]
+- redhat: enable zstream release numbering for rhel 9.1 (Patrick Talbert)
+
 * Sat Sep 17 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-165.el9]
 - sysctl: returns -EINVAL when a negative value is passed to proc_doulongvec_minmax (Vratislav Bendel) [2121392]
 - nvme-fc: fix the fc_appid_store return value (Ewan D. Milne) [2113035]
