@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 168.el9
+%define pkgrelease 169.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 168%{?buildid}%{?dist}
+%define specrelease 169%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-168.el9.tar.xz
+Source0: linux-5.14.0-169.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1351,8 +1351,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-168.el9 -c
-mv linux-5.14.0-168.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-169.el9 -c
+mv linux-5.14.0-169.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -3018,6 +3018,17 @@ fi
 #
 #
 %changelog
+* Tue Sep 27 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-169.el9]
+- bonding: fix NULL deref in bond_rr_gen_slave_id (Jonathan Toppins) [2001260]
+- CI: Add automotive-check for rt branches (Veronika Kabatova)
+- smp: Make softirq handling RT safe in flush_smp_call_function_queue() (Phil Auld) [2120671]
+- smp: Rename flush_smp_call_function_from_idle() (Phil Auld) [2120671]
+- sched: Fix missing prototype warnings (Phil Auld) [2120671]
+- signal: In get_signal test for signal_group_exit every time through the loop (Phil Auld) [2120671]
+- KVM: s390: pv: don't present the ecall interrupt twice (Tobias Huschle) [2125209]
+- s390/mm: do not trigger write fault when vma does not allow VM_WRITE (Tobias Huschle) [2125208]
+- s390/hugetlb: fix prepare_hugepage_range() check for 2 GB hugepages (Tobias Huschle) [2125207]
+
 * Fri Sep 23 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-168.el9]
 - xdp: check prog type before updating BPF link (Felix Maurer) [2071620]
 - net: bpf: Handle return value of BPF_CGROUP_RUN_PROG_INET{4,6}_POST_BIND() (Felix Maurer) [2071620]
