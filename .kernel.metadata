@@ -1,5 +1,5 @@
-f35479e7660ce6e608fa3194e7f8a709a3d2746c SOURCES/kernel-abi-stablelists-5.14.0-70.5.1.el9_0.tar.bz2
-ee0d53ee710d4b6ef6f235b05f0887146eb62afc SOURCES/kernel-kabi-dw-5.14.0-70.5.1.el9_0.tar.bz2
-b826b5bd10a87e1201beab2fce8e192e29151469 SOURCES/linux-5.14.0-70.5.1.el9_0.tar.xz
+823011b90c1a28d9d744ca6d67c203f4db1dce01 SOURCES/kernel-abi-stablelists-5.14.0-160.el9.tar.bz2
+3a7ddb5b4ff7f3129fba84dfc8f527c4e3c86027 SOURCES/kernel-kabi-dw-5.14.0-160.el9.tar.bz2
+400941345bbeaf0c0694440a5840b212697d3425 SOURCES/linux-5.14.0-160.el9.tar.xz
 95b9b811c7b0a6c98b2eafc4e7d6d24f2cb63289 SOURCES/rheldup3.x509
 d90885108d225a234a5a9d054fc80893a5bd54d0 SOURCES/rhelkpatch1.x509
