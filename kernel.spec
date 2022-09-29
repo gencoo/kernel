@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 169.el9
+%define pkgrelease 170.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 169%{?buildid}%{?dist}
+%define specrelease 170%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-169.el9.tar.xz
+Source0: linux-5.14.0-170.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1351,8 +1351,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-169.el9 -c
-mv linux-5.14.0-169.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-170.el9 -c
+mv linux-5.14.0-170.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -3018,6 +3018,22 @@ fi
 #
 #
 %changelog
+* Thu Sep 29 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-170.el9]
+- NFSv4.1 restrict GETATTR fs_location query to the main transport (Scott Mayhew) [2066372]
+- NFSv4: Add an fattr allocation to _nfs4_discover_trunking() (Scott Mayhew) [2066372]
+- sunrpc: set cl_max_connect when cloning an rpc_clnt (Scott Mayhew) [2066372]
+- NFSv4.1 mark qualified async operations as MOVEABLE tasks (Scott Mayhew) [2066372]
+- NFSv4.1 provide mount option to toggle trunking discovery (Scott Mayhew) [2066372]
+- NFSv4.1 test and add 4.1 trunking transport (Scott Mayhew) [2066372]
+- SUNRPC allow for unspecified transport time in rpc_clnt_add_xprt (Scott Mayhew) [2066372]
+- NFSv4 handle port presence in fs_location server string (Scott Mayhew) [2066372]
+- NFSv4 expose nfs_parse_server_name function (Scott Mayhew) [2066372]
+- NFSv4.1 query for fs_location attr on a new file system (Scott Mayhew) [2066372]
+- NFSv4 store server support for fs_location attribute (Scott Mayhew) [2066372]
+- NFSv4 remove zero number of fs_locations entries error check (Scott Mayhew) [2066372]
+- iwlwifi: limit fw version for AC9560 to avoid fw crash (Íñigo Huguet) [2096128]
+- configs: enable CONFIG_HP_ILO for aarch64 (Mark Salter) [2126153]
+
 * Tue Sep 27 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-169.el9]
 - bonding: fix NULL deref in bond_rr_gen_slave_id (Jonathan Toppins) [2001260]
 - CI: Add automotive-check for rt branches (Veronika Kabatova)
