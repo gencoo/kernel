@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 170.el9
+%define pkgrelease 171.el9
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 170%{?buildid}%{?dist}
+%define specrelease 171%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -679,7 +679,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-170.el9.tar.xz
+Source0: linux-5.14.0-171.el9.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1351,8 +1351,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-170.el9 -c
-mv linux-5.14.0-170.el9 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-171.el9 -c
+mv linux-5.14.0-171.el9 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -3018,6 +3018,37 @@ fi
 #
 #
 %changelog
+* Sat Oct 01 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-171.el9]
+- irqchip/qcom-pdc: Drop open coded version of __assign_bit() (Eric Chanudet) [2105098]
+- irqchip/qcom-pdc: Fix broken locking (Eric Chanudet) [2105098]
+- irqchip/qcom-pdc: Kill qcom_pdc_translate helper (Eric Chanudet) [2105098]
+- irqchip/qcom-pdc: Kill non-wakeup irqdomain (Eric Chanudet) [2105098]
+- irqchip/qcom-pdc: Kill PDC_NO_PARENT_IRQ (Eric Chanudet) [2105098]
+- irqchip/qcom-pdc: Trim unused levels of the interrupt hierarchy (Eric Chanudet) [2105098]
+- drm/bochs: fix blanking (Michel Dänzer) [2124193]
+- opp: use list iterator only inside the loop (Eric Chanudet) [2112113]
+- opp: replace usage of found with dedicated list iterator variable (Eric Chanudet) [2112113]
+- PM: opp: simplify with dev_err_probe() (Eric Chanudet) [2112113]
+- OPP: call of_node_put() on error path in _bandwidth_supported() (Eric Chanudet) [2112113]
+- OPP: Add support of "opp-microwatt" for EM registration (Eric Chanudet) [2112113]
+- PM: EM: add macro to set .active_power() callback conditionally (Eric Chanudet) [2112113]
+- OPP: Add "opp-microwatt" supporting code (Eric Chanudet) [2112113]
+- dt-bindings: opp: Add "opp-microwatt" entry in the OPP (Eric Chanudet) [2112113]
+- dt-bindings: opp: Allow multi-worded OPP entry name (Eric Chanudet) [2112113]
+- dt-bindings: opp: Convert to DT schema (Eric Chanudet) [2112113]
+- opp: Expose of-node's name in debugfs (Eric Chanudet) [2112113]
+- opp: Fix return in _opp_add_static_v2() (Eric Chanudet) [2112113]
+- opp: Add more resource-managed variants of dev_pm_opp_of_add_table() (Eric Chanudet) [2112113]
+- opp: Change type of dev_pm_opp_attach_genpd(names) argument (Eric Chanudet) [2112113]
+- opp: Fix required-opps phandle array count check (Eric Chanudet) [2112113]
+- opp: Don't print an error if required-opps is missing (Eric Chanudet) [2112113]
+- thunderbolt: Add support for Intel Raptor Lake (Torez Smith) [2040039]
+- bonding: accept unsolicited NA message (Jonathan Toppins) [2115631]
+- bonding: add all node mcast address when slave up (Jonathan Toppins) [2115631]
+- bonding: use unspecified address if no available link local address (Jonathan Toppins) [2115631]
+- bonding: 3ad: make ad_ticks_per_sec a const (Jonathan Toppins) [2126214]
+- bonding: 802.3ad: fix no transmission of LACPDUs (Jonathan Toppins) [2126214]
+
 * Thu Sep 29 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-170.el9]
 - NFSv4.1 restrict GETATTR fs_location query to the main transport (Scott Mayhew) [2066372]
 - NFSv4: Add an fattr allocation to _nfs4_discover_trunking() (Scott Mayhew) [2066372]
