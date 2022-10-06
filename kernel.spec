@@ -119,15 +119,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 172
+%define pkgrelease 173
 %define kversion 5
-%define tarfile_release 5.14.0-172.el9
+%define tarfile_release 5.14.0-173.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 172%{?buildid}%{?dist}
+%define specrelease 173%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-172.el9
+%define kabiversion 5.14.0-173.el9
 
 #
 # End of genspec.sh variables
@@ -2255,7 +2255,7 @@ pushd tools/gpio/
 popd
 # build VM tools
 pushd tools/vm/
-%{tools_make} slabinfo page_owner_sort
+%{tools_make} CFLAGS="${RPM_OPT_FLAGS}" LDFLAGS="%{__global_ldflags}" slabinfo page_owner_sort
 popd
 %endif
 
@@ -3057,6 +3057,24 @@ fi
 #
 #
 %changelog
+* Thu Oct 06 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-173.el9]
+- redhat: fix elf got hardening for vm tools (Frantisek Hrbata)
+- ipmi:ipmb: Fix refcount leak in ipmi_ipmb_probe (Tony Camuso) [2130241]
+- ipmi: remove unnecessary type castings (Tony Camuso) [2130241]
+- ipmi: Make two logs unique (Tony Camuso) [2130241]
+- ipmi:si: Convert pr_debug() to dev_dbg() (Tony Camuso) [2130241]
+- ipmi: Convert pr_debug() to dev_dbg() (Tony Camuso) [2130241]
+- ipmi: Fix pr_fmt to avoid compilation issues (Tony Camuso) [2130241]
+- ipmi: Add an intializer for ipmi_recv_msg struct (Tony Camuso) [2130241]
+- ipmi: Add an intializer for ipmi_smi_msg struct (Tony Camuso) [2130241]
+- ipmi:ssif: Check for NULL msg when handling events and messages (Tony Camuso) [2130241]
+- ipmi: use simple i2c probe function (Tony Camuso) [2130241]
+- ipmi: Add a sysfs count of total outstanding messages for an interface (Tony Camuso) [2130241]
+- ipmi: Add a sysfs interface to view the number of users (Tony Camuso) [2130241]
+- ipmi: Limit the number of message a user may have outstanding (Tony Camuso) [2130241]
+- ipmi: Add a limit on the number of users that may use IPMI (Tony Camuso) [2130241]
+- ipmi:ipmi_ipmb: Fix null-ptr-deref in ipmi_unregister_smi() (Tony Camuso) [2130241]
+
 * Mon Oct 03 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-172.el9]
 - redhat/Makefile: Add DIST to git tags for RHEL (Prarit Bhargava)
 - Revert "Split partner modules into a sub-package" (Prarit Bhargava)
