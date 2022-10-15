@@ -298,7 +298,7 @@ Signed-off-by: Herton R. Krzesinski <herton@redhat.com>
  1 file changed, 24 insertions(+)
 
 diff --git a/drivers/pci/quirks.c b/drivers/pci/quirks.c
-index 4893b1e82403..b1c68886a672 100644
+index a531064233f9..0d76bbb4b3b9 100644
 --- a/drivers/pci/quirks.c
 +++ b/drivers/pci/quirks.c
 @@ -4284,6 +4284,30 @@ DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_BROADCOM, 0x9000,
@@ -677,10 +677,10 @@ Signed-off-by: Jeremy Cline <jcline@redhat.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
-index 8b6f090e0364..eb8639511e69 100644
+index 24cce3b9ff1a..22caf88c64ca 100644
 --- a/arch/arm64/Kconfig
 +++ b/arch/arm64/Kconfig
-@@ -910,7 +910,7 @@ endchoice
+@@ -945,7 +945,7 @@ endchoice
  
  config ARM64_FORCE_52BIT
  	bool "Force 52-bit virtual addresses for userspace"
@@ -893,7 +893,7 @@ Signed-off-by: Jeremy Cline <jcline@redhat.com>
  1 file changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/security/integrity/platform_certs/load_uefi.c b/security/integrity/platform_certs/load_uefi.c
-index 555d2dfc0ff7..5b5a4caec520 100644
+index 185c609c6e38..011d49f601ce 100644
 --- a/security/integrity/platform_certs/load_uefi.c
 +++ b/security/integrity/platform_certs/load_uefi.c
 @@ -72,7 +72,8 @@ static __init void *get_cert_list(efi_char16_t *name, efi_guid_t *guid,
@@ -1293,7 +1293,7 @@ index 3f8ee257f9aa..3ab92feb6241 100644
  /*
   * DIAG 308 support
 diff --git a/arch/s390/kernel/ipl.c b/arch/s390/kernel/ipl.c
-index 5ad1dde23dc5..b6192d58eed3 100644
+index ba2988783d66..443c4a21cad3 100644
 --- a/arch/s390/kernel/ipl.c
 +++ b/arch/s390/kernel/ipl.c
 @@ -2216,3 +2216,8 @@ int ipl_report_free(struct ipl_report *report)
@@ -1306,7 +1306,7 @@ index 5ad1dde23dc5..b6192d58eed3 100644
 +	return !!ipl_secure_flag;
 +}
 diff --git a/arch/s390/kernel/setup.c b/arch/s390/kernel/setup.c
-index 36c1f31dfd66..b88ca144c581 100644
+index 4dfe37b06889..da67876b8b15 100644
 --- a/arch/s390/kernel/setup.c
 +++ b/arch/s390/kernel/setup.c
 @@ -49,6 +49,7 @@
@@ -1317,7 +1317,7 @@ index 36c1f31dfd66..b88ca144c581 100644
  #include <linux/hugetlb.h>
  #include <linux/kmemleak.h>
  
-@@ -970,6 +971,9 @@ void __init setup_arch(char **cmdline_p)
+@@ -972,6 +973,9 @@ void __init setup_arch(char **cmdline_p)
  
  	log_component_list();
  
@@ -1349,10 +1349,10 @@ Signed-off-by: Jeremy Cline <jcline@redhat.com>
  1 file changed, 1 insertion(+)
 
 diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
-index eb8639511e69..9a076b04f515 100644
+index 22caf88c64ca..0e702d154997 100644
 --- a/arch/arm64/Kconfig
 +++ b/arch/arm64/Kconfig
-@@ -1148,6 +1148,7 @@ config XEN
+@@ -1183,6 +1183,7 @@ config XEN
  config FORCE_MAX_ZONEORDER
  	int
  	default "14" if ARM64_64K_PAGES
@@ -1381,10 +1381,10 @@ Signed-off-by: Mark Salter <msalter@redhat.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
-index 9a076b04f515..6f72bd5ea319 100644
+index 0e702d154997..abd34d88b9ea 100644
 --- a/arch/arm64/Kconfig
 +++ b/arch/arm64/Kconfig
-@@ -1148,7 +1148,7 @@ config XEN
+@@ -1183,7 +1183,7 @@ config XEN
  config FORCE_MAX_ZONEORDER
  	int
  	default "14" if ARM64_64K_PAGES
@@ -1441,7 +1441,7 @@ Patch for disconnect issues with storage attached to a
  1 file changed, 7 insertions(+)
 
 diff --git a/drivers/usb/core/hub.c b/drivers/usb/core/hub.c
-index ac6c5ccfe1cb..ec784479eece 100644
+index 98bdae4ac314..2ff2777a827a 100644
 --- a/drivers/usb/core/hub.c
 +++ b/drivers/usb/core/hub.c
 @@ -5669,6 +5669,13 @@ static void hub_event(struct work_struct *work)
@@ -1963,7 +1963,7 @@ Date:   Tue Aug 25 21:52:45 2020 -0400
  1 file changed, 3 insertions(+)
 
 diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index 0c9cdbaf5cd6..62e17b323765 100644
+index 76d8a72f52e2..5444b41bff3e 100644
 --- a/drivers/nvme/host/core.c
 +++ b/drivers/nvme/host/core.c
 @@ -262,6 +262,9 @@ static void nvme_delete_ctrl_sync(struct nvme_ctrl *ctrl)
@@ -2018,7 +2018,7 @@ Signed-off-by: Mike Snitzer <snitzer@redhat.com>
  1 file changed, 14 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index 62e17b323765..8828ef0d76a6 100644
+index 5444b41bff3e..529484e333f3 100644
 --- a/drivers/nvme/host/core.c
 +++ b/drivers/nvme/host/core.c
 @@ -324,6 +324,7 @@ enum nvme_disposition {
@@ -2118,7 +2118,7 @@ Signed-off-by: Mike Snitzer <snitzer@redhat.com>
  3 files changed, 17 insertions(+), 5 deletions(-)
 
 diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index 8828ef0d76a6..2bc302c1eca1 100644
+index 529484e333f3..034e724255e1 100644
 --- a/drivers/nvme/host/core.c
 +++ b/drivers/nvme/host/core.c
 @@ -365,6 +365,8 @@ static inline void nvme_end_req(struct request *req)
@@ -2131,7 +2131,7 @@ index 8828ef0d76a6..2bc302c1eca1 100644
  	nvme_end_req(req);
  }
 diff --git a/drivers/nvme/host/multipath.c b/drivers/nvme/host/multipath.c
-index 064acad505d3..4619b304e4d0 100644
+index 04fa276701d1..8c2f4261d85f 100644
 --- a/drivers/nvme/host/multipath.c
 +++ b/drivers/nvme/host/multipath.c
 @@ -65,14 +65,10 @@ bool nvme_mpath_set_disk_name(struct nvme_ns *ns, char *disk_name, int *flags)
@@ -2240,10 +2240,10 @@ Date:   Wed Jan 29 15:29:37 2020 -0500
  1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/drivers/nvme/host/multipath.c b/drivers/nvme/host/multipath.c
-index 4619b304e4d0..95f993b43881 100644
+index 8c2f4261d85f..609fe97148f1 100644
 --- a/drivers/nvme/host/multipath.c
 +++ b/drivers/nvme/host/multipath.c
-@@ -841,8 +841,7 @@ int nvme_mpath_init_identify(struct nvme_ctrl *ctrl, struct nvme_id_ctrl *id)
+@@ -842,8 +842,7 @@ int nvme_mpath_init_identify(struct nvme_ctrl *ctrl, struct nvme_id_ctrl *id)
  	int error = 0;
  
  	/* check if multipath is enabled and we have the capability */
@@ -2378,7 +2378,7 @@ Acked-by: Bjorn Helgaas <bhelgaas@google.com>
  5 files changed, 57 insertions(+)
 
 diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index b47905c4a92f..7085630999ee 100644
+index bcb102c91b19..55b36b51244c 100644
 --- a/Documentation/admin-guide/kernel-parameters.txt
 +++ b/Documentation/admin-guide/kernel-parameters.txt
 @@ -3992,6 +3992,15 @@

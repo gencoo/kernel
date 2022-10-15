@@ -991,7 +991,7 @@ Signed-off-by: Makarand Pawagi <makarand.pawagi@nxp.com>
  1 file changed, 21 insertions(+), 6 deletions(-)
 
 diff --git a/drivers/soc/fsl/guts.c b/drivers/soc/fsl/guts.c
-index 75eabfb916cb..b080721eace7 100644
+index 0b2c7fdbaa5b..35b74bf4b65c 100644
 --- a/drivers/soc/fsl/guts.c
 +++ b/drivers/soc/fsl/guts.c
 @@ -3,6 +3,7 @@
@@ -1076,7 +1076,7 @@ Signed-off-by: Meenakshi Aggarwal <meenakshi.aggarwal@nxp.com>
  1 file changed, 39 insertions(+), 23 deletions(-)
 
 diff --git a/drivers/mmc/host/sdhci-of-esdhc.c b/drivers/mmc/host/sdhci-of-esdhc.c
-index 0f3658b36513..c11544f6047b 100644
+index 04a37fd137ee..af25ec17801b 100644
 --- a/drivers/mmc/host/sdhci-of-esdhc.c
 +++ b/drivers/mmc/host/sdhci-of-esdhc.c
 @@ -10,6 +10,7 @@
@@ -1102,7 +1102,7 @@ index 0f3658b36513..c11544f6047b 100644
  struct sdhci_esdhc {
  	u8 vendor_ver;
  	u8 spec_ver;
-@@ -1370,29 +1379,35 @@ static void esdhc_init(struct platform_device *pdev, struct sdhci_host *host)
+@@ -1371,29 +1380,35 @@ static void esdhc_init(struct platform_device *pdev, struct sdhci_host *host)
  		esdhc->clk_fixup = match->data;
  	np = pdev->dev.of_node;
  
@@ -1160,7 +1160,7 @@ index 0f3658b36513..c11544f6047b 100644
  
  	esdhc_clock_enable(host, false);
  	val = sdhci_readl(host, ESDHC_DMA_SYSCTL);
-@@ -1425,7 +1440,7 @@ static int sdhci_esdhc_probe(struct platform_device *pdev)
+@@ -1426,7 +1441,7 @@ static int sdhci_esdhc_probe(struct platform_device *pdev)
  
  	np = pdev->dev.of_node;
  
@@ -1169,7 +1169,7 @@ index 0f3658b36513..c11544f6047b 100644
  		host = sdhci_pltfm_init(pdev, &sdhci_esdhc_le_pdata,
  					sizeof(struct sdhci_esdhc));
  	else
-@@ -1510,6 +1525,7 @@ static struct platform_driver sdhci_esdhc_driver = {
+@@ -1511,6 +1526,7 @@ static struct platform_driver sdhci_esdhc_driver = {
  		.name = "sdhci-esdhc",
  		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
  		.of_match_table = sdhci_esdhc_of_match,
@@ -1256,7 +1256,7 @@ index 735a23db1b5e..1125b79a9ca6 100644
   * fwnode_get_phy_mode - Get phy mode for given firmware node
   * @fwnode:	Pointer to the given node
 diff --git a/drivers/mmc/host/sdhci-of-esdhc.c b/drivers/mmc/host/sdhci-of-esdhc.c
-index c11544f6047b..6e67bff51454 100644
+index af25ec17801b..94ec80e8f9a1 100644
 --- a/drivers/mmc/host/sdhci-of-esdhc.c
 +++ b/drivers/mmc/host/sdhci-of-esdhc.c
 @@ -545,8 +545,11 @@ static int esdhc_of_enable_dma(struct sdhci_host *host)

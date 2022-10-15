@@ -97,7 +97,7 @@ Summary: The Linux kernel
 %if 0%{?released_kernel}
 
 # Do we have a -stable update to apply?
-%define stable_update 59
+%define stable_update 74
 # Set rpm version accordingly
 %if 0%{?stable_update}
 %define stablerev %{stable_update}
@@ -3017,6 +3017,9 @@ fi
 #
 #
 %changelog
+* Sat Oct 15 2022 Pablo Greco <pgreco@centosproject.org> - 5.15.74-200
+- Update to version v5.15.74
+
 * Sun Aug  7 2022 Pablo Greco <pgreco@centosproject.org> - 5.15.59-200
 - Update to version v5.15.59
 
