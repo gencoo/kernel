@@ -728,8 +728,6 @@ Source37: filter-aarch64.sh.rhel
 Source38: filter-ppc64le.sh.rhel
 Source39: filter-s390x.sh.rhel
 Source40: filter-modules.sh.rhel
-
-Source41: x509.genkey.centos
 %endif
 
 %if 0%{?include_fedora}
@@ -1464,12 +1462,7 @@ RPM_SOURCE_DIR=$RPM_SOURCE_DIR ./update_scripts.sh %{primary_target}
 # against a flavour of it (eg. centos not rhel), thus override it here if
 # necessary
 if [ "%{primary_target}" == "rhel" ]; then
-%if 0%{?centos}
-  echo "Updating scripts/sources to centos version"
-  RPM_SOURCE_DIR=$RPM_SOURCE_DIR ./update_scripts.sh centos
-%else
   echo "Not updating scripts/sources to centos version"
-%endif
 fi
 
 # end of kernel config
