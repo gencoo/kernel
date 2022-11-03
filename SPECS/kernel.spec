@@ -2157,7 +2157,7 @@ chmod +x tools/perf/check-headers.sh
 %endif
 
 %global tools_make \
-  %{make} CFLAGS="${RPM_OPT_FLAGS}" -D_GNU_SOURCE -isystem ${USR_INC}" LDFLAGS="%{__global_ldflags}" %{?make_opts}
+  %{make} CFLAGS="${RPM_OPT_FLAGS} -D_GNU_SOURCE -isystem ${USR_INC}" LDFLAGS="%{__global_ldflags}" %{?make_opts}
 
 %if %{with_tools}
 export USR_INC=$(pwd)/usr/include
@@ -2203,7 +2203,7 @@ if [ -f $DevelDir/vmlinux.h ]; then
 fi
 
 %global bpftool_make \
-  %{__make} EXTRA_CFLAGS="${RPM_OPT_FLAGS} -isystem ${USR_INC}"" EXTRA_LDFLAGS="%{__global_ldflags}" DESTDIR=$RPM_BUILD_ROOT %{?make_opts} VMLINUX_H="${RPM_VMLINUX_H}" V=1
+  %{__make} EXTRA_CFLAGS="${RPM_OPT_FLAGS} -isystem ${USR_INC}" EXTRA_LDFLAGS="%{__global_ldflags}" DESTDIR=$RPM_BUILD_ROOT %{?make_opts} VMLINUX_H="${RPM_VMLINUX_H}" V=1
 %if %{with_bpftool}
 pushd tools/bpf/bpftool
 %{bpftool_make}
