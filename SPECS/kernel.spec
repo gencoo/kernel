@@ -567,7 +567,7 @@ BuildRequires: gcc-plugin-devel
 # glibc-static is required for a consistent build environment (specifically
 # CONFIG_CC_CAN_LINK_STATIC=y).
 BuildRequires: glibc-static
-BuildRequires: kernel-rpm-macros >= 185-9
+BuildRequires: kernel-rpm-macros >= 125
 %ifnarch %{nobuildarches} noarch
 BuildRequires: bpftool
 %endif
@@ -805,6 +805,8 @@ Source4002: gating.yaml
 
 Patch1: patch-%{rpmversion}-redhat.patch
 %endif
+
+Patch2: linux-5.14.0-headers-fix.patch
 
 # empty final patch to facilitate testing of kernel patches
 Patch999999: linux-kernel-test.patch
@@ -1347,6 +1349,7 @@ cp -a %{SOURCE1} .
 ApplyOptionalPatch patch-%{rpmversion}-redhat.patch
 %endif
 
+ApplyOptionalPatch linux-5.14.0-headers-fix.patch
 ApplyOptionalPatch linux-kernel-test.patch
 
 # END OF PATCH APPLICATIONS
@@ -2172,9 +2175,10 @@ chmod +x tools/perf/check-headers.sh
 %endif
 
 %global tools_make \
-  %{make} CFLAGS="${RPM_OPT_FLAGS}" LDFLAGS="%{__global_ldflags}" %{?make_opts}
+  %{make} CFLAGS="${RPM_OPT_FLAGS} -D_GNU_SOURCE -isystem ${USR_INC}" LDFLAGS="%{__global_ldflags}" %{?make_opts}
 
 %if %{with_tools}
+export USR_INC=$(pwd)/usr/include
 %ifarch %{cpupowerarchs}
 # cpupower
 # make sure version-gen.sh is executable.
@@ -2220,7 +2224,7 @@ if [ -f $DevelDir/vmlinux.h ]; then
 fi
 
 %global bpftool_make \
-  %{__make} EXTRA_CFLAGS="${RPM_OPT_FLAGS}" EXTRA_LDFLAGS="%{__global_ldflags}" DESTDIR=$RPM_BUILD_ROOT %{?make_opts} VMLINUX_H="${RPM_VMLINUX_H}" V=1
+  %{__make} EXTRA_CFLAGS="${RPM_OPT_FLAGS} -isystem ${USR_INC}" EXTRA_LDFLAGS="%{__global_ldflags}" DESTDIR=$RPM_BUILD_ROOT %{?make_opts} VMLINUX_H="${RPM_VMLINUX_H}" V=1
 %if %{with_bpftool}
 pushd tools/bpf/bpftool
 %{bpftool_make}
@@ -2248,7 +2252,7 @@ export BPFTOOL=$(pwd)/tools/bpf/bpftool/bpftool
 pushd tools/testing/selftests
 # We need to install here because we need to call make with ARCH set which
 # doesn't seem possible to do in the install section.
-%{make} %{?_smp_mflags} ARCH=$Arch V=1 TARGETS="bpf livepatch vm net net/forwarding net/mptcp netfilter tc-testing memfd" SKIP_TARGETS="" FORCE_TARGETS=1 INSTALL_PATH=%{buildroot}%{_libexecdir}/kselftests VMLINUX_H="${RPM_VMLINUX_H}" install
+%{make} %{?_smp_mflags} EXTRA_CFLAGS="-isystem ${USR_INC}" ARCH=$Arch V=1 TARGETS="bpf livepatch vm net net/forwarding net/mptcp netfilter tc-testing memfd" SKIP_TARGETS="" FORCE_TARGETS=1 INSTALL_PATH=%{buildroot}%{_libexecdir}/kselftests VMLINUX_H="${RPM_VMLINUX_H}" install
 
 # 'make install' for bpf is broken and upstream refuses to fix it.
 # Install the needed files manually.
@@ -2444,6 +2448,7 @@ rm -rf %{buildroot}%{_libdir}/traceevent
 %endif
 
 %if %{with_tools}
+export USR_INC=$(pwd)/usr/include
 %ifarch %{cpupowerarchs}
 %{make} -C tools/power/cpupower DESTDIR=$RPM_BUILD_ROOT libdir=%{_libdir} mandir=%{_mandir} CPUFREQ_BENCH=false install
 rm -f %{buildroot}%{_libdir}/*.{a,la}
