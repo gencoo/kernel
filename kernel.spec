@@ -119,15 +119,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 186
+%define pkgrelease 187
 %define kversion 5
-%define tarfile_release 5.14.0-186.el9
+%define tarfile_release 5.14.0-187.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 186%{?buildid}%{?dist}
+%define specrelease 187%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-186.el9
+%define kabiversion 5.14.0-187.el9
 
 #
 # End of genspec.sh variables
@@ -3057,6 +3057,25 @@ fi
 #
 #
 %changelog
+* Sat Nov 05 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-187.el9]
+- drm/mgag200: Fix PLL setup for G200_SE_A rev >=4 (Jocelyn Falempe) [1960467]
+- mm: slub: fix flush_cpu_slab()/__free_slab() invocations in task context. (Izabela Bakollari) [2091165]
+- redhat/docs: Update with DISTLOCALVERSION (Frantisek Hrbata)
+- redhat/Makefile: Rename LOCALVERSION to DISTLOCALVERSION (Frantisek Hrbata)
+- net: move netif_set_gso_max helpers (Ivan Vecera) [2128180]
+- net: make drivers set the TSO limit not the GSO limit (Ivan Vecera) [2128180]
+- net: don't allow user space to lift the device limits (Ivan Vecera) [2128180]
+- net: add netif_inherit_tso_max() (Ivan Vecera) [2128180]
+- net: extract a few internals from netdevice.h (Ivan Vecera) [2128180]
+- net: unexport a handful of dev_* functions (Ivan Vecera) [2128180]
+- net: remove .ndo_change_proto_down (Ivan Vecera) [2128180]
+- tipc: fix an information leak in tipc_topsrv_kern_subscr (Xin Long) [2134964]
+- tipc: Fix recognition of trial period (Xin Long) [2134964]
+- tipc: fix shift wrapping bug in map_get() (Xin Long) [2134964]
+- scsi: mpi3mr: Schedule IRQ kthreads only on non-RT kernels (Tomas Henzl) [2136223]
+- drm: fix duplicated code in drm_connector_register (Karol Herbst) [2132575]
+- iavf: Fix adminq error handling (Petr Oros) [2003608]
+
 * Thu Nov 03 2022 Frantisek Hrbata <fhrbata@redhat.com> [5.14.0-186.el9]
 - perf/arm-cmn: Decode CAL devices properly in debugfs (Jeremy Linton) [2118804]
 - perf/arm-cmn: Fix filter_sel lookup (Jeremy Linton) [2118804]
