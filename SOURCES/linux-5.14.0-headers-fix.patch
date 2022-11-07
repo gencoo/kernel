@@ -21,3 +21,14 @@ diff -Naur linux-5.14.0-70.30.1.el9_0/tools/testing/selftests/vm/userfaultfd.c l
  #include <sys/mman.h>
  #include <sys/syscall.h>
  #include <sys/ioctl.h>
+diff -Naur linux-5.14.0-70.30.1.el9_0/tools/testing/selftests/bpf/Makefile linux-5.14.0-70.30.1.el9_0.alma/tools/testing/selftests/bpf/Makefile
+--- linux-5.14.0-70.30.1.el9_0/tools/testing/selftests/bpf/Makefile	2022-10-14 13:02:21.000000000 +0000
++++ linux-5.14.0-70.30.1.el9_0.alma/tools/testing/selftests/bpf/Makefile	2022-11-07 20:12:15.536377539 +0000
+@@ -279,6 +279,7 @@
+ CLANG_SYS_INCLUDES = $(call get_sys_includes,$(CLANG))
+ BPF_CFLAGS = -g -D__TARGET_ARCH_$(SRCARCH) $(MENDIAN) 			\
+ 	     -I$(INCLUDE_DIR) -I$(CURDIR) -I$(APIDIR)			\
++	     -I$(abspath $(TOOLSDIR)/../usr/include)			\
+ 	     -I$(abspath $(OUTPUT)/../usr/include)
+ 
+ CLANG_CFLAGS = $(CLANG_SYS_INCLUDES) \
