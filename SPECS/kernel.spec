@@ -1460,18 +1460,6 @@ done
 cp %{SOURCE82} .
 RPM_SOURCE_DIR=$RPM_SOURCE_DIR ./update_scripts.sh %{primary_target}
 
-# We may want to override files from the primary target in case of building
-# against a flavour of it (eg. centos not rhel), thus override it here if
-# necessary
-if [ "%{primary_target}" == "rhel" ]; then
-%if 0%{?centos}
-  echo "Updating scripts/sources to centos version"
-  RPM_SOURCE_DIR=$RPM_SOURCE_DIR ./update_scripts.sh centos
-%else
-  echo "Not updating scripts/sources to centos version"
-%endif
-fi
-
 # end of kernel config
 %endif
 
