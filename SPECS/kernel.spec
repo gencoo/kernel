@@ -1444,7 +1444,7 @@ done
 # Adjust FIPS module name for RHEL
 %if 0%{?rhel}
 for i in *.config; do
-  sed -i 's/CONFIG_CRYPTO_FIPS_NAME=.*/CONFIG_CRYPTO_FIPS_NAME="Red Hat Enterprise Linux %{rhel} - Kernel Cryptographic API"/' $i
+  sed -i 's/CONFIG_CRYPTO_FIPS_NAME=.*/CONFIG_CRYPTO_FIPS_NAME="AlmaLinux %{rhel} - Kernel Cryptographic API"/' $i
 done
 %endif
 
