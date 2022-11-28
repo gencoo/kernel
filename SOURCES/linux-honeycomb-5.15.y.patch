@@ -479,7 +479,7 @@ Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
  1 file changed, 15 insertions(+), 13 deletions(-)
 
 diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-index 79edfdca6607..742c015c6616 100644
+index e7da4a47ce52..4a8c2f5158ea 100644
 --- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
 +++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
 @@ -2530,6 +2530,19 @@ static bool arm_smmu_sid_in_range(struct arm_smmu_device *smmu, u32 sid)
@@ -554,7 +554,7 @@ Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
  1 file changed, 13 insertions(+), 4 deletions(-)
 
 diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-index 742c015c6616..2c2e79034f4c 100644
+index 4a8c2f5158ea..ce47559cfca7 100644
 --- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
 +++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
 @@ -1374,12 +1374,21 @@ static void arm_smmu_write_strtab_ent(struct arm_smmu_master *master, u32 sid,
@@ -590,7 +590,7 @@ index 742c015c6616..2c2e79034f4c 100644
  	arm_smmu_write_strtab_l1_desc(strtab, desc);
  	return 0;
  }
-@@ -3054,7 +3063,7 @@ static int arm_smmu_init_strtab_linear(struct arm_smmu_device *smmu)
+@@ -3075,7 +3084,7 @@ static int arm_smmu_init_strtab_linear(struct arm_smmu_device *smmu)
  	reg |= FIELD_PREP(STRTAB_BASE_CFG_LOG2SIZE, smmu->sid_bits);
  	cfg->strtab_base_cfg = reg;
  
@@ -623,10 +623,10 @@ Signed-off-by: Shameer Kolothum <shameerali.kolothum.thodi@huawei.com>
  1 file changed, 31 insertions(+)
 
 diff --git a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-index 2c2e79034f4c..9b7753d66791 100644
+index ce47559cfca7..dbddb5ea2321 100644
 --- a/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
 +++ b/drivers/iommu/arm/arm-smmu-v3/arm-smmu-v3.c
-@@ -3770,6 +3770,34 @@ static void __iomem *arm_smmu_ioremap(struct device *dev, resource_size_t start,
+@@ -3791,6 +3791,34 @@ static void __iomem *arm_smmu_ioremap(struct device *dev, resource_size_t start,
  	return devm_ioremap_resource(dev, &res);
  }
  
@@ -661,7 +661,7 @@ index 2c2e79034f4c..9b7753d66791 100644
  static int arm_smmu_device_probe(struct platform_device *pdev)
  {
  	int irq, ret;
-@@ -3853,6 +3881,9 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
+@@ -3874,6 +3902,9 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
  	/* Record our private device structure */
  	platform_set_drvdata(pdev, smmu);
  
