@@ -119,15 +119,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 209
+%define pkgrelease 210
 %define kversion 5
-%define tarfile_release 5.14.0-209.el9
+%define tarfile_release 5.14.0-210.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 209%{?buildid}%{?dist}
+%define specrelease 210%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-209.el9
+%define kabiversion 5.14.0-210.el9
 
 #
 # End of genspec.sh variables
@@ -3106,6 +3106,46 @@ fi
 #
 #
 %changelog
+* Fri Dec 09 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-210.el9]
+- NFSD: Mark exports of NFS as unsupported (Benjamin Coddington) [2150887]
+- bonding: get correct NA dest address (Jonathan Toppins) [2112748]
+- bonding: fix ICMPv6 header handling when receiving IPv6 messages (Jonathan Toppins) [2112748]
+- mmc: cqhci: Provide helper for resetting both SDHCI and CQHCI (Steve Best) [2122404]
+- mmc: sdhci-tegra: Fix SDHCI_RESET_ALL for CQHCI (Steve Best) [2122404]
+- mmc: sdhci-tegra: Use actual clock rate for SW tuning correction (Steve Best) [2122404]
+- mmc: sdhci-tegra: Use of_device_get_match_data() helper (Steve Best) [2122404]
+- mmc: sdhci-tegra: Enable wake on SD card event (Steve Best) [2122404]
+- mmc: sdhci-tegra: Add runtime PM and OPP support (Steve Best) [2122404]
+- mmc: sdhci-tegra: Fix switch to HS400ES mode (Steve Best) [2122404]
+- Enable LinuxRV in Config (Alessandro Carminati) [2129758]
+- rv/dot2c: Make automaton definition static (Alessandro Carminati) [2129758]
+- rv/monitor: Add __init/__exit annotations to module init/exit funcs (Alessandro Carminati) [2129758]
+- rv/dot2K: add 'static' qualifier for local variable (Alessandro Carminati) [2129758]
+- rv/monitors: add 'static' qualifier for local symbols (Alessandro Carminati) [2129758]
+- rv/reactor: add __init/__exit annotations to module init/exit funcs (Alessandro Carminati) [2129758]
+- rv: Unlock on error path in rv_unregister_reactor() (Alessandro Carminati) [2129758]
+- MAINTAINERS: Add Runtime Verification (RV) entry (Alessandro Carminati) [2129758]
+- rv/monitors: Make monitor's automata definition static (Alessandro Carminati) [2129758]
+- rv/reactor: Add the panic reactor (Alessandro Carminati) [2129758]
+- rv/reactor: Add the printk reactor (Alessandro Carminati) [2129758]
+- rv/monitor: Add the wwnr monitor (Alessandro Carminati) [2129758]
+- rv/monitor: Add the wip monitor (Alessandro Carminati) [2129758]
+- rv/monitor: Add the wip monitor skeleton created by dot2k (Alessandro Carminati) [2129758]
+- Documentation/rv: Add deterministic automata instrumentation documentation (Alessandro Carminati) [2129758]
+- Documentation/rv: Add deterministic automata monitor synthesis documentation (Alessandro Carminati) [2129758]
+- tools/rv: Add dot2k (Alessandro Carminati) [2129758]
+- Documentation/rv: Add deterministic automaton documentation (Alessandro Carminati) [2129758]
+- tools/rv: Add dot2c (Alessandro Carminati) [2129758]
+- Documentation/rv: Add a basic documentation (Alessandro Carminati) [2129758]
+- rv/include: Add instrumentation helper functions (Alessandro Carminati) [2129758]
+- rv/include: Add deterministic automata monitor definition via C macros (Alessandro Carminati) [2129758]
+- rv/include: Add helper functions for deterministic automata (Alessandro Carminati) [2129758]
+- rv: Add runtime reactors interface (Alessandro Carminati) [2129758]
+- rv: Add Runtime Verification (RV) interface (Alessandro Carminati) [2129758]
+- tracing: make tracer_init_tracefs initcall asynchronous (Alessandro Carminati) [2129758]
+- fs: dlm: fix race in lowcomms (Alexander Aring) [2110543]
+- EDAC/ghes: Set the DIMM label unconditionally (Aristeu Rozanski) [2109713]
+
 * Thu Dec 08 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-209.el9]
 - RHEL: ALSA: update configuration (Jaroslav Kysela) [2125537]
 - ASoC: SOF: Intel: pci-mtl: fix firmware name (Jaroslav Kysela) [2125537]
