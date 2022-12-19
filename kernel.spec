@@ -119,15 +119,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 217
+%define pkgrelease 218
 %define kversion 5
-%define tarfile_release 5.14.0-217.el9
+%define tarfile_release 5.14.0-218.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 217%{?buildid}%{?dist}
+%define specrelease 218%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-217.el9
+%define kabiversion 5.14.0-218.el9
 
 #
 # End of genspec.sh variables
@@ -3106,6 +3106,29 @@ fi
 #
 #
 %changelog
+* Mon Dec 19 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-218.el9]
+- arm64: tegra: Mark BPMP channels as no-memory-wc (Al Stone) [2129151]
+- dt-bindings: misc: Convert Tegra MISC to json-schema (Al Stone) [2129151]
+- dt-bindings: sram: Document NVIDIA Tegra SYSRAM (Al Stone) [2129151]
+- misc: sram: Add compatible string for Tegra234 SYSRAM (Al Stone) [2129151]
+- dt-bindings: sram: Allow numbers in sram region node name (Al Stone) [2129151]
+- dt-bindings: sram: Document qcom,rpm-msg-ram (Al Stone) [2129151]
+- misc: sram: Only map reserved areas in Tegra SYSRAM (Al Stone) [2129151]
+- wireguard: Kconfig: select CRYPTO_CHACHA_S390 (John B. Wyatt IV) [2134831]
+- crypto: s390 - do not depend on CRYPTO_HW for SIMD implementations (John B. Wyatt IV) [2134831]
+- HID: hyperv: fix possible memory leak in mousevsc_probe() (Mohammed Gamal) [2139469]
+- HID: hyperv: Correctly access fields declared as __le16 (Mohammed Gamal) [2139469]
+- md/raid1: stop mdx_raid1 thread when raid1 array run failed (Nigel Croxon) [2141362 2143273]
+- md/raid5: use bdev_write_cache instead of open coding it (Nigel Croxon) [2143273]
+- md: fix a crash in mempool_free (Nigel Croxon) [2143261 2143273]
+- md/raid0, raid10: Don't set discard sectors for request queue (Nigel Croxon) [2128207 2135609 2143273]
+- md/bitmap: Fix bitmap chunk size overflow issues (Nigel Croxon) [2143273]
+- md: introduce md_ro_state (Nigel Croxon) [2143273]
+- md: factor out __md_set_array_info() (Nigel Croxon) [2143273]
+- lib/raid6: drop RAID6_USE_EMPTY_ZERO_PAGE (Nigel Croxon) [2143273]
+- raid5-cache: use try_cmpxchg in r5l_wake_reclaim (Nigel Croxon) [2143273]
+- drivers/md/md-bitmap: check the return value of md_bitmap_get_counter() (Nigel Croxon) [2143273]
+
 * Fri Dec 16 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-217.el9]
 - igc: Correct the launchtime offset (Corinna Vinschen) [2104471]
 - net: Remove the obsolte u64_stats_fetch_*_irq() users (drivers). (Corinna Vinschen) [2104471]
