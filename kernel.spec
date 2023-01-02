@@ -119,15 +119,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 226
+%define pkgrelease 227
 %define kversion 5
-%define tarfile_release 5.14.0-226.el9
+%define tarfile_release 5.14.0-227.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 226%{?buildid}%{?dist}
+%define specrelease 227%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-226.el9
+%define kabiversion 5.14.0-227.el9
 
 #
 # End of genspec.sh variables
@@ -3110,6 +3110,19 @@ fi
 #
 #
 %changelog
+* Mon Jan 02 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-227.el9]
+- crypto: pcrypt - Delay write to padata->info (Luis Claudio R. Goncalves) [2154189]
+- cpufreq: ACPI: Defer setting boost MSRs (Mark Langsdorf) [2142900]
+- SUNRPC: Simplify synopsis of svc_pool_for_cpu() (Luis Claudio R. Goncalves) [2149755]
+- SUNRPC: Don't disable preemption while calling svc_pool_for_cpu(). (Luis Claudio R. Goncalves) [2149755]
+- kernel/rh_messages.c: gcc12 warning on redundant NULL test (Eric Chanudet) [2142658]
+- Bluetooth: L2CAP: fix use-after-free in l2cap_conn_del() (Gopal Tiwari) [2140026]
+- Bluetooth: hci_conn: Fix not restoring ISO buffer count on disconnect (Gopal Tiwari) [2140026]
+- Bluetooth: hci_conn: Fix CIS connection dst_type handling (Gopal Tiwari) [2140026]
+- Bluetooth: avoid hci_dev_test_and_set_flag() in mgmt_init_hdev() (Gopal Tiwari) [2140026]
+- Bluetooth: Prevent double register of suspend (Gopal Tiwari) [2140026]
+- Bluetooth: use hdev->workqueue when queuing hdev->{cmd,ncmd}_timer works (Gopal Tiwari) [2140026]
+
 * Fri Dec 23 2022 Herton R. Krzesinski <herton@redhat.com> [5.14.0-226.el9]
 - KVM: s390: pv: don't allow userspace to set the clock under PV (Tobias Huschle) [2154283]
 - net: ethernet: move from strlcpy with unused retval to strscpy (Corinna Vinschen) [2104470]
