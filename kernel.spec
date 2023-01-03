@@ -119,15 +119,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 227
+%define pkgrelease 228
 %define kversion 5
-%define tarfile_release 5.14.0-227.el9
+%define tarfile_release 5.14.0-228.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 227%{?buildid}%{?dist}
+%define specrelease 228%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-227.el9
+%define kabiversion 5.14.0-228.el9
 
 #
 # End of genspec.sh variables
@@ -3110,6 +3110,15 @@ fi
 #
 #
 %changelog
+* Tue Jan 03 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-228.el9]
+- NFS: Allow very small rsize & wsize again (Benjamin Coddington) [2107347]
+- NFS: Allow setting rsize / wsize to a multiple of PAGE_SIZE (Benjamin Coddington) [2107347]
+- virtio_console: Introduce an ID allocator for virtual console numbers (Cédric Le Goater) [2155154]
+- perf/x86/amd/uncore: Fix memory leak for events array (Michael Petlan) [2152144]
+- netfs: Fix dodgy maths (Xiubo Li) [2138981]
+- netfs: Fix missing xas_retry() calls in xarray iteration (Xiubo Li) [2138981]
+- EDAC/mc_sysfs: Increase legacy channel support to 12 (Aristeu Rozanski) [2139862]
+
 * Mon Jan 02 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-227.el9]
 - crypto: pcrypt - Delay write to padata->info (Luis Claudio R. Goncalves) [2154189]
 - cpufreq: ACPI: Defer setting boost MSRs (Mark Langsdorf) [2142900]
