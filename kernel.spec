@@ -119,15 +119,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 228
+%define pkgrelease 229
 %define kversion 5
-%define tarfile_release 5.14.0-228.el9
+%define tarfile_release 5.14.0-229.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 228%{?buildid}%{?dist}
+%define specrelease 229%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-228.el9
+%define kabiversion 5.14.0-229.el9
 
 #
 # End of genspec.sh variables
@@ -3110,6 +3110,18 @@ fi
 #
 #
 %changelog
+* Thu Jan 05 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-229.el9]
+- scsi: zfcp: Fix double free of FSF request when qdio send fails (Tobias Huschle) [2155158]
+- l2tp: Don't sleep and disable BH under writer-side sk_callback_lock (Guillaume Nault) [2145234] {CVE-2022-4129}
+- l2tp: Serialize access to sk_user_data with sk_callback_lock (Guillaume Nault) [2145234] {CVE-2022-4129}
+- scsi: target: iscsi: Fix a race condition between login_work and the login thread (Maurizio Lombardi) [2138867]
+- RHEL: ALSA: add kunit module soc-utils-test to mod-internal.list (Jaroslav Kysela) [2152183]
+- hwmon: (coretemp) Check for null before removing sysfs attrs (Phil Auld) [2101449]
+- powerpc/bpf/64: Add instructions for atomic_[cmp]xchg (Mamatha Inamdar) [2113155]
+- powerpc/bpf/64: add support for atomic fetch operations (Mamatha Inamdar) [2113155]
+- powerpc/bpf/64: add support for BPF_ATOMIC bitwise operations (Mamatha Inamdar) [2113155]
+- powerpc64: Set PPC64_ELF_ABI_v[1|2] macros to 1 (Mamatha Inamdar) [2113155]
+
 * Tue Jan 03 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-228.el9]
 - NFS: Allow very small rsize & wsize again (Benjamin Coddington) [2107347]
 - NFS: Allow setting rsize / wsize to a multiple of PAGE_SIZE (Benjamin Coddington) [2107347]
