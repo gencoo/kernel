@@ -119,15 +119,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 229
+%define pkgrelease 230
 %define kversion 5
-%define tarfile_release 5.14.0-229.el9
+%define tarfile_release 5.14.0-230.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 229%{?buildid}%{?dist}
+%define specrelease 230%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-229.el9
+%define kabiversion 5.14.0-230.el9
 
 #
 # End of genspec.sh variables
@@ -3110,6 +3110,13 @@ fi
 #
 #
 %changelog
+* Fri Jan 06 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-230.el9]
+- x86/cpu: Add several Intel server CPU model numbers (David Arcari) [2158038]
+- ip_gre: do not report erspan version on GRE interface (Hangbin Liu) [2150168]
+- redhat/configs: enable HP_WATCHDOG for aarch64 (Mark Salter) [2113082]
+- watchdog/hpwdt: Enable HP_WATCHDOG for ARM64 systems. (Mark Salter) [2113082]
+- watchdog/hpwdt: Include nmi.h only if CONFIG_HPWDT_NMI_DECODING (Mark Salter) [2113082]
+
 * Thu Jan 05 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-229.el9]
 - scsi: zfcp: Fix double free of FSF request when qdio send fails (Tobias Huschle) [2155158]
 - l2tp: Don't sleep and disable BH under writer-side sk_callback_lock (Guillaume Nault) [2145234] {CVE-2022-4129}
