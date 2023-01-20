@@ -119,15 +119,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 240
+%define pkgrelease 241
 %define kversion 5
-%define tarfile_release 5.14.0-240.el9
+%define tarfile_release 5.14.0-241.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 240%{?buildid}%{?dist}
+%define specrelease 241%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-240.el9
+%define kabiversion 5.14.0-241.el9
 
 #
 # End of genspec.sh variables
@@ -603,7 +603,11 @@ BuildRequires: opencsd-devel >= 1.0.0
 %if %{with_tools}
 BuildRequires: gettext ncurses-devel
 BuildRequires: libcap-devel libcap-ng-devel
+# The following are rtla requirements
+BuildRequires: python3-docutils
+BuildRequires: libtraceevent-devel
 BuildRequires: libtracefs-devel
+
 %ifnarch s390x
 BuildRequires: pciutils-devel
 %endif
@@ -1007,13 +1011,15 @@ This package provides debug information for package kernel-tools.
 %{expand:%%global _find_debuginfo_opts %{?_find_debuginfo_opts} -p '.*%%{_bindir}/centrino-decode(\.debug)?|.*%%{_bindir}/powernow-k8-decode(\.debug)?|.*%%{_bindir}/cpupower(\.debug)?|.*%%{_libdir}/libcpupower.*|.*%%{_bindir}/turbostat(\.debug)?|.*%%{_bindir}/x86_energy_perf_policy(\.debug)?|.*%%{_bindir}/tmon(\.debug)?|.*%%{_bindir}/lsgpio(\.debug)?|.*%%{_bindir}/gpio-hammer(\.debug)?|.*%%{_bindir}/gpio-event-mon(\.debug)?|.*%%{_bindir}/gpio-watch(\.debug)?|.*%%{_bindir}/iio_event_monitor(\.debug)?|.*%%{_bindir}/iio_generic_buffer(\.debug)?|.*%%{_bindir}/lsiio(\.debug)?|.*%%{_bindir}/intel-speed-select(\.debug)?|.*%%{_bindir}/page_owner_sort(\.debug)?|.*%%{_bindir}/slabinfo(\.debug)?|.*%%{_sbindir}/intel_sdsi(\.debug)?|XXX' -o kernel-tools-debuginfo.list}
 
 %package -n rtla
-Summary: RTLA: Real-Time Linux Analysis tools 
+Summary: Real-Time Linux Analysis tools
+License: GPLv2
+Requires: libtraceevent
+Requires: libtracefs
 %description -n rtla
-The rtla tool is a meta-tool that includes a set of commands that
-aims to analyze the real-time properties of Linux. But, instead of
-testing Linux as a black box, rtla leverages kernel tracing
-capabilities to provide precise information about the properties
-and root causes of unexpected results.
+The rtla meta-tool includes a set of commands that aims to analyze
+the real-time properties of Linux. Instead of testing Linux as a black box,
+rtla leverages kernel tracing capabilities to provide precise information
+about the properties and root causes of unexpected results.
 
 # with_tools
 %endif
@@ -3110,6 +3116,72 @@ fi
 #
 #
 %changelog
+* Fri Jan 20 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-241.el9]
+- blk-cgroup: Optimize blkcg_rstat_flush() (Waiman Long) [2077665]
+- blk-cgroup: Return -ENOMEM directly in blkcg_css_alloc() error path (Waiman Long) [2077665]
+- cgroup/cpuset: Optimize cpuset_attach() on v2 (Waiman Long) [2077665]
+- cgroup/cpuset: Skip spread flags update on v2 (Waiman Long) [2077665]
+- cgroup: Reorganize css_set_lock and kernfs path processing (Waiman Long) [2077665]
+- mm: memcontrol: don't allocate cgroup swap arrays when memcg is disabled (Waiman Long) [2077665]
+- cgroup: Make cgroup_get_from_id() prettier (Waiman Long) [2077665]
+- cgroup: Fix build failure when CONFIG_SHRINKER_DEBUG (Waiman Long) [2077665]
+- cgroup: Homogenize cgroup_get_from_id() return value (Waiman Long) [2077665]
+- cgroup: cgroup: Honor caller's cgroup NS when resolving cgroup id (Waiman Long) [2077665]
+- cgroup: Honor caller's cgroup NS when resolving path (Waiman Long) [2077665]
+- cgroup: Add missing cpus_read_lock() to cgroup_attach_task_all() (Waiman Long) [2077665]
+- cgroup: Fix race condition at rebind_subsystems() (Waiman Long) [2077665]
+- cgroup: Fix threadgroup_rwsem <-> cpus_read_lock() deadlock (Waiman Long) [2077665]
+- mm/memcontrol.c: remove the redundant updating of stats_flush_threshold (Waiman Long) [2077665]
+- cgroup: Skip subtree root in cgroup_update_dfl_csses() (Waiman Long) [2077665]
+- cgroup: Elide write-locking threadgroup_rwsem when updating csses on an empty subtree (Waiman Long) [2077665]
+- mm: memcontrol: introduce mem_cgroup_ino() and mem_cgroup_get_from_ino() (Waiman Long) [2077665]
+- cgroup: Use separate src/dst nodes when preloading css_sets for migration (Waiman Long) [2077665]
+- cgroup.c: add helper __cset_cgroup_from_root to cleanup duplicated codes (Waiman Long) [2077665]
+- cgroup/rstat: check updated_next only for root (Waiman Long) [2077665]
+- cgroup: rstat: explicitly put loop variant in while (Waiman Long) [2077665]
+- cgroup: return early if it is already on preloaded list (Waiman Long) [2077665]
+- cgroup: Trace event cgroup id fields should be u64 (Waiman Long) [2077665]
+- cgroup: fix a typo in comment (Waiman Long) [2077665]
+- xfrm: Fix oops in __xfrm_state_delete() (Sabrina Dubroca) [2157579]
+- rtla: Add License to spec file and sync summary text with upstream (John Kacur) [2153891]
+- drm/i915/display: consider DG2_RC_CCS_CC when migrating buffers (Jocelyn Falempe) [2041690]
+- drm/i915: allow control over the flags when migrating (Jocelyn Falempe) [2041690]
+- drm/i915/display: handle migration for dpt (Jocelyn Falempe) [2041690]
+- drm/i915/huc: better define HuC status getparam possible return values. (Jocelyn Falempe) [2041690]
+- drm/i915/huc: stall media submission until HuC is loaded (Jocelyn Falempe) [2041690]
+- drm/i915/huc: track delayed HuC load with a fence (Jocelyn Falempe) [2041690]
+- drm/i915/dg2: setup HuC loading via GSC (Jocelyn Falempe) [2041690]
+- drm/i915/pxp: add huc authentication and loading command (Jocelyn Falempe) [2041690]
+- drm/i915/pxp: implement function for sending tee stream command (Jocelyn Falempe) [2041690]
+- drm/i915/pxp: load the pxp module when we have a gsc-loaded huc (Jocelyn Falempe) [2041690]
+- drm/i915/gt: Flush to global observation point before breadcrumb write (Jocelyn Falempe) [2041690]
+- drm/i915/guc/slpc: Add SLPC selftest live_slpc_power (Jocelyn Falempe) [2041690]
+- drm/i915/guc/slpc: Run SLPC selftests on all tiles (Jocelyn Falempe) [2041690]
+- drm/i915: Remove unwanted pointer unpacking (Jocelyn Falempe) [2041690]
+- drm/i915/guc: Enable compute scheduling on DG2 (Jocelyn Falempe) [2041690]
+- drm/i915/dg2: introduce Wa_22015475538 (Jocelyn Falempe) [2041690]
+- drm/i915/uc: Update to latest GuC and use new-format GuC/HuC names (Jocelyn Falempe) [2041690]
+- Revert "drm/i915/dg2: extend Wa_1409120013 to DG2" (Jocelyn Falempe) [2041690]
+- drm/i915/gsc: allocate extended operational memory in LMEM (Jocelyn Falempe) [2041690]
+- drm/i915/gsc: add GSC XeHP SDV platform definition (Jocelyn Falempe) [2041690]
+- drm/i915/gsc: add slow_firmware flag to the gsc device definition (Jocelyn Falempe) [2041690]
+- drm/i915/gsc: skip irq initialization if using polling (Jocelyn Falempe) [2041690]
+- drm/i915/uc: Add patch level version number support (Jocelyn Falempe) [2041690]
+- drm/i915/uc: Support for version reduced and multiple firmware files (Jocelyn Falempe) [2041690]
+- drm/i915/ttm: Abort suspend on i915_ttm_backup failure (Jocelyn Falempe) [2041690]
+- drm/i915/dg2: Incorporate Wa_16014892111 into DRAW_WATERMARK tuning (Jocelyn Falempe) [2041690]
+- drm/i915/guc: Record CTB info in error logs (Jocelyn Falempe) [2041690]
+- drm/i915/guc: Add GuC <-> kernel time stamp translation information (Jocelyn Falempe) [2041690]
+- drm/i915/guc: Don't use pr_err when not necessary (Jocelyn Falempe) [2041690]
+- drm/i915/dg2: Add support for DC5 state (Jocelyn Falempe) [2041690]
+- drm/i915/dmc: Update DG2 DMC firmware to v2.07 (Jocelyn Falempe) [2041690]
+- drm/i915/dg2: Add additional tuning settings (Jocelyn Falempe) [2041690]
+- drm/i915/gt: Add dedicated function for non-ctx register tuning settings (Jocelyn Falempe) [2041690]
+- drm/i915/dg2: Add Wa_1509727124 (Jocelyn Falempe) [2041690]
+- drm/i915/dg2: Update DG2 to GuC v70.4.1 (Jocelyn Falempe) [2041690]
+- drm/i915/dg2: Add additional HDMI pixel clock frequencies (Jocelyn Falempe) [2041690]
+- Revert "drm/i915/dg2: Add preemption changes for Wa_14015141709" (Jocelyn Falempe) [2041690]
+
 * Fri Jan 20 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-240.el9]
 - clk: tegra: Fix Tegra PWM parent clock (Mark Salter) [2135064]
 - redhat/configs: Enable CONFIG_SERIAL_TEGRA_TCU (Mark Salter) [2135064]
