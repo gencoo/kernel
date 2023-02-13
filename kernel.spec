@@ -143,15 +143,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 265
+%define pkgrelease 266
 %define kversion 5
-%define tarfile_release 5.14.0-265.el9
+%define tarfile_release 5.14.0-266.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 265%{?buildid}%{?dist}
+%define specrelease 266%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-265.el9
+%define kabiversion 5.14.0-266.el9
 
 #
 # End of genspec.sh variables
@@ -3208,6 +3208,56 @@ fi
 #
 #
 %changelog
+* Mon Feb 13 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-266.el9]
+- crypto: jitter - consider 32 LSB for APT (Vladis Dronov) [2164067]
+- xhci-pci: Set runtime PM as default policy on all xHC 1.2 or later devices (Torez Smith) [2130063 2139486]
+- thunderbolt: Explicitly enable lane adapter hotplug events at startup (Torez Smith) [2130063 2139486]
+- net: gso: fix panic on frag_list with mixed head alloc types (Jiri Benc) [2166641]
+- docs: networking: Fix bridge documentation URL (Ivan Vecera) [2149448]
+- vfio: Extend the device migration protocol with PRE_COPY (Alex Williamson) [2165989]
+- vfio/iova_bitmap: refactor iova_bitmap_set() to better handle page boundaries (Alex Williamson) [2165989]
+- vfio/iova_bitmap: Fix PAGE_SIZE unaligned bitmaps (Alex Williamson) [2165989]
+- vfio: Introduce the DMA logging feature support (Alex Williamson) [2165989]
+- vfio: Add an IOVA bitmap support (Alex Williamson) [2165989]
+- vfio: Introduce DMA logging uAPIs (Alex Williamson) [2165989]
+- selftests: rtnetlink: correct xfrm policy rule in kci_test_ipsec_offload (Hangbin Liu) [2161904]
+- selftests: netfilter: Fix and review rpath.sh (Hangbin Liu) [2161904]
+- Revert "xfrm: xfrm_state_mtu should return at least 1280 for ipv6" (Hangbin Liu) [2161893]
+- xfrm: fix MTU regression (Hangbin Liu) [2161893]
+- ipv6: fix reachability confirmation with proxy_ndp (Hangbin Liu) [2161893]
+- ipv6: avoid use-after-free in ip6_fragment() (Hangbin Liu) [2161893]
+- ipv6: addrlabel: fix infoleak when sending struct ifaddrlblmsg to network (Hangbin Liu) [2161893]
+- ipv6: fix WARNING in ip6_route_net_exit_late() (Hangbin Liu) [2161893]
+- ipv6: ensure sane device mtu in tunnels (Hangbin Liu) [2161893]
+- userfaultfd: update documentation to describe /dev/userfaultfd (Peter Xu) [2158706]
+- userfaultfd: add /dev/userfaultfd for fine grained access control (Peter Xu) [2158706]
+- futex: Resend potentially swallowed owner death notification (Rafael Aquini) [2161817]
+- iavf: schedule watchdog immediately when changing primary MAC (Stefan Assmann) [2163707]
+- iavf: Move netdev_update_features() into watchdog task (Stefan Assmann) [2163707]
+- iavf: fix temporary deadlock and failure to set MAC address (Stefan Assmann) [2163707]
+- perf/x86/uncore: Don't WARN_ON_ONCE() for a broken discovery table (Michael Petlan) [2154045]
+- perf/x86/uncore: Add a quirk for UPI on SPR (Michael Petlan) [2154045]
+- perf/x86/uncore: Ignore broken units in discovery table (Michael Petlan) [2154045]
+- perf/x86/uncore: Fix potential NULL pointer in uncore_get_alias_name (Michael Petlan) [2154045]
+- perf/x86/uncore: Factor out uncore_device_to_die() (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Fix reference count leak in __uncore_imc_init_box() (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Fix reference count leak in snr_uncore_mmio_map() (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Fix reference count leak in hswep_has_limit_sbox() (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Fix reference count leak in sad_cfg_iio_topology() (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Make set_mapping() procedure void (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Update sysfs-devices-mapping file (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Enable UPI topology discovery for Sapphire Rapids (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Enable UPI topology discovery for Icelake Server (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Get UPI NodeID and GroupID (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Enable UPI topology discovery for Skylake Server (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Generalize get_topology() for SKX PMUs (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Disable I/O stacks to PMU mapping on ICX-D (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Clear attr_update properly (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Introduce UPI topology type (Michael Petlan) [2154045]
+- perf/x86/intel/uncore: Generalize IIO topology support (Michael Petlan) [2154045]
+- perf vendor events power10: Fix hv-24x7 metric events (Mamatha Inamdar) [2149193]
+- Add taint flag for partner supported GPL modules Bugzilla: https://bugzilla.redhat.com/show_bug.cgi?id=2038999 Upstream Status: RHEL-only (Alice Mitchell)
+
 * Thu Feb 09 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-265.el9]
 - CI: Add pipelines for kernel-64k variant for RHEL (Veronika Kabatova)
 - CI: Enable pipelines for 64k variant (Veronika Kabatova)
