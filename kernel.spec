@@ -149,15 +149,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 271
+%define pkgrelease 272
 %define kversion 5
-%define tarfile_release 5.14.0-271.el9
+%define tarfile_release 5.14.0-272.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 271%{?buildid}%{?dist}
+%define specrelease 272%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-271.el9
+%define kabiversion 5.14.0-272.el9
 
 #
 # End of genspec.sh variables
@@ -850,6 +850,7 @@ Source81: process_configs.sh
 Source82: update_scripts.sh
 
 Source84: mod-internal.list
+Source85: mod-partner.list
 
 Source100: rheldup3.x509
 Source101: rhelkpatch1.x509
@@ -1367,6 +1368,9 @@ Requires: kernel-%{?1:%{1}-}-modules-core-uname-r = %{KVERREL}%{uname_variant %{
 %{expand:%%kernel_modules_extra_package %{?1:%{1}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}} %{-m:%{-m}}}\
 %if %{-m:0}%{!-m:1}\
 %{expand:%%kernel_modules_internal_package %{?1:%{1}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}}}\
+%if 0%{!?fedora:1}\
+%{expand:%%kernel_modules_partner_package %{?1:%{1}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}}}\
+%endif\
 %{expand:%%kernel_debuginfo_package %{?1:%{1}}}\
 %endif\
 %if %{efiuki}\
@@ -1376,6 +1380,27 @@ Provides: installonlypkg(kernel)\
 Provides: kernel-%{?1:%{1}-}uname-r = %{KVERREL}%{uname_suffix %{?1:%{1}}}\
 Requires: kernel%{?1:-%{1}}-modules-core-uname-r = %{KVERREL}%{uname_suffix %{?1:%{1}}}\
 %endif\
+%{nil}
+
+#
+# This macro creates a kernel-<subpackage>-modules-partner package.
+#	%%kernel_modules_partner_package <subpackage> <pretty-name>
+#
+%define kernel_modules_partner_package() \
+%package %{?1:%{1}-}modules-partner\
+Summary: Extra kernel modules to match the %{?2:%{2} }kernel\
+Group: System Environment/Kernel\
+Provides: kernel%{?1:-%{1}}-modules-partner-%{_target_cpu} = %{version}-%{release}\
+Provides: kernel%{?1:-%{1}}-modules-partner-%{_target_cpu} = %{version}-%{release}%{uname_suffix %{?1:%{1}}}\
+Provides: kernel%{?1:-%{1}}-modules-partner = %{version}-%{release}%{uname_suffix %{?1:%{1}}}\
+Provides: installonlypkg(kernel-module)\
+Provides: kernel%{?1:-%{1}}-modules-partner-uname-r = %{KVERREL}%{uname_suffix %{?1:%{1}}}\
+Requires: kernel-uname-r = %{KVERREL}%{uname_suffix %{?1:%{1}}}\
+Requires: kernel%{?1:-%{1}}-modules-uname-r = %{KVERREL}%{uname_suffix %{?1:%{1}}}\
+AutoReq: no\
+AutoProv: yes\
+%description %{?1:%{1}-}modules-partner\
+This package provides kernel modules for the %{?2:%{2} }kernel package for Red Hat partners usage.\
 %{nil}
 
 # Now, each variant package.
@@ -2173,6 +2198,10 @@ BuildKernel() {
     %{SOURCE20} $RPM_BUILD_ROOT lib/modules/$KernelVer $(realpath configs/mod-extra.list)
     # Identify modules in the kernel-modules-extras package
     %{SOURCE20} $RPM_BUILD_ROOT lib/modules/$KernelVer %{SOURCE84} internal
+%if 0%{!?fedora:1}
+    # Identify modules in the kernel-modules-partner package
+    %{SOURCE20} $RPM_BUILD_ROOT lib/modules/$KernelVer %{SOURCE85} partner
+%endif
 
     #
     # Generate the kernel-core and kernel-modules files lists
@@ -2190,6 +2219,10 @@ BuildKernel() {
     xargs rm -rf < mod-extra.list
     # don't include anything going int kernel-modules-internal in the file lists
     xargs rm -rf < mod-internal.list
+%if 0%{!?fedora:1}
+    # don't include anything going int kernel-modules-partner in the file lists
+    xargs rm -rf < mod-partner.list
+%endif
 
     if [ $DoModules -eq 1 ]; then
 	# Find all the module files and filter them out into the core and
@@ -2281,6 +2314,9 @@ BuildKernel() {
     sed -e 's/^lib*/\/lib/' %{?zipsed} $RPM_BUILD_ROOT/modules.list >> ../kernel${Variant:+-${Variant}}-modules-core.list
     sed -e 's/^lib*/\/lib/' %{?zipsed} $RPM_BUILD_ROOT/mod-extra.list >> ../kernel${Variant:+-${Variant}}-modules-extra.list
     sed -e 's/^lib*/\/lib/' %{?zipsed} $RPM_BUILD_ROOT/mod-internal.list >> ../kernel${Variant:+-${Variant}}-modules-internal.list
+%if 0%{!?fedora:1}
+    sed -e 's/^lib*/\/lib/' %{?zipsed} $RPM_BUILD_ROOT/mod-partner.list >> ../kernel${Variant:+-${Variant}}-modules-partner.list
+%endif
 
     # Cleanup
     rm -f $RPM_BUILD_ROOT/k-d.list
@@ -2288,6 +2324,9 @@ BuildKernel() {
     rm -f $RPM_BUILD_ROOT/module-dirs.list
     rm -f $RPM_BUILD_ROOT/mod-extra.list
     rm -f $RPM_BUILD_ROOT/mod-internal.list
+%if 0%{!?fedora:1}
+    rm -f $RPM_BUILD_ROOT/mod-partner.list
+%endif
 
 %if %{with_cross}
     make -C $RPM_BUILD_ROOT/lib/modules/$KernelVer/build M=scripts clean
@@ -2929,6 +2968,19 @@ fi\
 %{nil}
 
 #
+# This macro defines a %%post script for a kernel*-modules-partner package.
+# It also defines a %%postun script that does the same thing.
+#	%%kernel_modules_partner_post [<subpackage>]
+#
+%define kernel_modules_partner_post() \
+%{expand:%%post %{?1:%{1}-}modules-partner}\
+/sbin/depmod -a %{KVERREL}%{?1:+%{1}}\
+%{nil}\
+%{expand:%%postun %{?1:%{1}-}modules-partner}\
+/sbin/depmod -a %{KVERREL}%{?1:+%{1}}\
+%{nil}
+
+#
 # This macro defines a %%post script for a kernel*-modules package.
 # It also defines a %%postun script that does the same thing.
 #	%%kernel_modules_post [<subpackage>]
@@ -2998,6 +3050,9 @@ fi\
 %{expand:%%kernel_modules_core_post %{?-v*}}\
 %{expand:%%kernel_modules_extra_post %{?-v*}}\
 %{expand:%%kernel_modules_internal_post %{?-v*}}\
+%if 0%{!?fedora:1}\
+%{expand:%%kernel_modules_partner_post %{?-v*}}\
+%endif\
 %{expand:%%kernel_variant_posttrans %{?-v*}}\
 %{expand:%%post %{?-v*:%{-v*}-}core}\
 %{-r:\
@@ -3296,6 +3351,9 @@ fi
 %{expand:%%files -f kernel-%{?3:%{3}-}modules-extra.list %{?3:%{3}-}modules-extra}\
 %config(noreplace) /etc/modprobe.d/*-blacklist.conf\
 %{expand:%%files -f kernel-%{?3:%{3}-}modules-internal.list %{?3:%{3}-}modules-internal}\
+%if 0%{!?fedora:1}\
+%{expand:%%files -f kernel-%{?3:%{3}-}modules-partner.list %{?3:%{3}-}modules-partner}\
+%endif\
 %if %{with_debuginfo}\
 %ifnarch noarch\
 %{expand:%%files -f debuginfo%{?3}.list %{?3:%{3}-}debuginfo}\
@@ -3356,6 +3414,56 @@ fi
 #
 #
 %changelog
+* Wed Feb 15 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-272.el9]
+- Split partner modules into a sub-package (Alice Mitchell) [2039020]
+- Enable kAFS and it's dependancies in RHEL (Alice Mitchell) [2039020]
+- netfilter: ipset: Fix overflow before widen in the bitmap_ip_create() function. (Florian Westphal) [2161695]
+- netfilter: ipset: fix hash:net,port,net hang with /0 subnet (Florian Westphal) [2161695]
+- ipvs: use u64_stats_t for the per-cpu counters (Florian Westphal) [2161695]
+- netfilter: flowtable: really fix NAT IPv6 offload (Florian Westphal) [2161695]
+- netfilter: conntrack: fix using __this_cpu_add in preemptible (Florian Westphal) [2161695]
+- netfilter: flowtable_offload: fix using __this_cpu_add in preemptible (Florian Westphal) [2161695]
+- netfilter: nft_set_pipapo: Actually validate intervals in fields after the first one (Florian Westphal) [2161695]
+- netfilter: flowtable_offload: add missing locking (Florian Westphal) [2161695]
+- netfilter: ipset: restore allowing 64 clashing elements in hash:net,iface (Florian Westphal) [2161695]
+- netfilter: ipset: regression in ip_set_hash_ip.c (Florian Westphal) [2161695]
+- netfilter: Cleanup nft_net->module_list from nf_tables_exit_net() (Florian Westphal) [2161695]
+- netfilter: nfnetlink: fix potential dead lock in nfnetlink_rcv_msg() (Florian Westphal) [2161695]
+- netfilter: nf_tables: nft_parse_register can return a negative value (Florian Westphal) [2161695]
+- intel_th: msu: Use memset_startat() for clearing hw header (Eric Chanudet) [2159468]
+- redhat/configs: leave -Werror off for now (Eric Chanudet) [2159468]
+- gcc-12: disable '-Warray-bounds' universally for now (Eric Chanudet) [2159468]
+- kbuild: Fix -Wimplicit-fallthrough=5 error for GCC 5.x and 6.x (Eric Chanudet) [2159468]
+- s390: disable -Warray-bounds (Eric Chanudet) [2159468]
+- gcc-12: disable '-Wdangling-pointer' warning for now (Eric Chanudet) [2159468]
+- Makefile: fix 2 typos (Eric Chanudet) [2159468]
+- Makefile: Enable -Wzero-length-bounds (Eric Chanudet) [2159468]
+- Makefile: Enable -Warray-bounds (Eric Chanudet) [2159468]
+- sparc: Unbreak the build (Eric Chanudet) [2159468]
+- Makefile: Enable -Wcast-function-type (Eric Chanudet) [2159468]
+- kconfig: Add support for -Wimplicit-fallthrough (Eric Chanudet) [2159468]
+- Makefile: use -Wno-main in the full kernel tree (Eric Chanudet) [2159468]
+- s390: remove WARN_DYNAMIC_STACK (Eric Chanudet) [2159468]
+- Enable '-Werror' by default for all kernel builds (Eric Chanudet) [2159468]
+- kbuild: Shuffle blank line to improve comment meaning (Eric Chanudet) [2159468]
+- x86/boot: Wrap literal addresses in absolute_pointer() (Eric Chanudet) [2159468]
+- scsi: lpfc: Use struct_group() to initialize struct lpfc_cgn_info (Eric Chanudet) [2159468]
+- bnx2x: Use struct_group() for memcpy() region (Eric Chanudet) [2159468]
+- RDMA/cxgb4: fix accept failure due to increased cpl_t5_pass_accept_rpl size (Eric Chanudet) [2159468]
+- iw_cxgb4: Use memset_startat() for cpl_t5_pass_accept_rpl (Eric Chanudet) [2159468]
+- dm integrity: Use struct_group() to zero struct journal_sector (Eric Chanudet) [2159468]
+- bnxt_en: Use struct_group_attr() for memcpy() region (Eric Chanudet) [2159468]
+- ipv6: Use memset_after() to zero rt6_info (Eric Chanudet) [2159468]
+- xfrm: Use memset_after() to clear padding (Eric Chanudet) [2159468]
+- virtio-pci: Remove wrong address verification in vp_del_vqs() (Eric Chanudet) [2159468]
+- ipv4: ip_output.c: Fix out-of-bounds warning in ip_copy_addrs() (Eric Chanudet) [2159468]
+- skbuff: Switch structure bounds to struct_group() (Eric Chanudet) [2159468]
+- tracing: Use memset_startat() to zero struct trace_iterator (Eric Chanudet) [2159468]
+- kernel/sysctl.c: fixup printk sysctl constants (Eric Chanudet) [2159468]
+- crypto: dh - constify struct dh's pointer members (Eric Chanudet) [2159468]
+- cert host tools: Stop complaining about deprecated OpenSSL functions (Eric Chanudet) [2159468]
+- kernel/sysctl.c: remove unused variable ten_thousand (Eric Chanudet) [2159468]
+
 * Wed Feb 15 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-271.el9]
 - spi: bcm2835: bcm2835_spi_handle_err(): fix NULL pointer deref for non DMA transfers (Mark Salter) [2071848 2122415]
 - spi: bcm2835aux: Convert to use GPIO descriptors (Mark Salter) [2071848 2122415]
