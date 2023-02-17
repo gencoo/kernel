@@ -29,6 +29,18 @@
 %global _with_cross    1
 %endif
 
+# RPM macros strip everything in BUILDROOT, either with __strip
+# or find-debuginfo.sh. Make use of __spec_install_post override
+# and save/restore binaries we want to package as unstripped.
+%define buildroot_unstripped %{_builddir}/root_unstripped
+%define buildroot_save_unstripped() \
+(cd %{buildroot}; cp -rav --parents -t %{buildroot_unstripped}/ %1 || true) \
+%{nil}
+%define __restore_unstripped_root_post \
+    echo "Restoring unstripped artefacts %{buildroot_unstripped} -> %{buildroot}" \
+    cp -rav %{buildroot_unstripped}/. %{buildroot}/ \
+%{nil}
+
 # The kernel's %%install section is special
 # Normally the %%install section starts by cleaning up the BUILD_ROOT
 # like so:
@@ -149,15 +161,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 277
+%define pkgrelease 278
 %define kversion 5
-%define tarfile_release 5.14.0-277.el9
+%define tarfile_release 5.14.0-278.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 277%{?buildid}%{?dist}
+%define specrelease 278%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-277.el9
+%define kabiversion 5.14.0-278.el9
 
 #
 # End of genspec.sh variables
@@ -1692,6 +1704,9 @@ cd ..
 ###
 %build
 
+rm -rf %{buildroot_unstripped} || true
+mkdir -p %{buildroot_unstripped}
+
 %if %{with_sparse}
 %define sparse_mflags	C=1
 %endif
@@ -2549,6 +2564,7 @@ for dir in bpf bpf/no_alu32 bpf/progs; do
 	xargs -0 cp -t %{buildroot}%{_libexecdir}/kselftests/$dir || true
 done
 ln -sr  %{buildroot}%{_libexecdir}/kselftests/bpf/bpftool %{buildroot}%{_libexecdir}/kselftests/bpf/no_alu32/bpftool
+%buildroot_save_unstripped "usr/libexec/kselftests/bpf/test_progs"
 popd
 export -n BPFTOOL
 %endif
@@ -2636,6 +2652,7 @@ find Documentation -type d | xargs chmod u+w
   %{__arch_install_post}\
   %{__os_install_post}\
   %{__remove_unwanted_dbginfo_install_post}\
+  %{__restore_unstripped_root_post}\
   %{__modsign_install_post}
 
 ###
@@ -3416,6 +3433,39 @@ fi
 #
 #
 %changelog
+* Fri Feb 17 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-278.el9]
+- RDMA/irdma: Cap MSIX used to online CPUs + 1 (Kamal Heib) [2125810]
+- KVM: arm64: GICv4.1: Fix race with doorbell on VPE activation/deactivation (Eric Auger) [2166453]
+- ASoC: amd: ps: Add a module parameter to influence pdm_gain (Jaroslav Kysela) [2169760]
+- ASoC: amd: ps: Adjust the gain for PDM DMIC (Jaroslav Kysela) [2169760]
+- ASoC: amd: renoir: Add a module parameter to influence pdm_gain (Jaroslav Kysela) [2169760]
+- ASoC: amd: renoir: Adjust the gain for PDM DMIC (Jaroslav Kysela) [2169760]
+- ASoC: amd: yc: Add a module parameter to influence pdm_gain (Jaroslav Kysela) [2169760]
+- ASoC: amd: yc: Adjust the gain for PDM DMIC (Jaroslav Kysela) [2169760]
+- Revert "vdpa/mlx5: Add RX MAC VLAN filter support" (Cindy Lu) [2169174]
+- Revert "vdpa/mlx5: Fix wrong mac address deletion" (Cindy Lu) [2169174]
+- Revert "vdpa/mlx5: Use eth_broadcast_addr() to assign broadcast address" (Cindy Lu) [2169174]
+- Revert "vdpa/mlx5: fix error code for deleting vlan" (Cindy Lu) [2169174]
+- Revert "vdpa/mlx5: clean up indenting in handle_ctrl_vlan()" (Cindy Lu) [2169174]
+- Revert "vdpa/mlx5: Fix rule forwarding VLAN to TIR" (Cindy Lu) [2169174]
+- Revert "vdpa/mlx5: Return error on vlan ctrl commands if not supported" (Cindy Lu) [2169174]
+- kernel.spec: package unstripped kselftests/bpf/test_progs (Jan Stancek) [2161464]
+- kernel.spec: allow to package some binaries as unstripped (Jan Stancek) [2161464]
+- cpufreq: tegra194: Enable CPUFREQ thermal cooling (Joel Slebodnick) [2165104]
+- mm/kmemleak: fix UAF bug in kmemleak_scan() (Waiman Long) [2151065]
+- mm/kmemleak: simplify kmemleak_cond_resched() usage (Waiman Long) [2151065]
+- mm: percpu: use kmemleak_ignore_phys() instead of kmemleak_free() (Waiman Long) [2151065]
+- mm: kfence: apply kmemleak_ignore_phys on early allocated pool (Waiman Long) [2151065]
+- mm/kmemleak.c: fix a comment (Waiman Long) [2151065]
+- mm: kmemleak: check physical address when scan (Waiman Long) [2151065]
+- mm: kmemleak: add rbtree and store physical address for objects allocated with PA (Waiman Long) [2151065]
+- mm: kmemleak: add OBJECT_PHYS flag for objects allocated with physical address (Waiman Long) [2151065]
+- mm: kmemleak: remove kmemleak_not_leak_phys() and the min_count argument to kmemleak_alloc_phys() (Waiman Long) [2151065]
+- mm: kmemleak: take a full lowmem check in kmemleak_*_phys() (Waiman Long) [2151065]
+- memblock tests: Add skeleton of the memblock simulator (Waiman Long) [2151065]
+- usb: mon: make mmapped memory read only (Desnes Nunes) [2157698] {CVE-2022-43750}
+- selftests/net: give more time to udpgro bg processes to complete startup (Adrien Thierry) [2143407]
+
 * Fri Feb 17 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-277.el9]
 - virtio_net: notify MAC address change on device initialization (Laurent Vivier) [2153210]
 - virtio_net: disable VIRTIO_NET_F_STANDBY if VIRTIO_NET_F_MAC is not set (Laurent Vivier) [2153210]
