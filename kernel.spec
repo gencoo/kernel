@@ -161,15 +161,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 283
+%define pkgrelease 284
 %define kversion 5
-%define tarfile_release 5.14.0-283.el9
+%define tarfile_release 5.14.0-284.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 283%{?buildid}%{?dist}
+%define specrelease 284%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-283.el9
+%define kabiversion 5.14.0-284.el9
 
 #
 # End of genspec.sh variables
@@ -3346,6 +3346,7 @@ fi
 %ghost %attr(0600, root, root) /boot/System.map-%{KVERREL}%{?3:+%{3}}\
 /lib/modules/%{KVERREL}%{?3:+%{3}}/symvers.gz\
 /lib/modules/%{KVERREL}%{?3:+%{3}}/config\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/modules.builtin*\
 %ghost %attr(0600, root, root) /boot/symvers-%{KVERREL}%{?3:+%{3}}.gz\
 %ghost %attr(0600, root, root) /boot/initramfs-%{KVERREL}%{?3:+%{3}}.img\
 %ghost %attr(0644, root, root) /boot/config-%{KVERREL}%{?3:+%{3}}\
@@ -3362,7 +3363,11 @@ fi
 %if %{1}\
 /lib/modules/%{KVERREL}%{?3:+%{3}}/vdso\
 %endif\
-/lib/modules/%{KVERREL}%{?3:+%{3}}/modules.*\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/modules.block\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/modules.drm\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/modules.modesetting\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/modules.networking\
+/lib/modules/%{KVERREL}%{?3:+%{3}}/modules.order\
 %{expand:%%files -f kernel-%{?3:%{3}-}modules.list %{?3:%{3}-}modules}\
 %{expand:%%files %{?3:%{3}-}devel}\
 %defverify(not mtime)\
@@ -3434,6 +3439,9 @@ fi
 #
 #
 %changelog
+* Mon Feb 27 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-284.el9]
+- kernel.spec: move modules.builtin to kernel-core (Jan Stancek) [2172376]
+
 * Thu Feb 23 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-283.el9]
 - redhat: fix duplicate jira issues in the resolves line (Herton R. Krzesinski)
 - redhat/kernel.spec.template: Parallelize compression (Herton R. Krzesinski)
