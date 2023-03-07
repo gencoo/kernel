@@ -161,15 +161,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 284
+%define pkgrelease 285
 %define kversion 5
-%define tarfile_release 5.14.0-284.el9
+%define tarfile_release 5.14.0-285.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 284%{?buildid}%{?dist}
+%define specrelease 285%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-284.el9
+%define kabiversion 5.14.0-285.el9
 
 #
 # End of genspec.sh variables
@@ -195,6 +195,8 @@ Summary: The Linux kernel
 %define with_zfcpdump  %{?_without_zfcpdump:  0} %{?!_without_zfcpdump:  1}
 # kernel-64k (aarch64 kernel with 64K page_size)
 %define with_arm64_64k %{?_without_arm64_64k: 0} %{?!_without_arm64_64k: 1}
+# kernel-rt (x86_64 and aarch64 only PREEMPT_RT enabled kernel)
+%define with_realtime  %{?_without_realtime:  0} %{?!_without_realtime:  1}
 # kernel-doc
 %define with_doc       %{?_without_doc:       0} %{?!_without_doc:       1}
 # kernel-headers
@@ -221,6 +223,8 @@ Summary: The Linux kernel
 %define with_paeonly   %{?_with_paeonly:      1} %{?!_with_paeonly:      0}
 # Only build the debug kernel (--with dbgonly):
 %define with_dbgonly   %{?_with_dbgonly:      1} %{?!_with_dbgonly:      0}
+# Only build the realtime kernel (--with rtonly):
+%define with_rtonly    %{?_with_rtonly:       1} %{?!_with_rtonly:       0}
 # Control whether we perform a compat. check against published ABI.
 %define with_kabichk   %{?_without_kabichk:   0} %{?!_without_kabichk:   1}
 # Temporarily disable kabi checks until RC.
@@ -358,10 +362,16 @@ Summary: The Linux kernel
 %define with_pae 0
 %endif
 
+# RT kernel is only built on x86_64 and aarch64
+%ifnarch x86_64 aarch64
+%define with_realtime 0
+%endif
+
 # if requested, only build base kernel
 %if %{with_baseonly}
 %define with_pae 0
 %define with_debug 0
+%define with_realtime 0
 %define with_vdso_install 0
 %define with_perf 0
 %define with_tools 0
@@ -377,11 +387,29 @@ Summary: The Linux kernel
 %if %{with_paeonly}
 %define with_up 0
 %define with_debug 0
+%define with_realtime 0
 %endif
 
 # if requested, only build debug kernel
 %if %{with_dbgonly}
 %define with_up 0
+%define with_realtime 0
+%define with_vdso_install 0
+%define with_perf 0
+%define with_tools 0
+%define with_bpftool 0
+%define with_kernel_abi_stablelists 0
+%define with_selftests 0
+%define with_cross 0
+%define with_cross_headers 0
+%define with_ipaclones 0
+%endif
+
+# if requested, only build realtime kernel
+%if %{with_rtonly}
+%define with_up 0
+%define with_pae 0
+%define with_debug 0
 %define with_vdso_install 0
 %define with_perf 0
 %define with_tools 0
@@ -430,6 +458,7 @@ Summary: The Linux kernel
 # don't build noarch kernels or headers (duh)
 %ifarch noarch
 %define with_up 0
+%define with_realtime 0
 %define with_headers 0
 %define with_cross_headers 0
 %define with_tools 0
@@ -546,6 +575,7 @@ Summary: The Linux kernel
 %define with_pae 0
 %define with_zfcpdump 0
 %define with_arm64_64k 0
+%define with_realtime 0
 
 %define with_debuginfo 0
 %define with_perf 0
@@ -747,10 +777,9 @@ BuildRequires: dracut
 BuildRequires: binutils
 # For the initrd
 BuildRequires: lvm2
-%if 0%{?fedora} > 37
+# For systemd-stub
 BuildRequires: systemd-boot-unsigned
-%endif
-# For systemd-stub and systemd-pcrphase
+# For systemd-pcrphase
 BuildRequires: systemd-udev >= 252-1
 # For TPM operations in UKI initramfs
 BuildRequires: tpm2-tools
@@ -830,6 +859,11 @@ Source41: x509.genkey.centos
 # ARM64 64K page-size kernel config
 Source42: kernel-aarch64-64k-rhel.config
 Source43: kernel-aarch64-64k-debug-rhel.config
+
+Source44: kernel-x86_64-rt-rhel.config
+Source45: kernel-x86_64-rt-debug-rhel.config
+Source46: kernel-aarch64-rt-rhel.config
+Source47: kernel-aarch64-rt-debug-rhel.config
 %endif
 
 %if 0%{?include_fedora}
@@ -865,6 +899,7 @@ Source82: update_scripts.sh
 
 Source84: mod-internal.list
 Source85: mod-partner.list
+Source86: mod-kvm.list
 
 Source100: rheldup3.x509
 Source101: rhelkpatch1.x509
@@ -1273,6 +1308,24 @@ AutoProv: yes\
 This package provides kernel modules for the %{?2:%{2} }kernel package for Red Hat internal usage.\
 %{nil}
 
+%if %{with_realtime}
+#
+# this macro creates a kernel-<subpackage>-kvm package
+# %%kernel_kvm_package <subpackage>
+#
+%define kernel_kvm_package() \
+%package %{?1:%{1}-}kvm\
+Summary: KVM modules for package kernel%{?1:-%{1}}\
+Group: System Environment/Kernel\
+Requires: kernel%{?1:-%{1}} = %{version}-%{release}\
+Provides: installonlypkg(kernel-module)\
+Provides: kernel%{?1:-%{1}}-kvm-%{_target_cpu} = %{version}-%{release}\
+AutoReq: no\
+%description -n kernel%{?1:-%{1}}-kvm\
+This package provides KVM modules for package kernel%{?1:-%{1}}.\
+%{nil}
+%endif
+
 #
 # This macro creates a kernel-<subpackage>-modules-extra package.
 #	%%kernel_modules_extra_package [-m] <subpackage> <pretty-name>
@@ -1352,6 +1405,9 @@ summary: kernel meta-package for the %{1} kernel\
 Requires: kernel-%{1}-core-uname-r = %{KVERREL}%{uname_suffix %{1}}\
 Requires: kernel-%{1}-modules-uname-r = %{KVERREL}%{uname_suffix %{1}}\
 Requires: kernel-%{1}-modules-core-uname-r = %{KVERREL}%{uname_suffix %{1}}\
+%if "%{1}" == "rt" || "%{1}" == "rt-debug"\
+Requires: realtime-setup\
+%endif\
 Provides: installonlypkg(kernel)\
 %description %{1}\
 The meta-package for the %{1} kernel\
@@ -1388,12 +1444,17 @@ Requires: kernel-%{?1:%{1}-}-modules-core-uname-r = %{KVERREL}%{uname_variant %{
 %{expand:%%kernel_debuginfo_package %{?1:%{1}}}\
 %endif\
 %if %{efiuki}\
+%if "%{1}" != "rt" && "%{1}" != "rt-debug"\
 %package %{?1:%{1}-}uki-virt\
 Summary: %{variant_summary} unified kernel image for virtual machines\
 Provides: installonlypkg(kernel)\
 Provides: kernel-%{?1:%{1}-}uname-r = %{KVERREL}%{uname_suffix %{?1:%{1}}}\
 Requires: kernel%{?1:-%{1}}-modules-core-uname-r = %{KVERREL}%{uname_suffix %{?1:%{1}}}\
 %endif\
+%endif\
+%if "%{1}" == "rt" || "%{1}" == "rt-debug"\
+%{expand:%%kernel_kvm_package %{?1:%{1}}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}}}\
+%endif \
 %{nil}
 
 #
@@ -1455,6 +1516,24 @@ a 64K page size.
 The debug kernel package contains a variant of the ARM64 Linux kernel using
 a 64K page size.
 This variant of the kernel has numerous debugging options enabled.
+It should only be installed when trying to gather additional information
+on kernel bugs, as some of these options impact performance noticably.
+%endif
+
+%if %{with_realtime}
+%define variant_summary The Linux kernel compiled with PREEMPT_RT enabled
+%kernel_variant_package rt
+%description rt-core
+This package includes a version of the Linux kernel compiled with PREEMPT_RT
+(real-time preemption support).
+%endif
+
+%if %{with_debug} && %{with_realtime}
+%define variant_summary The Linux kernel compiled with PREEMPT_RT enabled
+%kernel_variant_package rt-debug
+%description rt-debug-core
+This package includes a version of the Linux kernel compiled with PREEMPT_RT
+(real-time preemption support) and has numerous debugging options enabled.
 It should only be installed when trying to gather additional information
 on kernel bugs, as some of these options impact performance noticably.
 %endif
@@ -2219,6 +2298,10 @@ BuildKernel() {
     # Identify modules in the kernel-modules-partner package
     %{SOURCE20} $RPM_BUILD_ROOT lib/modules/$KernelVer %{SOURCE85} partner
 %endif
+    if [ "$Variant" = "rt" ] || [ "$Variant" = "rt-debug" ]; then
+        # Identify modules in the kernel-rt-kvm package
+        %{SOURCE20} $RPM_BUILD_ROOT lib/modules/$KernelVer %{SOURCE86} kvm
+    fi
 
     #
     # Generate the kernel-core and kernel-modules files lists
@@ -2240,6 +2323,10 @@ BuildKernel() {
     # don't include anything going int kernel-modules-partner in the file lists
     xargs rm -rf < mod-partner.list
 %endif
+    if [ "$Variant" = "rt" ] || [ "$Variant" = "rt-debug" ]; then
+        # don't include anything going into kernel-rt-kvm in the file lists
+        xargs rm -rf < mod-kvm.list
+    fi
 
     if [ $DoModules -eq 1 ]; then
 	# Find all the module files and filter them out into the core and
@@ -2270,38 +2357,41 @@ BuildKernel() {
     fi
 
 %if %{efiuki}
-    popd
-
-    KernelUnifiedImageDir="$RPM_BUILD_ROOT/lib/modules/$KernelVer"
-    KernelUnifiedImage="$KernelUnifiedImageDir/$InstallName-virt.efi"
-
-    mkdir -p $KernelUnifiedImageDir
-
-    dracut --conf=%{SOURCE150} \
-           --confdir=$(mktemp -d) \
-           --verbose \
-           --kver "$KernelVer" \
-           --kmoddir "$RPM_BUILD_ROOT/lib/modules/$KernelVer/" \
-           --logfile=$(mktemp) \
-           --uefi \
-           --kernel-image $(realpath $KernelImage) \
-           --kernel-cmdline 'console=tty0 console=ttyS0' \
-	   $KernelUnifiedImage
+    if [ "$Variant" != "rt" ] && [ "$Variant" != "rt-debug" ]; then
+        popd
+    
+        KernelUnifiedImageDir="$RPM_BUILD_ROOT/lib/modules/$KernelVer"
+        KernelUnifiedImage="$KernelUnifiedImageDir/$InstallName-virt.efi"
+    
+        mkdir -p $KernelUnifiedImageDir
+    
+        dracut --conf=%{SOURCE150} \
+               --confdir=$(mktemp -d) \
+               --verbose \
+               --kver "$KernelVer" \
+               --kmoddir "$RPM_BUILD_ROOT/lib/modules/$KernelVer/" \
+               --logfile=$(mktemp) \
+               --uefi \
+               --kernel-image $(realpath $KernelImage) \
+               --kernel-cmdline 'console=tty0 console=ttyS0' \
+    	   $KernelUnifiedImage
 
 %if %{signkernel}
 
-    %pesign -s -i $KernelUnifiedImage -o $KernelUnifiedImage.signed -a %{secureboot_ca_0} -c %{secureboot_key_0} -n %{pesign_name_0}
-    if [ ! -s $KernelUnifiedImage.signed ]; then
-      echo "pesigning failed"
-      exit 1
-    fi
-    mv $KernelUnifiedImage.signed $KernelUnifiedImage
+        %pesign -s -i $KernelUnifiedImage -o $KernelUnifiedImage.signed -a %{secureboot_ca_0} -c %{secureboot_key_0} -n %{pesign_name_0}
+        if [ ! -s $KernelUnifiedImage.signed ]; then
+          echo "pesigning failed"
+          exit 1
+        fi
+        mv $KernelUnifiedImage.signed $KernelUnifiedImage
 
 # signkernel
 %endif
 
-    pushd $RPM_BUILD_ROOT
+        pushd $RPM_BUILD_ROOT
 
+    # Variant != rt && Variant != rt-debug
+    fi
 # efiuki
 %endif
 
@@ -2334,6 +2424,9 @@ BuildKernel() {
 %if 0%{!?fedora:1}
     sed -e 's/^lib*/\/lib/' %{?zipsed} $RPM_BUILD_ROOT/mod-partner.list >> ../kernel${Variant:+-${Variant}}-modules-partner.list
 %endif
+    if [ "$Variant" = "rt" ] || [ "$Variant" = "rt-debug" ]; then
+        sed -e 's/^lib*/\/lib/' %{?zipsed} $RPM_BUILD_ROOT/mod-kvm.list >> ../kernel${Variant:+-${Variant}}-kvm.list
+    fi
 
     # Cleanup
     rm -f $RPM_BUILD_ROOT/k-d.list
@@ -2344,6 +2437,9 @@ BuildKernel() {
 %if 0%{!?fedora:1}
     rm -f $RPM_BUILD_ROOT/mod-partner.list
 %endif
+    if [ "$Variant" = "rt" ] || [ "$Variant" = "rt-debug" ]; then
+        rm -f $RPM_BUILD_ROOT/mod-kvm.list
+    fi
 
 %if %{with_cross}
     make -C $RPM_BUILD_ROOT/lib/modules/$KernelVer/build M=scripts clean
@@ -2429,6 +2525,9 @@ BuildKernel %make_target %kernel_image %{_use_vdso} debug
 %if %{with_arm64_64k}
 BuildKernel %make_target %kernel_image %{_use_vdso} 64k-debug
 %endif
+%if %{with_realtime}
+BuildKernel %make_target %kernel_image %{_use_vdso} rt-debug
+%endif
 %endif
 
 %if %{with_zfcpdump}
@@ -2443,12 +2542,16 @@ BuildKernel %make_target %kernel_image %{_use_vdso} 64k
 BuildKernel %make_target %kernel_image %{use_vdso} lpae
 %endif
 
+%if %{with_realtime}
+BuildKernel %make_target %kernel_image %{use_vdso} rt
+%endif
+
 %if %{with_up}
 BuildKernel %make_target %kernel_image %{_use_vdso}
 %endif
 
 %ifnarch noarch i686
-%if !%{with_debug} && !%{with_zfcpdump} && !%{with_pae} && !%{with_up} && !%{with_arm64_64k}
+%if !%{with_debug} && !%{with_zfcpdump} && !%{with_pae} && !%{with_up} && !%{with_arm64_64k} && !%{with_realtime}
 # If only building the user space tools, then initialize the build environment
 # and some variables so that the various userspace tools can be built.
 InitBuildVars
@@ -2596,6 +2699,9 @@ find Documentation -type d | xargs chmod u+w
     if [ "%{with_pae}" -ne "0" ]; then \
        %{modsign_cmd} certs/signing_key.pem.sign+lpae certs/signing_key.x509.sign+lpae $RPM_BUILD_ROOT/lib/modules/%{KVERREL}+lpae/ \
     fi \
+    if [ "%{with_realtime}" -ne "0" ]; then \
+       %{modsign_cmd} certs/signing_key.pem.sign+rt certs/signing_key.x509.sign+rt $RPM_BUILD_ROOT/lib/modules/%{KVERREL}+rt/ \
+    fi \
     if [ "%{with_debug}" -ne "0" ]; then \
          %{modsign_cmd} certs/signing_key.pem.sign+debug certs/signing_key.x509.sign+debug $RPM_BUILD_ROOT/lib/modules/%{KVERREL}+debug/ \
     fi \
@@ -2604,6 +2710,9 @@ find Documentation -type d | xargs chmod u+w
     fi \
     if [ "%{with_arm64_64k}" -ne "0" ] && [ "%{with_debug}" -ne "0"]; then \
          %{modsign_cmd} certs/signing_key.pem.sign+64k-debug certs/signing_key.x509.sign+64k-debug $RPM_BUILD_ROOT/lib/modules/%{KVERREL}+64k-debug/ \
+    fi \
+    if [ "%{with_realtime}" -ne "0" ] && [ "%{with_debug}" -ne "0"]; then \
+         %{modsign_cmd} certs/signing_key.pem.sign+rt-debug certs/signing_key.x509.sign+rt-debug $RPM_BUILD_ROOT/lib/modules/%{KVERREL}+rt-debug/ \
     fi \
     if [ "%{with_up}" -ne "0" ]; then \
       %{modsign_cmd} certs/signing_key.pem.sign certs/signing_key.x509.sign $RPM_BUILD_ROOT/lib/modules/%{KVERREL}/ \
@@ -2987,6 +3096,21 @@ fi\
 /sbin/depmod -a %{KVERREL}%{?1:+%{1}}\
 %{nil}
 
+%if %{with_realtime}
+#
+# This macro defines a %%post script for a kernel*-kvm package.
+# It also defines a %%postun script that does the same thing.
+#       %%kernel_kvm_post [<subpackage>]
+#
+%define kernel_kvm_post() \
+%{expand:%%post %{?1:%{1}-}kvm}\
+/sbin/depmod -a %{KVERREL}%{?1:+%{1}}\
+%{nil}\
+%{expand:%%postun %{?1:%{1}-}kvm}\
+/sbin/depmod -a %{KVERREL}%{?1:+%{1}}\
+%{nil}
+%endif
+
 #
 # This macro defines a %%post script for a kernel*-modules-partner package.
 # It also defines a %%postun script that does the same thing.
@@ -3082,6 +3206,14 @@ if [ `uname -i` == "x86_64" -o `uname -i` == "i386" ] &&\
 fi}\
 mkdir -p %{_localstatedir}/lib/rpm-state/%{name}\
 touch %{_localstatedir}/lib/rpm-state/%{name}/installing_core_%{KVERREL}%{?-v:+%{-v*}}\
+%if "%{1}" == "rt" || "%{1}" == "rt-debug"\
+%{expand:%%post %{?1:%{1}-}kvm}\
+/sbin/depmod -a %{KVERREL}%{?1:+%{1}}\
+%{nil}\
+%{expand:%%postun %{?1:%{1}-}kvm}\
+/sbin/depmod -a %{KVERREL}%{?1:+%{1}}\
+%{nil}\
+%endif\
 %{nil}
 
 #
@@ -3136,6 +3268,16 @@ fi\
 %if %{with_debug} && %{with_arm64_64k}
 %kernel_variant_preun 64k-debug
 %kernel_variant_post -v 64k-debug
+%endif
+
+%if %{with_realtime}
+%kernel_variant_preun rt
+%kernel_variant_post -v rt
+%endif
+
+%if %{with_debug} && %{with_realtime}
+%kernel_variant_preun rt-debug
+%kernel_variant_post -v rt-debug
 %endif
 
 %if %{with_debug}
@@ -3379,15 +3521,20 @@ fi
 %if 0%{!?fedora:1}\
 %{expand:%%files -f kernel-%{?3:%{3}-}modules-partner.list %{?3:%{3}-}modules-partner}\
 %endif\
+%if "%{3}" == "rt" || "%{3}" == "rt-debug"\
+%{expand:%%files -f kernel-%{?3:%{3}-}kvm.list %{?3:%{3}-}kvm}\
+%endif\
 %if %{with_debuginfo}\
 %ifnarch noarch\
 %{expand:%%files -f debuginfo%{?3}.list %{?3:%{3}-}debuginfo}\
 %endif\
 %endif\
 %if %{efiuki}\
+%if "%{3}" != "rt" && "%{3}" != "rt-debug"\
 %{expand:%%files %{?3:%{3}-}uki-virt}\
 /lib/modules/%{KVERREL}%{?3:+%{3}}/%{?-k:%{-k*}}%{!?-k:vmlinuz}-virt.efi\
 %ghost /%{image_install_path}/efi/EFI/Linux/%{?-k:%{-k*}}%{!?-k:vmlinuz}-%{KVERREL}%{?3:+%{3}}-virt.efi\
+%endif\
 %endif\
 %if %{?3:1} %{!?3:0}\
 %{expand:%%files %{3}}\
@@ -3399,6 +3546,10 @@ fi
 %kernel_variant_files %{_use_vdso} %{with_debug} debug
 %if %{with_arm64_64k}
 %kernel_variant_files %{_use_vdso} %{with_debug} 64k-debug
+%endif
+%kernel_variant_files %{_use_vdso} %{with_realtime} rt
+%if %{with_realtime}
+%kernel_variant_files %{_use_vdso} %{with_debug} rt-debug
 %endif
 %if %{with_debug_meta}
 %files debug
@@ -3439,6 +3590,73 @@ fi
 #
 #
 %changelog
+* Tue Mar 07 2023 Jan Stancek <jstancek@redhat.com> [5.14.0-285.el9]
+- redhat: Add kernel-rt configs (Juri Lelli) [2171995]
+- redhat: Build aarch64 kernel-rt (Juri Lelli) [2171995]
+- redhat: Build kernel-rt as kernel variant (Juri Lelli) [2171995]
+- Revert "drm/i915: Depend on !PREEMPT_RT." (Juri Lelli) [2171995]
+- drm/i915: Drop the irqs_disabled() check (Juri Lelli) [2171995]
+- drm/i915/gt: Use spin_lock_irq() instead of local_irq_disable() + spin_lock() (Juri Lelli) [2171995]
+- drm/i915/gt: Queue and wait for the irq_work item. (Juri Lelli) [2171995]
+- drm/i915: skip DRM_I915_LOW_LEVEL_TRACEPOINTS with NOTRACE (Juri Lelli) [2171995]
+- drm/i915: Disable tracing points on PREEMPT_RT (Juri Lelli) [2171995]
+- drm/i915: Don't check for atomic context on PREEMPT_RT (Juri Lelli) [2171995]
+- drm/i915: Don't disable interrupts on PREEMPT_RT during atomic updates (Juri Lelli) [2171995]
+- drm/i915: Use preempt_disable/enable_rt() where recommended (Juri Lelli) [2171995]
+- sysfs: Add /sys/kernel/realtime entry (Juri Lelli) [2171995]
+- ARM64: Allow to enable RT (Juri Lelli) [2171995]
+- tty/serial/pl011: Make the locking work on RT (Juri Lelli) [2171995]
+- tty/serial/omap: Make the locking RT aware (Juri Lelli) [2171995]
+- arch/arm64: Add lazy preempt support (Juri Lelli) [2171995]
+- entry: Fix the preempt lazy fallout (Juri Lelli) [2171995]
+- x86: Support for lazy preemption (Juri Lelli) [2171995]
+- x86/entry: Use should_resched() in idtentry_exit_cond_resched() (Juri Lelli) [2171995]
+- sched: Add support for lazy preemption (Juri Lelli) [2171995]
+- printk: avoid preempt_disable() for PREEMPT_RT (Juri Lelli) [2171995]
+- serial: 8250: implement write_atomic (Juri Lelli) [2171995]
+- printk: add infrastucture for atomic consoles (Juri Lelli) [2171995]
+- printk: Bring back the RT bits. (Juri Lelli) [2171995]
+- locking/lockdep: Remove lockdep_init_map_crosslock. (Juri Lelli) [2171995]
+- iio: adc: stm32-adc: Use generic_handle_domain_irq() (Juri Lelli) [2171995]
+- zram: Replace bit spinlocks with spinlock_t for PREEMPT_RT. (Juri Lelli) [2171995]
+- tick: Fix timer storm since introduction of timersd (Juri Lelli) [2171995]
+- rcutorture: Also force sched priority to timersd on boosting test. (Juri Lelli) [2171995]
+- softirq: Use a dedicated thread for timer wakeups. (Juri Lelli) [2171995]
+- x86: Allow to enable RT (Juri Lelli) [2171995]
+- sched: Consider task_struct::saved_state in wait_task_inactive(). (Juri Lelli) [2171995]
+- signal: Don't disable preemption in ptrace_stop() on PREEMPT_RT. (Juri Lelli) [2171995]
+- u64_stats: Streamline the implementation (Juri Lelli) [2171995]
+- mm/compaction: Get rid of RT ifdeffery (Juri Lelli) [2171995]
+- mm/memcontrol: Replace the PREEMPT_RT conditionals (Juri Lelli) [2171995]
+- mm/debug: Provide VM_WARN_ON_IRQS_ENABLED() (Juri Lelli) [2171995]
+- mm/vmstat: Use preempt_[dis|en]able_nested() (Juri Lelli) [2171995]
+- dentry: Use preempt_[dis|en]able_nested() (Juri Lelli) [2171995]
+- preempt: Provide preempt_[dis|en]able_nested() (Juri Lelli) [2171995]
+- u64_stats: Disable preemption on 32bit UP+SMP PREEMPT_RT during updates. (Juri Lelli) [2171995]
+- net: Use u64_stats_fetch_begin_irq() for stats fetch. (Juri Lelli) [2171995]
+- net: hinic: fix bug that ethtool get wrong stats (Juri Lelli) [2171995]
+- hinic: Use the bitmap API when applicable (Juri Lelli) [2171995]
+- net: dsa: xrs700x: Use irqsave variant for u64 stats update (Juri Lelli) [2171995]
+- bcma: gpio: Use generic_handle_irq_safe() (Juri Lelli) [2171995]
+- platform/x86: intel_int0002_vgpio: Use generic_handle_irq_safe() (Juri Lelli) [2171995]
+- ssb: gpio: Use generic_handle_irq_safe() (Juri Lelli) [2171995]
+- pinctrl: amd: Use generic_handle_irq_safe() (Juri Lelli) [2171995]
+- genirq: Provide generic_handle_domain_irq_safe(). (Juri Lelli) [2171995]
+- asm-generic: Conditionally enable do_softirq_own_stack() via Kconfig. (Juri Lelli) [2171995]
+- slub: Make PREEMPT_RT support less convoluted (Juri Lelli) [2171995]
+- mm/slub: fix a slab missed to be freed problem (Juri Lelli) [2171995]
+- mm/slub: simplify __cmpxchg_double_slab() and slab_[un]lock() (Juri Lelli) [2171995]
+- mm/slub: convert object_map_lock to non-raw spinlock (Juri Lelli) [2171995]
+- mm/slub: remove slab_lock() usage for debug operations (Juri Lelli) [2171995]
+- mm/slub: restrict sysfs validation to debug caches and make it safe (Juri Lelli) [2171995]
+- mm/slub: move free_debug_processing() further (Juri Lelli) [2171995]
+- arch/*: Disable softirq stacks on PREEMPT_RT. (Juri Lelli) [2171995]
+- tools/testing/scatterlist: add missing defines (Juri Lelli) [2171995]
+- mm/scatterlist: replace the !preemptible warning in sg_miter_stop() (Juri Lelli) [2171995]
+- mm/vmalloc: use raw_cpu_ptr() for vmap_block_queue access (Juri Lelli) [2171995]
+- kernel.spec: make rhel depend on systemd-boot-unsigned (Jan Stancek) [2174934]
+- redhat: Bump RHEL_MINOR for 9.3 (Jan Stancek)
+
 * Mon Feb 27 2023 Herton R. Krzesinski <herton@redhat.com> [5.14.0-284.el9]
 - kernel.spec: move modules.builtin to kernel-core (Jan Stancek) [2172376]
 
