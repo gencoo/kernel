@@ -698,7 +698,7 @@ Source1: Makefile.rhelver
 %define secureboot_ca_0 %{_datadir}/pki/sb-certs/secureboot-ca-%{_arch}.cer
 %define secureboot_key_0 %{_datadir}/pki/sb-certs/secureboot-kernel-%{_arch}.cer
 
-%define pesign_name_0 almalinuxsecurebootca0.cer
+%define pesign_name_0 almalinuxsecurebootca0
 
 # signkernel
 %endif
