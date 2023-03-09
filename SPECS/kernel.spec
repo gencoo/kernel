@@ -552,6 +552,9 @@ Requires: kernel-core-uname-r = %{KVERREL}
 Requires: kernel-modules-uname-r = %{KVERREL}
 %endif
 
+Provides: almalinux(kernel-sig-key) = 202303
+Conflicts: shim-ia32 <= 15.6-1.el9.alma
+Conflicts: shim-x64 <= 15.6-1.el9.alma
 
 #
 # List the packages used during the kernel build
@@ -695,7 +698,7 @@ Source1: Makefile.rhelver
 %define secureboot_ca_0 %{_datadir}/pki/sb-certs/secureboot-ca-%{_arch}.cer
 %define secureboot_key_0 %{_datadir}/pki/sb-certs/secureboot-kernel-%{_arch}.cer
 
-%define pesign_name_0 clsecureboot001
+%define pesign_name_0 almalinuxsecurebootca0.cer
 
 # signkernel
 %endif
