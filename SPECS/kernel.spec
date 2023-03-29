@@ -121,13 +121,13 @@ Summary: The Linux kernel
 %define kversion 5.14
 
 %define rpmversion 5.14.0
-%define pkgrelease 162.12.1.el9_1
+%define pkgrelease 162.22.2.el9_1
 
 # This is needed to do merge window version magic
 %define patchlevel 14
 
 # allow pkg_release to have configurable %%{?dist} tag
-%define specrelease 162.12.1%{?buildid}%{?dist}
+%define specrelease 162.22.2%{?buildid}%{?dist}
 
 %define pkg_release %{specrelease}
 
@@ -678,7 +678,7 @@ BuildRequires: lld
 # exact git commit you can run
 #
 # xzcat -qq ${TARBALL} | git get-tar-commit-id
-Source0: linux-5.14.0-162.12.1.el9_1.tar.xz
+Source0: linux-5.14.0-162.22.2.el9_1.tar.xz
 
 Source1: Makefile.rhelver
 
@@ -1338,8 +1338,8 @@ ApplyOptionalPatch()
   fi
 }
 
-%setup -q -n kernel-5.14.0-162.12.1.el9_1 -c
-mv linux-5.14.0-162.12.1.el9_1 linux-%{KVERREL}
+%setup -q -n kernel-5.14.0-162.22.2.el9_1 -c
+mv linux-5.14.0-162.22.2.el9_1 linux-%{KVERREL}
 
 cd linux-%{KVERREL}
 cp -a %{SOURCE1} .
@@ -2993,6 +2993,95 @@ fi
 #
 #
 %changelog
+* Wed Mar 15 2023 Lucas Zampieri <lzampier@redhat.com> [5.14.0-162.22.2.el9_1]
+- tun: avoid double free in tun_free_netdev (Jon Maloy) [2156373] {CVE-2022-4744}
+
+* Thu Mar 09 2023 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.22.1.el9_1]
+- ALSA: pcm: Move rwsem lock inside snd_ctl_elem_read to prevent UAF (Jaroslav Kysela) [2163390 2125540] {CVE-2023-0266}
+
+* Thu Mar 02 2023 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.21.1.el9_1]
+- s390/boot: add secure boot trailer (Tobias Huschle) [2151528 2141966]
+- s390/kexec: fix ipl report address for kdump (Tobias Huschle) [2166903 2161327]
+- s390/qeth: cache link_info for ethtool (Tobias Huschle) [2166304 2110436]
+- scsi: zfcp: Fix missing auto port scan and thus missing target ports (Tobias Huschle) [2127880 2121088]
+
+* Thu Feb 23 2023 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.20.1.el9_1]
+- cgroup/cpuset: remove unreachable code (Waiman Long) [2161105 1946801]
+- kselftest/cgroup: Add cpuset v2 partition root state test (Waiman Long) [2161105 1946801]
+- cgroup/cpuset: Update description of cpuset.cpus.partition in cgroup-v2.rst (Waiman Long) [2161105 1946801]
+- cgroup/cpuset: Make partition invalid if cpumask change violates exclusivity rule (Waiman Long) [2161105 1946801]
+- cgroup/cpuset: Relocate a code block in validate_change() (Waiman Long) [2161105 1946801]
+- cgroup/cpuset: Show invalid partition reason string (Waiman Long) [2161105 1946801]
+- cgroup/cpuset: Add a new isolated cpus.partition type (Waiman Long) [2161105 1946801]
+- cgroup/cpuset: Relax constraints to partition & cpus changes (Waiman Long) [2161105 1946801]
+- cgroup/cpuset: Allow no-task partition to have empty cpuset.cpus.effective (Waiman Long) [2161105 1946801]
+- cgroup/cpuset: Miscellaneous cleanups & add helper functions (Waiman Long) [2161105 1946801]
+- cgroup/cpuset: Enable update_tasks_cpumask() on top_cpuset (Waiman Long) [2161105 1946801]
+- cpuset: convert 'allowed' in __cpuset_node_allowed() to be boolean (Waiman Long) [2161105 1946801]
+- cgroup/cpuset: Remove cpus_allowed/mems_allowed setup in cpuset_init_smp() (Waiman Long) [2161105 1946801]
+- cgroup: cleanup comments (Waiman Long) [2161105 1946801]
+- act_mirred: use the backlog for nested calls to mirred ingress (Davide Caratti) [2164655 2150278] {CVE-2022-4269}
+- net/sched: act_mirred: better wording on protection against excessive stack growth (Davide Caratti) [2164655 2150278] {CVE-2022-4269}
+- scsi: storvsc: Fix swiotlb bounce buffer leak in confidential VM (Emanuele Giuseppe Esposito) [2170227 2150660]
+
+* Thu Feb 16 2023 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.19.1.el9_1]
+- sched/core: Use kfree_rcu() in do_set_cpus_allowed() (Waiman Long) [2160614 2143847]
+- sched/core: Fix use-after-free bug in dup_user_cpus_ptr() (Waiman Long) [2160614 2143847]
+- sched: Always clear user_cpus_ptr in do_set_cpus_allowed() (Waiman Long) [2143766 2107354]
+- sched: Enforce user requested affinity (Waiman Long) [2143766 2107354]
+- sched: Always preserve the user requested cpumask (Waiman Long) [2143766 2107354]
+- sched: Introduce affinity_context (Waiman Long) [2143766 2107354]
+- sched: Add __releases annotations to affine_move_task() (Waiman Long) [2143766 2107354]
+- x86/fpu: Fix copy_xstate_to_uabi() to copy init states correctly (Dean Nelson) [2168382 2122851]
+- x86/fpu: Exclude dynamic states from init_fpstate (Dean Nelson) [2168382 2122851]
+- x86/fpu: Fix the init_fpstate size check with the actual size (Dean Nelson) [2168382 2122851]
+- x86/fpu: Configure init_fpstate attributes orderly (Dean Nelson) [2168382 2122851]
+- x86/fpu/xstate: Fix the ARCH_REQ_XCOMP_PERM implementation (Dean Nelson) [2168382 2122851]
+
+* Thu Feb 09 2023 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.18.1.el9_1]
+- powerpc/pseries: Use lparcfg to reconfig VAS windows for DLPAR CPU (Steve Best) [2154305 2133101]
+- redhat/configs: Change the amd-pstate driver from builtin to loadable (David Arcari) [2151274 2143793]
+- powerpc/pseries/mobility: set NMI watchdog factor during an LPM (Steve Best) [2140085 2122830]
+- powerpc/watchdog: introduce a NMI watchdog's factor (Steve Best) [2140085 2122830]
+- watchdog: export lockup_detector_reconfigure (Steve Best) [2140085 2122830]
+- powerpc/mobility: wait for memory transfer to complete (Steve Best) [2140085 2122830]
+
+* Thu Feb 02 2023 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.17.1.el9_1]
+- PCI: hv: Only reuse existing IRTE allocation for Multi-MSI (Emanuele Giuseppe Esposito) [2155459 2100404]
+- PCI: hv: Fix the definition of vector in hv_compose_msi_msg() (Emanuele Giuseppe Esposito) [2155459 2100404]
+- PCI: hv: Fix interrupt mapping for multi-MSI (Emanuele Giuseppe Esposito) [2155459 2100404]
+- PCI: hv: Reuse existing IRTE allocation in compose_msi_msg() (Emanuele Giuseppe Esposito) [2155459 2100404]
+- PCI: hv: Fix hv_arch_irq_unmask() for multi-MSI (Emanuele Giuseppe Esposito) [2155459 2100404]
+- PCI: hv: Fix multi-MSI to allow more than one MSI vector (Emanuele Giuseppe Esposito) [2155459 2100404]
+- proc: proc_skip_spaces() shouldn't think it is working on C strings (Wander Lairson Costa) [2152580 2152581] {CVE-2022-4378}
+- proc: avoid integer type confusion in get_proc_long (Wander Lairson Costa) [2152580 2152581] {CVE-2022-4378}
+- blk-mq: run queue no matter whether the request is the last request (Ming Lei) [2162535 2118511]
+- netfilter: nft_payload: incorrect arithmetics when fetching VLAN header bits (Florian Westphal) [2161724 2161725] {CVE-2023-0179}
+- nvme-tcp: fix regression that causes sporadic requests to time out (Gopal Tiwari) [2161344 2124526]
+- netfs: Fix dodgy maths (Xiubo Li) [2161418 2138981]
+- netfs: Fix missing xas_retry() calls in xarray iteration (Xiubo Li) [2161418 2138981]
+
+* Thu Jan 26 2023 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.16.1.el9_1]
+- Bluetooth: L2CAP: Fix use-after-free caused by l2cap_reassemble_sdu (Ricardo Robaina) [2152929 2152931] {CVE-2022-3564}
+- gitlab-ci: use CI templates from production branch (Michael Hofmann)
+
+* Thu Jan 19 2023 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.15.1.el9_1]
+- KVM: s390: vsie: Fix the initialization of the epoch extension (epdx) field (Thomas Huth) [2158815 2140899]
+- x86/fpu: Do not leak fpstate pointer on fork (Rafael Aquini) [2133083 2120448]
+- Revert "usb: typec: ucsi: add a common function ucsi_unregister_connectors()" (Torez Smith) [2153277 2113003]
+- i2c: ismt: Fix an out-of-bounds bug in ismt_access() (David Arcari) [2154859 2119067] {CVE-2022-2873}
+
+* Thu Jan 12 2023 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.14.1.el9_1]
+- NFSD: fix use-after-free in __nfs42_ssc_open() (Benjamin Coddington) [2152815 2152816] {CVE-2022-4379}
+- PCI: hv: Fix synchronization between channel callback and hv_pci_bus_exit() (Mohammed Gamal) [2155930 2155277]
+- PCI: hv: Fix synchronization between channel callback and hv_compose_msi_msg() (Mohammed Gamal) [2155930 2155277]
+- PCI: hv: Use vmbus_requestor to generate transaction IDs for VMbus hardening (Mohammed Gamal) [2155930 2155277]
+- sched/core: Always flush pending blk_plug (Phil Auld) [2153792 2115520]
+
+* Thu Jan 05 2023 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.13.1.el9_1]
+- scsi: qla2xxx: Fix crash when I/O abort times out (Nilesh Javali) [2152178 2115892]
+- net: mana: Fix race on per-CQ variable napi work_done (Emanuele Giuseppe Esposito) [2155145 2153431]
+
 * Tue Dec 20 2022 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.12.1.el9_1]
 - x86/fpu: Drop fpregs lock before inheriting FPU permissions (Valentin Schneider) [2154407 2153181]
 - hv_netvsc: Fix race between VF offering and VF association message from host (Mohammed Gamal) [2151605 2149277]
