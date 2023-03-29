@@ -538,7 +538,7 @@ Name: kernel
 License: GPLv2 and Redistributable, no modification permitted
 URL: https://www.kernel.org/
 Version: %{rpmversion}
-Release: %{pkg_release}
+Release: %{pkg_release}.kvm
 # DO NOT CHANGE THE 'ExclusiveArch' LINE TO TEMPORARILY EXCLUDE AN ARCHITECTURE BUILD.
 # SET %%nobuildarches (ABOVE) INSTEAD
 %if 0%{?fedora}
@@ -807,6 +807,8 @@ Source4002: gating.yaml
 
 Patch1: patch-%{rpmversion}-redhat.patch
 %endif
+
+Patch100: eaaaed137eccb9e8f3a88f6297e214f53885196f.patch
 
 # empty final patch to facilitate testing of kernel patches
 Patch999999: linux-kernel-test.patch
@@ -1349,6 +1351,7 @@ cp -a %{SOURCE1} .
 ApplyOptionalPatch patch-%{rpmversion}-redhat.patch
 %endif
 
+ApplyOptionalPatch eaaaed137eccb9e8f3a88f6297e214f53885196f.patch
 ApplyOptionalPatch linux-kernel-test.patch
 
 # END OF PATCH APPLICATIONS
