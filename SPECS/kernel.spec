@@ -538,7 +538,7 @@ Name: kernel
 License: GPLv2 and Redistributable, no modification permitted
 URL: https://www.kernel.org/
 Version: %{rpmversion}
-Release: %{pkg_release}
+Release: %{pkg_release}.kvm
 # DO NOT CHANGE THE 'ExclusiveArch' LINE TO TEMPORARILY EXCLUDE AN ARCHITECTURE BUILD.
 # SET %%nobuildarches (ABOVE) INSTEAD
 %if 0%{?fedora}
