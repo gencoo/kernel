@@ -755,6 +755,7 @@ BuildRequires: systemd-boot-unsigned
 %endif
 # For systemd-stub and systemd-pcrphase
 BuildRequires: systemd-udev >= 252-1
+BuildRequires: systemd-boot-unsigned
 # For TPM operations in UKI initramfs
 BuildRequires: tpm2-tools
 # For Azure CVM specific udev rules
