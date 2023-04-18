@@ -161,15 +161,15 @@ Summary: The Linux kernel
 # define buildid .local
 %define specversion 5.14.0
 %define patchversion 5.14
-%define pkgrelease 300
+%define pkgrelease 301
 %define kversion 5
-%define tarfile_release 5.14.0-300.el9
+%define tarfile_release 5.14.0-301.el9
 # This is needed to do merge window version magic
 %define patchlevel 14
 # This allows pkg_release to have configurable %%{?dist} tag
-%define specrelease 300%{?buildid}%{?dist}
+%define specrelease 301%{?buildid}%{?dist}
 # This defines the kabi tarball version
-%define kabiversion 5.14.0-300.el9
+%define kabiversion 5.14.0-301.el9
 
 #
 # End of genspec.sh variables
@@ -641,6 +641,7 @@ ExclusiveOS: Linux
 Requires: kernel-core-uname-r = %{KVERREL}
 Requires: kernel-modules-uname-r = %{KVERREL}
 Requires: kernel-modules-core-uname-r = %{KVERREL}
+Provides: installonlypkg(kernel)
 %endif
 
 
@@ -1184,12 +1185,12 @@ Kernel sample programs and selftests.
 # with_selftests
 %endif
 
-%if %{with_gcov}
-%package gcov
-Summary: gcov graph and source files for coverage data collection.
-%description gcov
-kernel-gcov includes the gcov graph and source files for gcov coverage collection.
-%endif
+%define kernel_gcov_package() \
+%package %{?1:%{1}-}gcov\
+Summary: gcov graph and source files for coverage data collection.\
+%description %{?1:%{1}-}gcov\
+%{?1:%{1}-}gcov includes the gcov graph and source files for gcov coverage collection.\
+%{nil}
 
 %package -n kernel-abi-stablelists
 Summary: The Red Hat Enterprise Linux kernel ABI symbol stablelists
@@ -1455,6 +1456,9 @@ Requires: kernel%{?1:-%{1}}-modules-core-uname-r = %{KVERREL}%{uname_suffix %{?1
 %if "%{1}" == "rt" || "%{1}" == "rt-debug"\
 %{expand:%%kernel_kvm_package %{?1:%{1}}} %{!?{-n}:%{1}}%{?{-n}:%{-n*}}}\
 %endif \
+%if %{with_gcov}\
+%{expand:%%kernel_gcov_package %{?1:%{1}}}\
+%endif\
 %{nil}
 
 #
@@ -1863,6 +1867,17 @@ BuildKernel() {
     else
       CopyKernel=cp
     fi
+
+%if %{with_gcov}
+    # Make build directory unique for each variant, so that gcno symlinks
+    # are also unique for each variant.
+    if [ -n "$Variant" ]; then
+        ln -s $(pwd) ../linux-%{KVERREL}-${Variant}
+    fi
+    echo "GCOV - continuing build in: $(pwd)"
+    pushd ../linux-%{KVERREL}${Variant:+-${Variant}}
+    pwd > ../kernel${Variant:+-${Variant}}-gcov.list
+%endif
 
     InitBuildVars $Variant
 
@@ -2506,6 +2521,9 @@ BuildKernel() {
     fi
 %endif
 
+%if %{with_gcov}
+    popd
+%endif
 }
 
 ###
@@ -3450,13 +3468,6 @@ fi
 %files
 %endif
 
-%if %{with_gcov}
-%ifnarch %nobuildarches noarch
-%files gcov
-%{_builddir}
-%endif
-%endif
-
 # This is %%{image_install_path} on an arch where that includes ELF files,
 # or empty otherwise.
 %define elf_image_install_path %{?kernel_image_elf:%{image_install_path}}
@@ -3534,6 +3545,11 @@ fi
 %if %{?3:1} %{!?3:0}\
 %{expand:%%files %{3}}\
 %endif\
+%if %{with_gcov}\
+%ifnarch %nobuildarches noarch\
+%{expand:%%files -f kernel-%{?3:%{3}-}gcov.list %{?3:%{3}-}gcov}\
+%endif\
+%endif\
 %endif\
 %{nil}
 
@@ -3585,6 +3601,124 @@ fi
 #
 #
 %changelog
+* Tue Apr 18 2023 Jan Stancek <jstancek@redhat.com> [5.14.0-301.el9]
+- kernel.spec: gcov: make gcov subpackages per variant (Jan Stancek) [2180784]
+- block: don't set GD_NEED_PART_SCAN if scan partition failed (Ming Lei) [2179915]
+- net: ethtool: fix __ethtool_dev_mm_supported() implementation (Ivan Vecera) [2175237]
+- ethtool: pse-pd: Fix double word in comments (Ivan Vecera) [2175237]
+- netlink-specs: add rx-push to ethtool family (Ivan Vecera) [2175237]
+- net: ethtool: extend ringparam set/get APIs for rx_push (Ivan Vecera) [2175237]
+- ethtool: mm: fix get_mm() return code not propagating to user space (Ivan Vecera) [2175237]
+- netlink: specs: add partial specification for ethtool (Ivan Vecera) [2175237]
+- Documentation: networking: correct spelling (Ivan Vecera) [2175237]
+- ethtool: netlink: convert commands to common SET (Ivan Vecera) [2175237]
+- ethtool: netlink: handle SET intro/outro in the common code (Ivan Vecera) [2175237]
+- net: ethtool: provide shims for stats aggregation helpers when CONFIG_ETHTOOL_NETLINK=n (Ivan Vecera) [2175237]
+- net: ethtool: fix NULL pointer dereference in pause_prepare_data() (Ivan Vecera) [2175237]
+- net: ethtool: fix NULL pointer dereference in stats_prepare_data() (Ivan Vecera) [2175237]
+- ethtool: Add and use ethnl_update_bool. (Ivan Vecera) [2175237]
+- net: ethtool: add helpers for MM fragment size translation (Ivan Vecera) [2175237]
+- net: ethtool: add helpers for aggregate statistics (Ivan Vecera) [2175237]
+- docs: ethtool: document ETHTOOL_A_STATS_SRC and ETHTOOL_A_PAUSE_STATS_SRC (Ivan Vecera) [2175237]
+- net: ethtool: netlink: retrieve stats from multiple sources (eMAC, pMAC) (Ivan Vecera) [2175237]
+- docs: ethtool-netlink: document interface for MAC Merge layer (Ivan Vecera) [2175237]
+- net: ethtool: add support for MAC Merge layer (Ivan Vecera) [2175237]
+- plca.c: fix obvious mistake in checking retval (Ivan Vecera) [2175237]
+- ethtool: add tx aggregation parameters (Ivan Vecera) [2175237]
+- ethtool: add netlink attr in rss get reply only if value is not null (Ivan Vecera) [2175237]
+- net/ethtool: add netlink interface for the PLCA RS (Ivan Vecera) [2175237]
+- ethtool: Replace 0-length array with flexible array (Ivan Vecera) [2175237]
+- net/ethtool/ioctl: split ethtool_get_phy_stats into multiple helpers (Ivan Vecera) [2175237]
+- net/ethtool/ioctl: remove if n_stats checks from ethtool_get_phy_stats (Ivan Vecera) [2175237]
+- net/ethtool/ioctl: return -EOPNOTSUPP if we have no phy stats (Ivan Vecera) [2175237]
+- ethtool: add netlink based get rss support (Ivan Vecera) [2175237]
+- ethtool: avoiding integer overflow in ethtool_phys_id() (Ivan Vecera) [2175237]
+- ethtool: doc: clarify what drivers can implement in their get_drvinfo() (Ivan Vecera) [2175237]
+- ethtool: ethtool_get_drvinfo: populate drvinfo fields even if callback exits (Ivan Vecera) [2175237]
+- ethtool: Fail number of channels change when it conflicts with rxnfc (Ivan Vecera) [2175237]
+- ethtool: linkstate: add a statistic for PHY down events (Ivan Vecera) [2175237]
+- ethtool: Add support for 800Gbps link modes (Ivan Vecera) [2175237]
+- ethtool: pse-pd: fix null-deref on genl_info in dump (Ivan Vecera) [2175237]
+- eth: pse: add missing static inlines (Ivan Vecera) [2175237]
+- ethtool: add interface to interact with Ethernet Power Equipment (Ivan Vecera) [2175237]
+- net: mdiobus: search for PSE nodes by parsing PHY nodes. (Ivan Vecera) [2175237]
+- net: mdiobus: fwnode_mdiobus_register_phy() rework error handling (Ivan Vecera) [2175237]
+- redhat: configs: Add config for PSE_CONTROLLER (Ivan Vecera) [2175237]
+- net: add framework to support Ethernet PSE and PDs devices (Ivan Vecera) [2175237]
+- ethtool: tunnels: check the return value of nla_nest_start() (Ivan Vecera) [2175237]
+- ethtool: move from strlcpy with unused retval to strscpy (Ivan Vecera) [2175237]
+- net: delete extra space and tab in blank line (Ivan Vecera) [2175237]
+- treewide: uapi: Replace zero-length arrays with flexible-array members (Ivan Vecera) [2175237]
+- ethtool: Fix and simplify ethtool_convert_link_mode_to_legacy_u32() (Ivan Vecera) [2175237]
+- net: ethtool: move checks before rtnl_lock() in ethnl_set_rings (Ivan Vecera) [2175237]
+- net: ethtool: extend ringparam set/get APIs for tx_push (Ivan Vecera) [2175237]
+- ethtool: add support to set/get completion queue event size (Ivan Vecera) [2175237]
+- ethtool: stats: Use struct_group() to clear all stats at once (Ivan Vecera) [2175237]
+- net: convert users of bitmap_foo() to linkmode_foo() (Ivan Vecera) [2175237]
+- cifs: Fix pages leak when writedata alloc failed in cifs_write_from_iter() (Ronnie Sahlberg) [2182524]
+- cifs: Fix pages array leak when writedata alloc failed in cifs_writedata_alloc() (Ronnie Sahlberg) [2182524]
+- cifs: update internal module number (Ronnie Sahlberg) [2182524]
+- cifs: fix double free on failed kerberos auth (Ronnie Sahlberg) [2182524]
+- cifs: fix interface count calculation during refresh (Ronnie Sahlberg) [2182524]
+- cifs: fix memory leaks in session setup (Ronnie Sahlberg) [2182524]
+- smb3: interface count displayed incorrectly (Ronnie Sahlberg) [2182524]
+- cifs: Fix memory leak when build ntlmssp negotiate blob failed (Ronnie Sahlberg) [2182524]
+- cifs: Fix xid leak in cifs_ses_add_channel() (Ronnie Sahlberg) [2182524]
+- cifs: Fix xid leak in cifs_flock() (Ronnie Sahlberg) [2182524]
+- cifs: Fix xid leak in cifs_create() (Ronnie Sahlberg) [2182524]
+- cifs: Fix xid leak in cifs_copy_file_range() (Ronnie Sahlberg) [2182524]
+- smb3: improve SMB3 change notification support (Ronnie Sahlberg) [2182524]
+- cifs: lease key is uninitialized in two additional functions when smb1 (Ronnie Sahlberg) [2182524]
+- cifs: lease key is uninitialized in smb1 paths (Ronnie Sahlberg) [2182524]
+- cifs: fix double-fault crash during ntlmssp (Ronnie Sahlberg) [2182524]
+- cifs: fix mount on old smb servers (Ronnie Sahlberg) [2182524]
+- cifs: use ALIGN() and round_up() macros (Ronnie Sahlberg) [2182524]
+- cifs: prevent copying past input buffer boundaries (Ronnie Sahlberg) [2182524]
+- cifs: Fix the error length of VALIDATE_NEGOTIATE_INFO message (Ronnie Sahlberg) [2182524]
+- cifs: destage dirty pages before re-reading them for cache=none (Ronnie Sahlberg) [2182524]
+- cifs: return correct error in ->calc_signature() (Ronnie Sahlberg) [2182524]
+- smb3: rename encryption/decryption TFMs (Ronnie Sahlberg) [2182524]
+- cifs: replace kfree() with kfree_sensitive() for sensitive data (Ronnie Sahlberg) [2182524]
+- cifs: remove initialization value (Ronnie Sahlberg) [2182524]
+- cifs: Replace a couple of one-element arrays with flexible-array members (Ronnie Sahlberg) [2182524]
+- smb3: add dynamic trace points for tree disconnect (Ronnie Sahlberg) [2182524]
+- cifs: misc: fix spelling typo in comment (Ronnie Sahlberg) [2182524]
+- cifs: update internal module number (Ronnie Sahlberg) [2182524]
+- cifs: Fix memory leak on the deferred close (Ronnie Sahlberg) [2182524]
+- SMB3: fix lease break timeout when multiple deferred close handles for the same file. (Ronnie Sahlberg) [2182524]
+- smb3: lower default deferred close timeout to address perf regression (Ronnie Sahlberg) [2182524]
+- smb3: allow deferred close timeout to be configurable (Ronnie Sahlberg) [2182524]
+- cifs: update internal module number (Ronnie Sahlberg) [2182524]
+- cifs: alloc_mid function should be marked as static (Ronnie Sahlberg) [2182524]
+- cifs: remove "cifs_" prefix from init/destroy mids functions (Ronnie Sahlberg) [2182524]
+- cifs: remove useless DeleteMidQEntry() (Ronnie Sahlberg) [2182524]
+- cifs: fix wrong unlock before return from cifs_tree_connect() (Ronnie Sahlberg) [2182524]
+- Documentation: networking: TC queue based filtering (Ivan Vecera) [2178209]
+- act_skbedit: skbedit queue mapping for receive queue (Ivan Vecera) [2178209]
+- wifi: iwlwifi: mvm: protect TXQ list manipulation (Jose Ignacio Tornos Martinez) [2183490]
+- wifi: iwlwifi: mvm: fix mvmtxq->stopped handling (Jose Ignacio Tornos Martinez) [2183490]
+- smb3: clarify multichannel warning (Ronnie Sahlberg) [2180669]
+- smb3: do not log confusing message when server returns no network interfaces (Ronnie Sahlberg) [2180669]
+- cifs: do not query ifaces on smb1 mounts (Ronnie Sahlberg) [2180669]
+- cifs: periodically query network interfaces from server (Ronnie Sahlberg) [2180669]
+- smb3: workaround negprot bug in some Samba servers (Ronnie Sahlberg) [2180669]
+- smb3: use netname when available on secondary channels (Ronnie Sahlberg) [2180669]
+- smb3: fix empty netname context on secondary channels (Ronnie Sahlberg) [2180669]
+- cifs: populate empty hostnames for extra channels (Ronnie Sahlberg) [2180669]
+- redhat/kernel.spec.template: fix installonlypkg for meta package (Jan Stancek)
+- s390/dump: save IPL CPU registers once DAT is available (Chris von Recklinghausen) [2185692]
+- gen_compile_commands: handle multiple lines per .mod file (Joel Slebodnick) [2160559]
+- scripts/nsdeps: adjust to the format change of *.mod files (Joel Slebodnick) [2160559]
+- kbuild: avoid regex RS for POSIX awk (Joel Slebodnick) [2160559]
+- kbuild: make *.mod rule robust against too long argument error (Joel Slebodnick) [2160559]
+- kbuild: make built-in.a rule robust against too long argument error (Joel Slebodnick) [2160559]
+- kbuild: read *.mod to get objects passed to $(LD) or $(AR) (Joel Slebodnick) [2160559]
+- kbuild: make *.mod not depend on *.o (Joel Slebodnick) [2160559]
+- kbuild: get rid of duplication in *.mod files (Joel Slebodnick) [2160559]
+- kbuild: split the second line of *.mod into *.usyms (Joel Slebodnick) [2160559]
+- kbuild: reuse real-search to simplify cmd_mod (Joel Slebodnick) [2160559]
+- kbuild: Fixup the IBT kbuild changes (Joel Slebodnick) [2160559]
+
 * Sun Apr 16 2023 Jan Stancek <jstancek@redhat.com> [5.14.0-300.el9]
 - remoteproc: imx_rproc: Correct i.MX93 DRAM mapping (Steve Best) [2180764]
 - remoteproc: imx_rproc: Enable attach recovery for i.MX8QM/QXP (Steve Best) [2180764]
