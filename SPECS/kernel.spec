@@ -538,7 +538,7 @@ Name: kernel
 License: GPLv2 and Redistributable, no modification permitted
 URL: https://www.kernel.org/
 Version: %{rpmversion}
-Release: %{pkg_release}
+Release: %{pkg_release}.gcp
 # DO NOT CHANGE THE 'ExclusiveArch' LINE TO TEMPORARILY EXCLUDE AN ARCHITECTURE BUILD.
 # SET %%nobuildarches (ABOVE) INSTEAD
 %if 0%{?fedora}
@@ -807,6 +807,9 @@ Source4002: gating.yaml
 
 Patch1: patch-%{rpmversion}-redhat.patch
 %endif
+
+# AlmaLinux GCP patch
+Patch2: 0001-Apply-GCP-related-changes.patch
 
 # empty final patch to facilitate testing of kernel patches
 Patch999999: linux-kernel-test.patch
@@ -1349,6 +1352,7 @@ cp -a %{SOURCE1} .
 ApplyOptionalPatch patch-%{rpmversion}-redhat.patch
 %endif
 
+ApplyOptionalPatch 0001-Apply-GCP-related-changes.patch
 ApplyOptionalPatch linux-kernel-test.patch
 
 # END OF PATCH APPLICATIONS
@@ -2993,6 +2997,9 @@ fi
 #
 #
 %changelog
+* Tue May 02 2023 Andrew Lukoshko <alukoshko@almalinux.org> [5.14.0-162.23.1.el9_1.gcp]
+- Apply GCP related changes
+
 * Thu Mar 23 2023 Patrick Talbert <ptalbert@redhat.com> [5.14.0-162.23.1.el9_1]
 - ovl: fail on invalid uid/gid mapping at copy up (Miklos Szeredi) [2165344 2165345] {CVE-2023-0386}
 - intel_idle: make SPR C1 and C1E be independent (David Arcari) [2168361 2125352]
