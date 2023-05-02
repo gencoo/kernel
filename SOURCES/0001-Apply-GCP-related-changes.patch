@@ -1,0 +1,98 @@
+From c0523819a6cdb726b3f56e0e51fcedb033401822 Mon Sep 17 00:00:00 2001
+From: Andrew Lukoshko <alukoshko@almalinux.org>
+Date: Tue, 2 May 2023 13:39:22 +0200
+Subject: [PATCH] Apply GCP related changes
+
+---
+ drivers/net/ethernet/google/Kconfig        | 2 +-
+ drivers/net/ethernet/google/gve/gve_main.c | 6 ++----
+ drivers/net/ethernet/google/gve/gve_rx.c   | 4 +---
+ drivers/net/ethernet/google/gve/gve_tx.c   | 6 ------
+ 4 files changed, 4 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/net/ethernet/google/Kconfig b/drivers/net/ethernet/google/Kconfig
+index 8641a00f8..b8f04d052 100644
+--- a/drivers/net/ethernet/google/Kconfig
++++ b/drivers/net/ethernet/google/Kconfig
+@@ -17,7 +17,7 @@ if NET_VENDOR_GOOGLE
+ 
+ config GVE
+ 	tristate "Google Virtual NIC (gVNIC) support"
+-	depends on (PCI_MSI && (X86 || CPU_LITTLE_ENDIAN))
++	depends on PCI_MSI
+ 	help
+ 	  This driver supports Google Virtual NIC (gVNIC)"
+ 
+diff --git a/drivers/net/ethernet/google/gve/gve_main.c b/drivers/net/ethernet/google/gve/gve_main.c
+index 54e51c822..6cafee55e 100644
+--- a/drivers/net/ethernet/google/gve/gve_main.c
++++ b/drivers/net/ethernet/google/gve/gve_main.c
+@@ -857,8 +857,7 @@ static int gve_alloc_qpls(struct gve_priv *priv)
+ 	int i, j;
+ 	int err;
+ 
+-	/* Raw addressing means no QPLs */
+-	if (priv->queue_format == GVE_GQI_RDA_FORMAT)
++	if (num_qpls == 0)
+ 		return 0;
+ 
+ 	priv->qpls = kvcalloc(num_qpls, sizeof(*priv->qpls), GFP_KERNEL);
+@@ -901,8 +900,7 @@ static void gve_free_qpls(struct gve_priv *priv)
+ 	int num_qpls = gve_num_tx_qpls(priv) + gve_num_rx_qpls(priv);
+ 	int i;
+ 
+-	/* Raw addressing means no QPLs */
+-	if (priv->queue_format == GVE_GQI_RDA_FORMAT)
++	if (num_qpls == 0)
+ 		return;
+ 
+ 	kvfree(priv->qpl_cfg.qpl_id_map);
+diff --git a/drivers/net/ethernet/google/gve/gve_rx.c b/drivers/net/ethernet/google/gve/gve_rx.c
+index cf3fe5ad5..021bbf308 100644
+--- a/drivers/net/ethernet/google/gve/gve_rx.c
++++ b/drivers/net/ethernet/google/gve/gve_rx.c
+@@ -439,7 +439,7 @@ static bool gve_rx_ctx_init(struct gve_rx_ctx *ctx, struct gve_rx_ring *rx)
+ 		if (frag_size > rx->packet_buffer_size) {
+ 			packet_size_error = true;
+ 			netdev_warn(priv->dev,
+-				    "RX fragment error: packet_buffer_size=%d, frag_size=%d, droping packet.",
++				    "RX fragment error: packet_buffer_size=%d, frag_size=%d, dropping packet.",
+ 				    rx->packet_buffer_size, be16_to_cpu(desc->len));
+ 		}
+ 		page_info = &rx->data.page_info[idx];
+@@ -766,8 +766,6 @@ static int gve_clean_rx_done(struct gve_rx_ring *rx, int budget,
+ 		}
+ 	}
+ 
+-	/* restock desc ring slots */
+-	dma_wmb();	/* Ensure descs are visible before ringing doorbell */
+ 	gve_rx_write_doorbell(priv, rx);
+ 	return total_packet_cnt;
+ }
+diff --git a/drivers/net/ethernet/google/gve/gve_tx.c b/drivers/net/ethernet/google/gve/gve_tx.c
+index a75430117..4888bf05f 100644
+--- a/drivers/net/ethernet/google/gve/gve_tx.c
++++ b/drivers/net/ethernet/google/gve/gve_tx.c
+@@ -621,10 +621,6 @@ netdev_tx_t gve_tx(struct sk_buff *skb, struct net_device *dev)
+ 		 * may have added descriptors without ringing the doorbell.
+ 		 */
+ 
+-		/* Ensure tx descs from a prior gve_tx are visible before
+-		 * ringing doorbell.
+-		 */
+-		dma_wmb();
+ 		gve_tx_put_doorbell(priv, tx->q_resources, tx->req);
+ 		return NETDEV_TX_BUSY;
+ 	}
+@@ -645,8 +641,6 @@ netdev_tx_t gve_tx(struct sk_buff *skb, struct net_device *dev)
+ 	if (!netif_xmit_stopped(tx->netdev_txq) && netdev_xmit_more())
+ 		return NETDEV_TX_OK;
+ 
+-	/* Ensure tx descs are visible before ringing doorbell */
+-	dma_wmb();
+ 	/* Give packets to NIC. Even if this packet failed to send the doorbell
+ 	 * might need to be rung because of xmit_more.
+ 	 */
+-- 
+2.39.2
+
