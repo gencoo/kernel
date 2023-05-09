@@ -407,14 +407,14 @@ Summary: The Linux kernel
 %define with_bpftool 1
 %endif
 
-%ifnarch noarch
+%ifnarch x86_64
 %define with_kernel_abi_stablelists 0
 %endif
 
 # Overrides for generic default options
 
 # only package docs noarch
-%ifnarch noarch
+%ifnarch x86_64
 %define with_doc 0
 %define doc_build_fail true
 %endif
@@ -612,6 +612,9 @@ Requires: kernel-modules-uname-r = %{KVERREL}
 Requires: kernel-modules-core-uname-r = %{KVERREL}
 %endif
 
+Provides: almalinux(kernel-sig-key) = 202303
+Conflicts: shim-ia32 <= 15.6-1.el9.alma
+Conflicts: shim-x64 <= 15.6-1.el9.alma
 
 #
 # List the packages used during the kernel build
@@ -779,7 +782,7 @@ Source1: Makefile.rhelver
 %define secureboot_ca_0 %{_datadir}/pki/sb-certs/secureboot-ca-%{_arch}.cer
 %define secureboot_key_0 %{_datadir}/pki/sb-certs/secureboot-kernel-%{_arch}.cer
 
-%define pesign_name_0 clsecureboot001
+%define pesign_name_0 almalinuxsecurebootca0
 
 # signkernel
 %endif
@@ -938,6 +941,7 @@ AutoProv: yes\
 
 %package doc
 Summary: Various documentation bits found in the kernel source
+BuildArch: noarch
 Group: Documentation
 %description doc
 This package contains documentation files from the kernel
@@ -1144,6 +1148,7 @@ kernel-gcov includes the gcov graph and source files for gcov coverage collectio
 
 %package -n kernel-abi-stablelists
 Summary: The AlmaLinux kernel ABI symbol stablelists
+BuildArch: noarch
 AutoReqProv: no
 %description -n kernel-abi-stablelists
 The kABI package contains information pertaining to the AlmaLinux
